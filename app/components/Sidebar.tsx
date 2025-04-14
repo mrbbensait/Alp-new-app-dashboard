@@ -307,8 +307,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
           </div>
         </div>
         
-        <div className="px-4 py-3 text-center text-xs text-gray-400 border-t border-gray-700">
-          AlpLeo Ai v.3.4
+        {/* Versiyon Bilgisi */}
+        <div className="mt-auto px-4 py-3 text-xs text-gray-400 border-t border-gray-700 text-center">
+          Versiyon 3.4.1
         </div>
       </aside>
       

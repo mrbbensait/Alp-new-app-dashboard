@@ -181,18 +181,18 @@ export default function TablePage() {
 
   return (
     <DashboardLayout>
-      <div className="mb-8 flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">{decodedTableName}</h1>
-          <p className="mt-1 text-sm text-gray-600">
+      <div className="mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-center">
+        <div className="mb-4 sm:mb-0">
+          <h1 className="text-2xl font-semibold text-gray-900 whitespace-normal sm:whitespace-nowrap">{decodedTableName}</h1>
+          <p className="mt-1 text-sm text-gray-600 max-w-md">
             {`${decodedTableName} tablosundaki verileri görüntüleyin ve yönetin.`}
           </p>
         </div>
         
         {/* Arama kutusu ve Yenile butonu */}
-        <div className="flex items-center space-x-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center sm:space-x-4 w-full sm:w-auto">
           {/* Arama kutusu - yenile butonunun 3 katı genişliğinde */}
-          <div className="relative rounded-md shadow-sm w-64 md:w-80">
+          <div className="relative rounded-md shadow-sm w-full sm:w-64 md:w-80 mb-2 sm:mb-0">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -217,7 +217,7 @@ export default function TablePage() {
           {/* Yenile Butonu */}
           <button
             onClick={handleRefresh}
-            className="flex items-center px-4 h-10 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            className="flex items-center justify-center px-4 h-10 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 w-full sm:w-auto"
             disabled={loading}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">

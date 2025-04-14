@@ -275,34 +275,23 @@ export default function UretimKuyrugPesonelPage() {
   // Tablo şeması bulma
   const tableSchema = tables.find(table => table.name === tableName);
   
-  // İstenen sütunlar - mobil için optimize et
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  // İstenen sütunlar - tüm ekranlarda aynı sütunları göster
+  const filteredColumns = [
+    { name: 'Reçete Adı', type: 'text' },
+    { name: 'Marka', type: 'text' },
+    { name: 'Reçete ID', type: 'text' },
+    { name: 'Bulk Üretim Emri(Kg)', type: 'numeric' },
+    { name: 'Ambalaj Emri (ml)', type: 'numeric' },
+    { name: 'Üretim Durumu', type: 'text' },
+    { name: 'Kalan Bulk (Kg)', type: 'numeric' },
+    { name: 'Beklenen Adet', type: 'numeric' },
+    { name: 'Gerçekleşen Adet', type: 'numeric' },
+    { name: 'Üretim Yapıldı mı?', type: 'boolean' },
+    { name: 'Ambalajlanan Adet', type: 'numeric', displayName: '1.Ambalajlama', editable: true },
+    { name: 'Ambalajlama 2', type: 'numeric', displayName: '2.Ambalajlama', editable: true }
+  ];
   
-  // Mobil için daha az ve önemli sütunlar göster
-  const filteredColumns = isMobile ? 
-    [
-      { name: 'Reçete Adı', type: 'text' },
-      { name: 'Marka', type: 'text' },
-      { name: 'Üretim Durumu', type: 'text' },
-      { name: 'Üretim Yapıldı mı?', type: 'boolean' },
-      { name: 'Ambalajlanan Adet', type: 'numeric', displayName: '1.Amb.', editable: true },
-    ] : 
-    [
-      { name: 'Reçete Adı', type: 'text' },
-      { name: 'Marka', type: 'text' },
-      { name: 'Reçete ID', type: 'text' },
-      { name: 'Bulk Üretim Emri(Kg)', type: 'numeric' },
-      { name: 'Ambalaj Emri (ml)', type: 'numeric' },
-      { name: 'Üretim Durumu', type: 'text' },
-      { name: 'Kalan Bulk (Kg)', type: 'numeric' },
-      { name: 'Beklenen Adet', type: 'numeric' },
-      { name: 'Gerçekleşen Adet', type: 'numeric' },
-      { name: 'Üretim Yapıldı mı?', type: 'boolean' },
-      { name: 'Ambalajlanan Adet', type: 'numeric', displayName: '1.Ambalajlama', editable: true },
-      { name: 'Ambalajlama 2', type: 'numeric', displayName: '2.Ambalajlama', editable: true }
-    ];
-  
-  // Ekran boyutu değişikliklerini dinle
+  // Ekran boyutu değişimini takip et (boyuta göre filtreleme yapmıyoruz, sadece yenileme için)
   useEffect(() => {
     const handleResize = () => {
       // Ekran boyutu değişince sayfayı yenile

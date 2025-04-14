@@ -200,7 +200,7 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName }) 
                 <th
                   key={column.name}
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort(column.name)}
                 >
                   <div className="flex items-center space-x-1">
@@ -236,7 +236,10 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName }) 
                       tableName.includes('Sipariş');
                     
                     return (
-                      <td key={column.name} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td 
+                        key={column.name} 
+                        className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500"
+                      >
                         {isTeslimColumn && isSatinAlmaTable ? (
                           // Teslim Durumu sütunu için checkbox göster
                           <div className="flex items-center">
@@ -265,7 +268,25 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName }) 
                             )}
                           </div>
                         ) : column.type === 'boolean' ? (
-                          row[column.name] ? 'Evet' : 'Hayır'
+                          <div className="flex items-center">
+                            {row[column.name] === true ? (
+                              <svg className="h-5 w-5 text-white bg-indigo-600 rounded" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            ) : (
+                              <input 
+                                type="checkbox" 
+                                className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer"
+                                checked={false}
+                                onChange={() => handleCheckboxChange(
+                                  row.id, 
+                                  column.name, 
+                                  // Eğer ürün adı sütunu varsa onu al, yoksa ID'yi kullan
+                                  row['product_name'] || row['Ürün Adı'] || row['Reçete Adı'] || `ID: ${row.id}`
+                                )}
+                              />
+                            )}
+                          </div>
                         ) : (
                           row[column.name]
                         )}
