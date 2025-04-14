@@ -1,8 +1,19 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { fetchFilteredData, insertData, updateData, deleteData } from '../../lib/supabase';
 import { useReactToPrint } from 'react-to-print';
+import { supabase } from '../../lib/supabase';
+import { toast } from 'react-hot-toast';
+
+// Yazdırma seçenekleri tip tanımı
+interface ReactToPrintProps {
+  content: () => React.ReactInstance | null;
+  documentTitle?: string;
+  onBeforePrint?: () => Promise<void>;
+  onAfterPrint?: () => Promise<void>;
+  removeAfterPrint?: boolean;
+}
 
 interface FormulationModalProps {
   isOpen: boolean;
@@ -14,16 +25,24 @@ interface FormulationModalProps {
 
 interface FormulationItem {
   id?: number;
-  "Reçete Adı": string;
-  "Reçete ID": string;
-  "Marka": string;
   "Hammadde Adı": string;
+  "Marka": string;
   "Oran(100Kg)": number;
-  "Birim": string;
-  "Stok Kategori": string;
-  "Notlar"?: string;
-  isNew?: boolean;
+  "Reçete Adı": string;
+  "Reçete ID"?: string | number;
+  "Stok Kategori"?: string;
   isEditing?: boolean;
+  isNew?: boolean;
+  _primaryKeyColumn?: string; // Veritabanındaki gerçek birincil anahtar sütun adı
+  [key: string]: any; // Dinamik özellikler için
+}
+
+interface StockItem {
+  id?: number;
+  ID?: number;
+  "Hammadde Adı": string;
+  "Stok Kategori": string;
+  [key: string]: any;
 }
 
 const FormulationModal: React.FC<FormulationModalProps> = ({
@@ -35,17 +54,29 @@ const FormulationModal: React.FC<FormulationModalProps> = ({
 }) => {
   const [formulations, setFormulations] = useState<FormulationItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [stockItems, setStockItems] = useState<any[]>([]);
+  const [stockItems, setStockItems] = useState<StockItem[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [primaryKeyColumn, setPrimaryKeyColumn] = useState<string | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
   // Yazdırma işlevi
   const handlePrint = useReactToPrint({
     content: () => contentRef.current,
     documentTitle: `${recipeName} - Formülasyon`,
-    onAfterPrint: () => console.log('Yazdırma tamamlandı'),
-  });
+    onBeforePrint: () => {
+      console.log('Yazdırma başlıyor');
+      return Promise.resolve();
+    },
+    onAfterPrint: () => {
+      console.log('Yazdırma tamamlandı');
+      return Promise.resolve();
+    },
+    removeAfterPrint: true,
+  } as ReactToPrintProps);
 
   // Modal açıldığında formülasyonları ve stok verilerini yükle
   useEffect(() => {
@@ -54,39 +85,163 @@ const FormulationModal: React.FC<FormulationModalProps> = ({
     }
   }, [isOpen, recipeName, recipeId]);
 
-  const loadData = async () => {
-    setLoading(true);
-    setError(null);
+  // Tablodan birincil anahtar sütun adını belirle
+  const getTableStructure = async () => {
     try {
-      // Formülasyonları yükle
-      const formulationData = await fetchFilteredData('Formülasyonlar', 'Reçete Adı', recipeName);
-      setFormulations(formulationData || []);
-
-      // Stok verilerini yükle (hammadde seçimi için)
-      const stockData = await fetchAllFromTable('Stok');
-      setStockItems(stockData || []);
-    } catch (err) {
-      console.error('Veri yüklenirken hata oluştu:', err);
-      setError('Veriler yüklenirken bir hata oluştu. Lütfen tekrar deneyin.');
-    } finally {
-      setLoading(false);
+      console.log("Formülasyonlar tablosu yapısı inceleniyor...");
+      
+      // İlk önce tablodan bir kayıt alarak mevcut sütunları kontrol edelim
+      const { data: firstRow, error: firstRowError } = await supabase
+        .from('Formülasyonlar')
+        .select('*')
+        .limit(1);
+      
+      if (firstRowError) {
+        console.error("Tablo yapısı kontrol edilirken hata:", firstRowError.message);
+        toast.error(`Tablo yapısı belirlenirken hata: ${firstRowError.message}`);
+        return null;
+      }
+      
+      if (!firstRow || firstRow.length === 0) {
+        console.log("Tablo boş, yeni bir kayıt oluşturulabilir");
+        return 'id'; // Varsayılan olarak 'id' kullanacağız
+      }
+      
+      console.log("Mevcut kayıt anahtarları:", Object.keys(firstRow[0]));
+      
+      // Olası ID sütunlarını kontrol et
+      const possibleIdColumns = [
+        'id', 'ID', 'formülasyon_id', 'formülasyonId', 'formulation_id', 
+        'Formülasyon ID', 'formülasyonlar_id'
+      ];
+      
+      for (const column of possibleIdColumns) {
+        if (column in firstRow[0] && firstRow[0][column] !== null) {
+          console.log(`Birincil anahtar '${column}' olarak belirlendi`);
+          setPrimaryKeyColumn(column);
+          return column;
+        }
+      }
+      
+      // Sütun adında "id" içeren herhangi bir sütun var mı?
+      for (const key in firstRow[0]) {
+        if (key.toLowerCase().includes('id')) {
+          console.log(`Olası birincil anahtar '${key}' olarak belirlendi`);
+          setPrimaryKeyColumn(key);
+          return key;
+        }
+      }
+      
+      // Son çare: İlk sütunu kullan
+      const firstKey = Object.keys(firstRow[0])[0];
+      console.log(`Birincil anahtar belirlenemedi, ilk sütun '${firstKey}' kullanılacak`);
+      setPrimaryKeyColumn(firstKey);
+      return firstKey;
+    } catch (error) {
+      console.error("Tablo yapısı belirlenirken hata:", error);
+      return null;
     }
   };
 
-  // Formülasyon silme işlemi
-  const handleDelete = async (id?: number) => {
-    if (!id) return;
+  // Verileri yükle
+  const loadData = useCallback(async () => {
+    if (!recipeId) return;
     
-    if (!confirm('Bu formülasyonu silmek istediğinize emin misiniz?')) return;
+    setLoading(true);
+    try {
+      // Önce tablo yapısını belirle
+      const pkColumn = primaryKeyColumn || await getTableStructure();
+      
+      // Formülasyon verilerini yükle
+      const { data, error } = await supabase
+        .from('Formülasyonlar')
+        .select('*')
+        .eq('Reçete ID', recipeId);
+
+      if (error) {
+        console.error('Formülasyon verileri yüklenirken hata:', error);
+        setFormulations([]);
+      } else {
+        // Verileri hazırla ve birincil anahtar sütununu işaretle
+        const processedData = data.map(item => ({
+          ...item,
+          isEditing: false,
+          isNew: false,
+          _primaryKeyColumn: pkColumn
+        }));
+        setFormulations(processedData);
+      }
+
+      // Stok verilerini yükle
+      const { data: stockData, error: stockError } = await supabase
+        .from('Stok')
+        .select('*');
+
+      if (stockError) {
+        console.error('Stok verileri yüklenirken hata:', stockError);
+        setStockItems([]);
+      } else {
+        setStockItems(stockData || []);
+      }
+    } catch (err) {
+      console.error('Veri yüklenirken beklenmeyen hata:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [recipeId, primaryKeyColumn]);
+
+  // Formülasyon sil
+  const handleDelete = async (item: FormulationItem) => {
+    if (!confirm('Bu formülasyonu silmek istediğinizden emin misiniz?')) return;
     
     try {
-      await deleteData('Formülasyonlar', id);
-      setFormulations(prev => prev.filter(item => item.id !== id));
-      showSuccess('Formülasyon başarıyla silindi');
+      setIsDeleting(true);
+      
+      // Birincil anahtar sütununu belirle
+      const pkColumn = item._primaryKeyColumn || primaryKeyColumn || await getTableStructure();
+      
+      if (!pkColumn || !item[pkColumn]) {
+        toast.error('Silme işlemi için gerekli kimlik bilgisi bulunamadı');
+        return;
+      }
+      
+      const { error } = await supabase
+        .from('Formülasyonlar')
+        .delete()
+        .eq(pkColumn, item[pkColumn]);
+
+      if (error) {
+        toast.error(`Silme hatası: ${error.message}`);
+      } else {
+        toast.success('Formülasyon başarıyla silindi');
+        loadData();
+      }
     } catch (err) {
-      console.error('Formülasyon silinirken hata oluştu:', err);
-      setError('Formülasyon silinirken bir hata oluştu. Lütfen tekrar deneyin.');
+      console.error('Silme işlemi sırasında hata:', err);
+      toast.error('Silme işlemi sırasında bir hata oluştu');
+    } finally {
+      setIsDeleting(false);
     }
+  };
+
+  // Hammadde seçildiğinde kategoriyi otomatik doldur
+  const handleHammaddeChange = (index: number, value: string) => {
+    console.log(`Hammadde seçildi: ${value} (index: ${index})`);
+    const updatedFormulations = [...formulations];
+    const selectedStock = stockItems.find(item => item["Hammadde Adı"] === value);
+    
+    updatedFormulations[index]["Hammadde Adı"] = value;
+    
+    // Stok kategorisini otomatik doldur
+    if (selectedStock) {
+      console.log('Seçilen stok bilgisi:', selectedStock);
+      updatedFormulations[index]["Stok Kategori"] = selectedStock["Stok Kategori"];
+    } else {
+      console.warn('Seçilen hammadde için stok bilgisi bulunamadı');
+    }
+    
+    setFormulations(updatedFormulations);
+    setSearchTerm(''); // Seçimden sonra arama terimini temizle
   };
 
   // Yeni formülasyon ekleme
@@ -97,7 +252,7 @@ const FormulationModal: React.FC<FormulationModalProps> = ({
       "Marka": brand,
       "Hammadde Adı": "",
       "Oran(100Kg)": 0,
-      "Birim": "kg",
+      "Birim": "Kg",
       "Stok Kategori": "",
       isNew: true,
       isEditing: true
@@ -108,47 +263,108 @@ const FormulationModal: React.FC<FormulationModalProps> = ({
 
   // Formülasyon düzenleme moduna geçme
   const handleEdit = (index: number) => {
+    console.log(`${index} indeksindeki formülasyon düzenleniyor`);
     const updatedFormulations = [...formulations];
     updatedFormulations[index].isEditing = true;
     setFormulations(updatedFormulations);
   };
 
-  // Formülasyon değişikliklerini kaydetme
-  const handleSave = async (index: number) => {
-    const formulation = formulations[index];
-    
-    // Validasyon kontrolleri
-    if (!formulation["Hammadde Adı"]) {
-      setError('Hammadde adı boş olamaz');
-      return;
-    }
-    
+  // Formülasyonu kaydet
+  const handleSaveFormulation = async (formulation: any) => {
     try {
-      const { isNew, isEditing, ...formulationData } = formulation;
+      setIsSaving(true);
+      const saveData = { ...formulation };
       
-      if (isNew) {
-        // Yeni formülasyon ekleme
-        const result = await insertData('Formülasyonlar', formulationData);
-        const updatedFormulations = [...formulations];
-        updatedFormulations[index] = { ...result[0], isEditing: false };
-        setFormulations(updatedFormulations);
-      } else {
-        // Mevcut formülasyonu güncelleme
-        const result = await updateData('Formülasyonlar', formulation.id!, formulationData);
-        const updatedFormulations = [...formulations];
-        updatedFormulations[index] = { ...result[0], isEditing: false };
-        setFormulations(updatedFormulations);
+      // "id" alanını kontrol et ve varsa number türüne dönüştür
+      if (saveData.id && typeof saveData.id === 'string') {
+        saveData.id = parseInt(saveData.id, 10);
       }
       
-      showSuccess('Formülasyon başarıyla kaydedildi');
+      // isEditing ve isNew alanlarını temizle (bunlar sadece UI için)
+      delete saveData.isEditing;
+      delete saveData.isNew;
+      delete saveData._primaryKeyColumn;
+      
+      // İpucu ekleyelim
+      console.log("Kaydedilecek veri:", saveData);
+      
+      if (formulation.isNew) {
+        // Yeni kayıt için, birincil anahtar alanını temizle
+        if (primaryKeyColumn) {
+          delete saveData[primaryKeyColumn];
+        }
+        
+        // "Reçete ID" text olarak kalmalı, dönüştürme yapmıyoruz
+        
+        // "Oran(100Kg)" sayısal değer olmalı
+        if (saveData["Oran(100Kg)"]) {
+          saveData["Oran(100Kg)"] = convertToNumber(saveData["Oran(100Kg)"]);
+        }
+        
+        console.log("Eklenecek veri (temizlenmiş):", saveData);
+        
+        const { data, error } = await supabase
+          .from('Formülasyonlar')
+          .insert(saveData)
+          .select();
+
+        if (error) {
+          console.error("Ekleme hatası:", error.message, error.details, error.hint);
+          toast.error(`Kayıt hatası: ${error.message}`);
+        } else {
+          console.log("Eklenen veri cevabı:", data);
+          toast.success('Formülasyon başarıyla eklendi');
+          loadData();
+        }
+      } else {
+        // "Reçete ID" text olarak kalmalı, dönüştürme yapmıyoruz
+        
+        // "Oran(100Kg)" sayısal değer olmalı
+        if (saveData["Oran(100Kg)"]) {
+          saveData["Oran(100Kg)"] = convertToNumber(saveData["Oran(100Kg)"]);
+        }
+        
+        if (!primaryKeyColumn) {
+          console.error("Güncelleme için birincil anahtar sütunu bulunamadı");
+          toast.error('Güncelleme için gerekli tablo yapısı belirlenemedi');
+          return;
+        }
+        
+        if (!formulation[primaryKeyColumn]) {
+          console.error(`${primaryKeyColumn} değeri bulunamadı:`, formulation);
+          toast.error('Güncelleme için gerekli kayıt kimliği bulunamadı');
+          return;
+        }
+        
+        console.log(`Güncelleme yapılıyor: ${primaryKeyColumn} = ${formulation[primaryKeyColumn]}`);
+        console.log("Güncellenecek veri:", saveData);
+        
+        const { data, error } = await supabase
+          .from('Formülasyonlar')
+          .update(saveData)
+          .eq(primaryKeyColumn, formulation[primaryKeyColumn])
+          .select();
+
+        if (error) {
+          console.error("Güncelleme hatası:", error.message, error.details, error.hint);
+          toast.error(`Güncelleme hatası: ${error.message}`);
+        } else {
+          console.log("Güncellenen veri cevabı:", data);
+          toast.success('Formülasyon başarıyla güncellendi');
+          loadData();
+        }
+      }
     } catch (err) {
-      console.error('Formülasyon kaydedilirken hata oluştu:', err);
-      setError('Formülasyon kaydedilirken bir hata oluştu. Lütfen tekrar deneyin.');
+      console.error('Kaydetme işlemi sırasında hata:', err);
+      toast.error('Kaydetme işlemi sırasında bir hata oluştu');
+    } finally {
+      setIsSaving(false);
     }
   };
 
   // Formülasyon değişikliklerini iptal etme
   const handleCancel = (index: number) => {
+    console.log(`${index} indeksindeki formülasyon düzenlemesi iptal ediliyor`);
     const updatedFormulations = [...formulations];
     
     if (updatedFormulations[index].isNew) {
@@ -160,12 +376,20 @@ const FormulationModal: React.FC<FormulationModalProps> = ({
     }
     
     setFormulations(updatedFormulations);
+    setSearchTerm(''); // Aramayı temizle
   };
 
   // Input değişikliklerini takip etme
-  const handleInputChange = (index: number, field: keyof FormulationItem, value: any) => {
+  const handleInputChange = (index: number, field: keyof FormulationItem, value: string | number) => {
     const updatedFormulations = [...formulations];
-    updatedFormulations[index][field] = value;
+    
+    // "Oran(100Kg)" alanı için değerin sayı tipinde olmasını sağla
+    if (field === "Oran(100Kg)" && typeof value === 'string') {
+      updatedFormulations[index][field] = parseFloat(value) || 0;
+    } else {
+      updatedFormulations[index][field] = value as any;
+    }
+    
     setFormulations(updatedFormulations);
   };
 
@@ -173,6 +397,31 @@ const FormulationModal: React.FC<FormulationModalProps> = ({
   const showSuccess = (message: string) => {
     setSuccess(message);
     setTimeout(() => setSuccess(null), 3000);
+  };
+
+  // Arama terimine göre stok öğelerini filtrele
+  const filteredStockItems = stockItems.filter(item => {
+    if (!item["Hammadde Adı"]) return false;
+    return item["Hammadde Adı"].toLowerCase().includes(searchTerm.toLowerCase());
+  });
+
+  // Toplam oran hesaplama
+  const calculateTotalPercentage = () => {
+    if (!formulations.length) return 0;
+    
+    // Stok kategorisi "Hammadde" olan ürünlerin oranlarını topla
+    const total = formulations
+      .filter(item => item["Stok Kategori"]?.toLowerCase() === 'hammadde')
+      .reduce((sum, item) => sum + (Number(item["Oran(100Kg)"]) || 0), 0);
+    
+    return Math.round(total * 100) / 100; // En yakın 2 ondalığa yuvarla
+  };
+
+  // Sayısal alanlara sayısal dönüşüm yapan yardımcı fonksiyon
+  const convertToNumber = (value: string | number | null | undefined): number => {
+    if (value === null || value === undefined || value === '') return 0;
+    const parsed = typeof value === 'string' ? parseFloat(value) : value;
+    return isNaN(parsed as number) ? 0 : (parsed as number);
   };
 
   // Modal kapalıysa render etme
@@ -183,12 +432,13 @@ const FormulationModal: React.FC<FormulationModalProps> = ({
       <div className="relative bg-white rounded-lg max-w-4xl mx-auto my-10 p-5 shadow-xl">
         {/* Modal başlığı ve kontrol butonları */}
         <div className="flex justify-between items-center mb-4 border-b pb-4">
-          <h2 className="text-xl font-semibold text-gray-800">
+          <h2 className="text-lg font-semibold text-gray-800">
             {recipeName} - Formülasyon Detayları
           </h2>
           <div className="flex space-x-2">
             <button
-              onClick={handlePrint}
+              type="button"
+              onClick={() => handlePrint && handlePrint()}
               className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -242,8 +492,8 @@ const FormulationModal: React.FC<FormulationModalProps> = ({
           <div className="printable-content">
             {/* Reçete bilgileri */}
             <div className="mb-4 print:block">
-              <h3 className="text-lg font-semibold">Reçete Bilgileri</h3>
-              <div className="grid grid-cols-3 gap-4">
+              <h3 className="text-base font-semibold">Reçete Bilgileri</h3>
+              <div className="grid grid-cols-4 gap-4 text-sm">
                 <div>
                   <span className="text-gray-600">Reçete Adı:</span> {recipeName}
                 </div>
@@ -253,32 +503,37 @@ const FormulationModal: React.FC<FormulationModalProps> = ({
                 <div>
                   <span className="text-gray-600">Marka:</span> {brand}
                 </div>
+                <div>
+                  <span className="inline-block px-3 py-1 bg-blue-100 text-blue-800 rounded-full font-medium">
+                    Toplam%: {calculateTotalPercentage()}
+                  </span>
+                </div>
               </div>
             </div>
 
             {loading ? (
               <div className="flex justify-center items-center py-10">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                <span className="ml-2">Veriler yükleniyor...</span>
+                <span className="ml-2 text-sm">Veriler yükleniyor...</span>
               </div>
             ) : (
               <>
-                <table className="min-w-full divide-y divide-gray-200">
+                <table className="min-w-full divide-y divide-gray-200 text-sm">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/3">
                         Hammadde Adı
                       </th>
-                      <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
                         Oran (100Kg)
                       </th>
-                      <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
                         Birim
                       </th>
-                      <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/3">
                         Stok Kategori
                       </th>
-                      <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider print:hidden">
+                      <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider print:hidden">
                         İşlemler
                       </th>
                     </tr>
@@ -288,19 +543,37 @@ const FormulationModal: React.FC<FormulationModalProps> = ({
                       <tr key={formulation.id || `new-${index}`} className="hover:bg-gray-50">
                         <td className="px-3 py-2">
                           {formulation.isEditing ? (
-                            <select
-                              value={formulation["Hammadde Adı"]}
-                              onChange={(e) => handleInputChange(index, "Hammadde Adı", e.target.value)}
-                              className="form-select rounded-md shadow-sm border-gray-300 w-full"
-                              required
-                            >
-                              <option value="">Hammadde Seçin</option>
-                              {stockItems.map((item) => (
-                                <option key={item.id} value={item["Hammadde Adı"]}>
-                                  {item["Hammadde Adı"]}
-                                </option>
-                              ))}
-                            </select>
+                            <div className="relative">
+                              <input
+                                type="text"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                placeholder="Hammadde ara..."
+                                className="form-input rounded-md shadow-sm border-gray-300 w-full text-xs mb-1"
+                              />
+                              {searchTerm && (
+                                <div className="absolute z-10 w-full bg-white shadow-lg rounded-md max-h-32 overflow-y-auto border border-gray-300">
+                                  {filteredStockItems.length > 0 ? (
+                                    filteredStockItems.map((item) => (
+                                      <button
+                                        key={item.id || item.ID}
+                                        type="button"
+                                        onClick={() => handleHammaddeChange(index, item["Hammadde Adı"])}
+                                        className="w-full text-left px-2 py-1 text-xs hover:bg-blue-100"
+                                      >
+                                        {item["Hammadde Adı"]}
+                                      </button>
+                                    ))
+                                  ) : (
+                                    <div className="p-2 text-xs text-gray-500">Hammadde bulunamadı</div>
+                                  )}
+                                </div>
+                              )}
+                              {/* Seçilen hammadde gösterimi */}
+                              <div className="mt-1 p-1 border rounded-md bg-gray-50 text-xs">
+                                {formulation["Hammadde Adı"] || "Henüz hammadde seçilmedi"}
+                              </div>
+                            </div>
                           ) : (
                             formulation["Hammadde Adı"]
                           )}
@@ -310,8 +583,8 @@ const FormulationModal: React.FC<FormulationModalProps> = ({
                             <input
                               type="number"
                               value={formulation["Oran(100Kg)"]}
-                              onChange={(e) => handleInputChange(index, "Oran(100Kg)", parseFloat(e.target.value))}
-                              className="form-input rounded-md shadow-sm border-gray-300 w-full"
+                              onChange={(e) => handleInputChange(index, "Oran(100Kg)", parseFloat(e.target.value) || 0)}
+                              className="form-input rounded-md shadow-sm border-gray-300 w-full text-xs"
                               step="0.01"
                               min="0"
                               required
@@ -325,12 +598,10 @@ const FormulationModal: React.FC<FormulationModalProps> = ({
                             <select
                               value={formulation["Birim"]}
                               onChange={(e) => handleInputChange(index, "Birim", e.target.value)}
-                              className="form-select rounded-md shadow-sm border-gray-300 w-full"
+                              className="form-select rounded-md shadow-sm border-gray-300 w-full text-xs"
                             >
-                              <option value="kg">kg</option>
-                              <option value="g">g</option>
-                              <option value="L">L</option>
-                              <option value="ml">ml</option>
+                              <option value="Kg">Kg</option>
+                              <option value="Adet">Adet</option>
                             </select>
                           ) : (
                             formulation["Birim"]
@@ -338,19 +609,12 @@ const FormulationModal: React.FC<FormulationModalProps> = ({
                         </td>
                         <td className="px-3 py-2">
                           {formulation.isEditing ? (
-                            <select
+                            <input
+                              type="text"
                               value={formulation["Stok Kategori"]}
-                              onChange={(e) => handleInputChange(index, "Stok Kategori", e.target.value)}
-                              className="form-select rounded-md shadow-sm border-gray-300 w-full"
-                              required
-                            >
-                              <option value="">Kategori Seçin</option>
-                              {Array.from(new Set(stockItems.map(item => item["Stok Kategori"]).filter(Boolean))).map((category) => (
-                                <option key={category} value={category}>
-                                  {category}
-                                </option>
-                              ))}
-                            </select>
+                              className="form-input rounded-md shadow-sm border-gray-300 w-full text-xs bg-gray-100"
+                              readOnly
+                            />
                           ) : (
                             formulation["Stok Kategori"]
                           )}
@@ -359,7 +623,7 @@ const FormulationModal: React.FC<FormulationModalProps> = ({
                           {formulation.isEditing ? (
                             <div className="flex space-x-2">
                               <button
-                                onClick={() => handleSave(index)}
+                                onClick={() => handleSaveFormulation(formulation)}
                                 className="px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-xs"
                               >
                                 Kaydet
@@ -380,7 +644,7 @@ const FormulationModal: React.FC<FormulationModalProps> = ({
                                 Düzenle
                               </button>
                               <button
-                                onClick={() => handleDelete(formulation.id)}
+                                onClick={() => handleDelete(formulation)}
                                 className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-xs"
                               >
                                 Sil

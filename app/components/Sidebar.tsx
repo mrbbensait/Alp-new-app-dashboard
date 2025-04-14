@@ -20,7 +20,8 @@ import {
   Clock, 
   Archive, 
   Briefcase,
-  Brain
+  Brain,
+  ClipboardList
 } from 'lucide-react';
 
 // Tabloları ve sayfaları türü
@@ -45,6 +46,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSidebarOpen, onVisibilityChange }) => {
   const pathname = usePathname();
   const [tablesOpen, setTablesOpen] = useState(true);
+  const [formsOpen, setFormsOpen] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const [sidebarMode, setSidebarMode] = useState<'auto' | 'collapsed'>('auto');
   const [isDesktopSidebarVisible, setIsDesktopSidebarVisible] = useState(true);
@@ -53,6 +55,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
 
   const toggleTablesMenu = () => {
     setTablesOpen(!tablesOpen);
+  };
+
+  const toggleFormsMenu = () => {
+    setFormsOpen(!formsOpen);
   };
 
   const menuItems = [
@@ -225,6 +231,37 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
                 {index === 0 && <div className="border-b border-gray-700 my-2 mx-3 opacity-50"></div>}
               </React.Fragment>
             ))}
+
+            <div className="border-b border-gray-700 my-2 mx-3 opacity-50"></div>
+
+            <div>
+              <button
+                type="button"
+                className="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-gray-300 rounded-md hover:bg-gray-700 hover:text-white"
+                onClick={toggleFormsMenu}
+              >
+                <span className="flex items-center">
+                  <ClipboardList size={18} className="mr-3 text-gray-400" />
+                  Formlar
+                </span>
+                {formsOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+              </button>
+
+              {formsOpen && (
+                <div className="mt-1 pl-4 space-y-1">
+                  <Link
+                    href="/formlar/recete-kaydi"
+                    className={`
+                      flex items-center px-3 py-2 text-sm font-medium rounded-md
+                      ${pathname === "/formlar/recete-kaydi" ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}
+                    `}
+                  >
+                    <FileText size={18} className="mr-3 text-gray-400" />
+                    Reçete Kaydı
+                  </Link>
+                </div>
+              )}
+            </div>
 
             <div className="border-b border-gray-700 my-2 mx-3 opacity-50"></div>
 
