@@ -180,7 +180,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
         ref={sidebarRef}
         className={`fixed inset-y-0 left-0 z-50 w-64 bg-gray-800 text-white transform transition-transform duration-300 ease-in-out ${
           isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } ${(sidebarMode === 'auto' && isDesktopSidebarVisible) || (sidebarMode === 'collapsed' && isHovered) ? 'md:translate-x-0' : 'md:-translate-x-full'} md:static md:z-0 flex flex-col`}
+        } ${(sidebarMode === 'auto' && isDesktopSidebarVisible) || (sidebarMode === 'collapsed' && isHovered) ? 'md:translate-x-0' : 'md:-translate-x-full'} md:static md:z-0 flex flex-col overflow-y-auto`}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
@@ -190,7 +190,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
           </div>
           <button
             type="button"
-            className="md:hidden text-gray-400 hover:text-white absolute right-3"
+            className="md:hidden text-white hover:text-gray-300 absolute right-3 p-1 rounded-full bg-gray-700 hover:bg-gray-600"
             onClick={() => setIsMobileSidebarOpen(false)}
           >
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">

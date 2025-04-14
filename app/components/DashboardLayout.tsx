@@ -46,7 +46,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
       <Sidebar 
         isMobileSidebarOpen={isMobileSidebarOpen}
         setIsMobileSidebarOpen={setIsMobileSidebarOpen}
@@ -55,17 +55,17 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
       <div className={`flex flex-col flex-1 overflow-hidden transition-all duration-300 ${isSidebarVisible ? 'md:ml-0 md:w-[calc(100%-16rem)]' : 'md:ml-0 md:w-full'}`}>
         <header className="bg-white shadow-sm z-10">
-          <div className="px-4 py-4 sm:px-6 md:px-8 flex justify-between items-center">
+          <div className="px-4 py-3 sm:px-6 md:px-8 flex justify-between items-center">
             <button
               type="button"
-              className="md:hidden text-gray-500 hover:text-gray-600"
+              className="md:hidden text-gray-500 hover:text-gray-600 p-1"
               onClick={() => setIsMobileSidebarOpen(true)}
             >
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <h1 className="text-xl font-semibold text-gray-800 md:hidden">Üretim Yönetimi</h1>
+            <h1 className="text-lg font-semibold text-gray-800 md:hidden truncate ml-2">Üretim Yönetimi</h1>
             <div className="flex-1 md:ml-4"></div>
             <div className="flex items-center">
               <span className="text-sm text-gray-600">Kullanıcı</span>
@@ -73,7 +73,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
+        <main className="flex-1 overflow-y-auto overflow-x-auto p-3 sm:p-6 md:p-8">
           {children}
         </main>
       </div>

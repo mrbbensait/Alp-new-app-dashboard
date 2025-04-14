@@ -116,7 +116,7 @@ const UretimKuyruguTable: React.FC<UretimKuyruguTableProps> = ({
                 <th
                   key={column.name}
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort(column.name)}
                 >
                   <div className="flex items-center space-x-1">
@@ -135,7 +135,7 @@ const UretimKuyruguTable: React.FC<UretimKuyruguTableProps> = ({
             {displayData.map((row, rowIndex) => (
               <tr key={rowIndex} className="hover:bg-gray-50">
                 {columns.map((column) => (
-                  <td key={column.name} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td key={column.name} className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                     {column.name === 'Üretim Yapıldı mı?' ? (
                       <div className="flex items-center">
                         {row[column.name] === true ? (
@@ -275,21 +275,43 @@ export default function UretimKuyrugPesonelPage() {
   // Tablo şeması bulma
   const tableSchema = tables.find(table => table.name === tableName);
   
-  // İstenen sütunlar
-  const filteredColumns = [
-    { name: 'Reçete Adı', type: 'text' },
-    { name: 'Marka', type: 'text' },
-    { name: 'Reçete ID', type: 'text' },
-    { name: 'Bulk Üretim Emri(Kg)', type: 'numeric' },
-    { name: 'Ambalaj Emri (ml)', type: 'numeric' },
-    { name: 'Üretim Durumu', type: 'text' },
-    { name: 'Kalan Bulk (Kg)', type: 'numeric' },
-    { name: 'Beklenen Adet', type: 'numeric' },
-    { name: 'Gerçekleşen Adet', type: 'numeric' },
-    { name: 'Üretim Yapıldı mı?', type: 'boolean' },
-    { name: 'Ambalajlanan Adet', type: 'numeric', displayName: '1.Ambalajlama', editable: true },
-    { name: 'Ambalajlama 2', type: 'numeric', displayName: '2.Ambalajlama', editable: true }
-  ];
+  // İstenen sütunlar - mobil için optimize et
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  
+  // Mobil için daha az ve önemli sütunlar göster
+  const filteredColumns = isMobile ? 
+    [
+      { name: 'Reçete Adı', type: 'text' },
+      { name: 'Marka', type: 'text' },
+      { name: 'Üretim Durumu', type: 'text' },
+      { name: 'Üretim Yapıldı mı?', type: 'boolean' },
+      { name: 'Ambalajlanan Adet', type: 'numeric', displayName: '1.Amb.', editable: true },
+    ] : 
+    [
+      { name: 'Reçete Adı', type: 'text' },
+      { name: 'Marka', type: 'text' },
+      { name: 'Reçete ID', type: 'text' },
+      { name: 'Bulk Üretim Emri(Kg)', type: 'numeric' },
+      { name: 'Ambalaj Emri (ml)', type: 'numeric' },
+      { name: 'Üretim Durumu', type: 'text' },
+      { name: 'Kalan Bulk (Kg)', type: 'numeric' },
+      { name: 'Beklenen Adet', type: 'numeric' },
+      { name: 'Gerçekleşen Adet', type: 'numeric' },
+      { name: 'Üretim Yapıldı mı?', type: 'boolean' },
+      { name: 'Ambalajlanan Adet', type: 'numeric', displayName: '1.Ambalajlama', editable: true },
+      { name: 'Ambalajlama 2', type: 'numeric', displayName: '2.Ambalajlama', editable: true }
+    ];
+  
+  // Ekran boyutu değişikliklerini dinle
+  useEffect(() => {
+    const handleResize = () => {
+      // Ekran boyutu değişince sayfayı yenile
+      setRefreshKey(prev => prev + 1);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   // Verileri yeniden yükleme fonksiyonu
   const refreshData = useCallback(async (forceRefresh = false) => {
@@ -580,18 +602,18 @@ export default function UretimKuyrugPesonelPage() {
         onCancel={handleCancel}
       />
       
-      <div className="mb-8 flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Üretim Kuyruğu Personel</h1>
-          <p className="mt-1 text-sm text-gray-600">
+      <div className="mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-center">
+        <div className="mb-4 sm:mb-0">
+          <h1 className="text-2xl font-semibold text-gray-900 whitespace-normal sm:whitespace-nowrap">Üretim Kuyruğu Personel</h1>
+          <p className="mt-1 text-sm text-gray-600 max-w-md">
             Personel kullanımı için özelleştirilmiş üretim kuyruğu görünümü.
           </p>
         </div>
         
         {/* Arama kutusu ve Yenile butonu */}
-        <div className="flex items-center space-x-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center sm:space-x-4 w-full sm:w-auto">
           {/* Arama kutusu - yenile butonunun 3 katı genişliğinde */}
-          <div className="relative rounded-md shadow-sm w-64 md:w-80">
+          <div className="relative rounded-md shadow-sm w-full sm:w-64 md:w-80 mb-2 sm:mb-0">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -616,7 +638,7 @@ export default function UretimKuyrugPesonelPage() {
           {/* Yenile Butonu */}
           <button
             onClick={handleRefresh}
-            className="flex items-center px-4 h-10 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            className="flex items-center justify-center px-4 h-10 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 w-full sm:w-auto"
             disabled={loading}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
