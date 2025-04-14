@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { updateData } from '../lib/supabase';
+import FormulationModal from './modals/FormulationModal';
 
 interface DataTableProps {
   columns: {
@@ -69,6 +70,10 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName }) 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState<{ id: number, columnName: string, productName: string } | null>(null);
   const [autoRefreshTimer, setAutoRefreshTimer] = useState<NodeJS.Timeout | null>(null);
+  
+  // Formülasyon modalı için state
+  const [isFormulationModalOpen, setIsFormulationModalOpen] = useState(false);
+  const [selectedRecipe, setSelectedRecipe] = useState<{ name: string, id: string, brand: string } | null>(null);
 
   // Başlangıçta veya veri değiştiğinde varsayılan sıralamayı uygula
   useEffect(() => {
@@ -182,6 +187,33 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName }) 
     console.log('İlk satır verisi:', JSON.stringify(data[0], null, 2));
   }
 
+  // Reçeteye tıklama işleyicisi
+  const handleRecipeClick = (recipeName: string, recipeId: string, brand: string) => {
+    setSelectedRecipe({ name: recipeName, id: recipeId, brand });
+    setIsFormulationModalOpen(true);
+  };
+
+  // Hücre değerini render etme fonksiyonu
+  const renderCellValue = (value: any, columnType: string) => {
+    if (value === null || value === undefined) {
+      return '-';
+    }
+
+    if (columnType === 'numeric') {
+      return typeof value === 'number' ? value.toLocaleString('tr-TR') : value;
+    }
+
+    if (columnType === 'boolean') {
+      return value === true ? 'Evet' : 'Hayır';
+    }
+
+    if (columnType === 'date') {
+      return value instanceof Date ? value.toLocaleDateString('tr-TR') : value;
+    }
+
+    return value;
+  };
+
   return (
     <div className="bg-white shadow rounded-lg overflow-hidden">
       {/* Onay Modalı */}
@@ -191,6 +223,17 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName }) 
         onConfirm={handleModalConfirm}
         onCancel={handleModalCancel}
       />
+      
+      {/* Formülasyon Modalı */}
+      {isFormulationModalOpen && selectedRecipe && (
+        <FormulationModal
+          isOpen={isFormulationModalOpen}
+          onClose={() => setIsFormulationModalOpen(false)}
+          recipeName={selectedRecipe.name}
+          recipeId={selectedRecipe.id}
+          brand={selectedRecipe.brand}
+        />
+      )}
     
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
@@ -235,10 +278,19 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName }) 
                       tableName.includes('SatınAlma') || 
                       tableName.includes('Sipariş');
                     
+                    // Reçeteler tablosunda Reçete Adı sütunu kontrolü
+                    const isRecipeTable = tableName === 'Reçeteler';
+                    const isRecipeNameColumn = column.name === 'Reçete Adı';
+                    const isRecipeName = isRecipeTable && isRecipeNameColumn;
+                    
                     return (
                       <td 
                         key={column.name} 
-                        className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500"
+                        className={`px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 ${isRecipeName ? 'cursor-pointer hover:text-indigo-600 hover:underline' : ''}`}
+                        onClick={isRecipeName ? () => handleRecipeClick(
+                          row[column.name], 
+                          row['Reçete ID'] || '', 
+                          row['Marka'] || '') : undefined}
                       >
                         {isTeslimColumn && isSatinAlmaTable ? (
                           // Teslim Durumu sütunu için checkbox göster
@@ -256,12 +308,11 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName }) 
                                     type="checkbox" 
                                     className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer"
                                     checked={false}
-                                    onChange={() => {
-                                      // Ürün adını satırdan al
-                                      const productName = row['Alınan Ürün'] || row['Hammadde ID'] || row['Tedarikçi'];
-                                      handleCheckboxChange(row.id, column.name, productName);
-                                    }}
-                                    disabled={updatingRow !== null}
+                                    onChange={() => handleCheckboxChange(
+                                      row.id, 
+                                      column.name, 
+                                      row['Alınan Ürün'] || row['product_name'] || `ID: ${row.id}`
+                                    )}
                                   />
                                 )}
                               </div>
@@ -288,7 +339,11 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName }) 
                             )}
                           </div>
                         ) : (
-                          row[column.name]
+                          isRecipeName ? (
+                            <span className="text-indigo-600 font-medium">{row[column.name]}</span>
+                          ) : (
+                            renderCellValue(row[column.name], column.type)
+                          )
                         )}
                       </td>
                     );

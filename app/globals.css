@@ -16,4 +16,40 @@ body {
       rgb(var(--background-end-rgb))
     )
     rgb(var(--background-start-rgb));
+}
+
+/* Yazdırma stilleri */
+@media print {
+  .print\:hidden {
+    display: none !important;
+  }
+  
+  .print\:block {
+    display: block !important;
+  }
+  
+  body {
+    font-size: 12pt;
+    background: none;
+  }
+  
+  .printable-content {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  th, td {
+    border: 1px solid #ddd;
+    padding: 8pt;
+  }
+  
+  @page {
+    margin: 1cm;
+  }
 } 
