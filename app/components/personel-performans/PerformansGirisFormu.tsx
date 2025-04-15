@@ -1,40 +1,44 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { PerformansRaporu, Vardiya } from '@/app/lib/types/index';
+import { PerformansRaporu } from '@/app/lib/types/index';
 import { getBugununTarihi, formatDateTR } from '@/app/utils/date-utils';
 
 interface PerformansGirisFormuProps {
   mevcutRapor?: PerformansRaporu;
-  vardiya: Vardiya;
   onSubmit: (rapor: Omit<PerformansRaporu, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
   isSubmitting?: boolean;
 }
 
 const PerformansGirisFormu: React.FC<PerformansGirisFormuProps> = ({
   mevcutRapor,
-  vardiya,
   onSubmit,
   isSubmitting = false
 }) => {
-  const [dolum, setDolum] = useState<number>(mevcutRapor?.dolum || 0);
-  const [etiketleme, setEtiketleme] = useState<number>(mevcutRapor?.etiketleme || 0);
-  const [kutulama, setKutulama] = useState<number>(mevcutRapor?.kutulama || 0);
-  const [selefon, setSelefon] = useState<number>(mevcutRapor?.selefon || 0);
-  const [formHata, setFormHata] = useState<string>("");
+  // Form durumu
+  const [dolum, setDolum] = useState<number>(0);
+  const [etiketleme, setEtiketleme] = useState<number>(0);
+  const [kutulama, setKutulama] = useState<number>(0);
+  const [selefon, setSelefon] = useState<number>(0);
+  const [formHata, setFormHata] = useState<string>('');
   
-  // Form resetleme
-  const resetForm = () => {
-    setDolum(mevcutRapor?.dolum || 0);
-    setEtiketleme(mevcutRapor?.etiketleme || 0);
-    setKutulama(mevcutRapor?.kutulama || 0);
-    setSelefon(mevcutRapor?.selefon || 0);
-    setFormHata("");
-  };
-  
-  // Props değiştiğinde formu güncelle
+  // Mevcut rapor verilerini yükle
   useEffect(() => {
-    resetForm();
+    if (mevcutRapor) {
+      setDolum(mevcutRapor.dolum);
+      setEtiketleme(mevcutRapor.etiketleme);
+      setKutulama(mevcutRapor.kutulama);
+      setSelefon(mevcutRapor.selefon);
+    } else {
+      // Mevcut rapor yoksa sıfırla
+      setDolum(0);
+      setEtiketleme(0);
+      setKutulama(0);
+      setSelefon(0);
+    }
+    
+    // Form hatasını temizle
+    setFormHata('');
   }, [mevcutRapor]);
   
   // Form gönderme
@@ -58,7 +62,6 @@ const PerformansGirisFormu: React.FC<PerformansGirisFormuProps> = ({
       const raporData: Omit<PerformansRaporu, 'id' | 'created_at' | 'updated_at'> = {
         tarih: getBugununTarihi(),
         personel_id: mevcutRapor?.personel_id || '', // Bu normalde oturum açan kullanıcının ID'si olacak
-        vardiya,
         dolum,
         etiketleme,
         kutulama,
@@ -82,7 +85,7 @@ const PerformansGirisFormu: React.FC<PerformansGirisFormuProps> = ({
       <div className="mb-5 flex justify-between items-center">
         <h2 className="text-xl font-semibold text-gray-800">Günlük Performans Raporu</h2>
         <div className="text-sm font-medium text-gray-600">
-          {formatDateTR(bugun)} - {vardiya === Vardiya.Gunduz ? 'Gündüz Vardiyası' : 'Gece Vardiyası'}
+          {formatDateTR(bugun)}
         </div>
       </div>
       
@@ -151,32 +154,17 @@ const PerformansGirisFormu: React.FC<PerformansGirisFormuProps> = ({
           </div>
         </div>
         
-        <div className="mt-8 flex justify-end space-x-3">
-          <button
-            type="button"
-            onClick={resetForm}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={isSubmitting}
-          >
-            Sıfırla
-          </button>
-          
+        <div className="mt-8 flex justify-end">
           <button
             type="submit"
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             disabled={isSubmitting}
+            className={`
+              px-4 py-2 text-base font-medium rounded-md shadow-sm text-white 
+              bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
+              ${isSubmitting ? 'opacity-75 cursor-not-allowed' : ''}
+            `}
           >
-            {isSubmitting ? (
-              <span className="flex items-center">
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Kaydediliyor...
-              </span>
-            ) : (
-              'Kaydet'
-            )}
+            {isSubmitting ? 'Kaydediliyor...' : 'Raporu Kaydet'}
           </button>
         </div>
       </form>

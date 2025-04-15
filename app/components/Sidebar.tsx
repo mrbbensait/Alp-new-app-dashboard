@@ -100,6 +100,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
   const menuItems = [
     { name: 'Ana Sayfa', path: '/', icon: <Home size={18} /> },
     { name: 'Personel Rapor', path: '/personel-rapor', icon: <Clipboard size={18} /> },
+    { name: 'Kullanıcı Listesi', path: '/formlar/kullanici-listesi', icon: <Users size={18} /> },
+    { name: 'Kullanıcı Ekle', path: '/formlar/kullanici-kaydi', icon: <Users size={18} /> },
     { name: 'Ayarlar', path: '/ayarlar', icon: <Settings size={18} /> },
     { name: 'Stok ve Üretim Müdürü', path: '/stok-uretim-muduru-beyni', icon: <Brain size={18} /> },
   ];

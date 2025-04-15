@@ -3,8 +3,15 @@ export interface Personel {
   id: string;
   ad_soyad: string;
   kullanici_adi: string;
-  rol: 'patron' | 'personel';
-  vardiya: 'gündüz' | 'gece';
+  rol: 'yonetici' | 'personel';
+  email?: string;
+  telefon?: string;
+  ise_baslama_tarihi?: string;
+  erisim_izinleri?: {
+    rapor_goruntuleme?: boolean;
+    veri_duzenleme?: boolean;
+    yonetim_paneli?: boolean;
+  };
   created_at: string;
   updated_at: string;
 }
@@ -14,7 +21,6 @@ export interface PerformansRaporu {
   id: string;
   tarih: string;
   personel_id: string;
-  vardiya: 'gündüz' | 'gece';
   dolum: number;
   etiketleme: number;
   kutulama: number;
@@ -62,12 +68,6 @@ export interface PerformansAnalizi {
   gunlukKarZararTrend: Array<{tarih: string, kar: number}>;
 }
 
-// Vardiya enum
-export enum Vardiya {
-  Gunduz = 'gündüz',
-  Gece = 'gece'
-}
-
 // İşlem türü enum
 export enum IslemTuru {
   Dolum = 'dolum',
@@ -78,6 +78,13 @@ export enum IslemTuru {
 
 // Rol enum
 export enum Rol {
-  Patron = 'patron',
+  Yonetici = 'yonetici',
   Personel = 'personel'
+}
+
+// Vardiya enum
+export enum Vardiya {
+  Sabah = 'sabah',
+  Aksam = 'aksam',
+  Gece = 'gece'
 } 

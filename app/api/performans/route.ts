@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase, insertData, fetchFilteredData, updateData } from '@/app/lib/supabase';
 import { getBugununTarihi } from '@/app/utils/date-utils';
 
-// Raporları getir (Tarih ve vardiya filtrelemesiyle)
+// NOT: Veritabanı değişikliği:
+// ALTER TABLE personel DROP COLUMN vardiya;
+// ALTER TABLE performans_raporlari DROP COLUMN vardiya;
+
+// Raporları getir (Tarih filtrelemesiyle)
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const tarih = searchParams.get('tarih');
-    const vardiya = searchParams.get('vardiya');
     const personelId = searchParams.get('personel_id');
     const baslangicTarihi = searchParams.get('baslangic_tarihi');
     const bitisTarihi = searchParams.get('bitis_tarihi');
@@ -17,10 +20,6 @@ export async function GET(request: NextRequest) {
     // Filtreleme
     if (tarih) {
       query = query.eq('tarih', tarih);
-    }
-    
-    if (vardiya) {
-      query = query.eq('vardiya', vardiya);
     }
     
     if (personelId) {
@@ -53,7 +52,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     // Zorunlu alanları kontrol et
-    if (!body.personel_id || !body.vardiya) {
+    if (!body.personel_id) {
       return NextResponse.json(
         { success: false, error: 'Gerekli alanlar eksik' },
         { status: 400 }
@@ -78,7 +77,6 @@ export async function POST(request: NextRequest) {
       .select('*')
       .eq('tarih', body.tarih)
       .eq('personel_id', body.personel_id)
-      .eq('vardiya', body.vardiya)
       .maybeSingle();
     
     let result;
@@ -106,7 +104,6 @@ export async function POST(request: NextRequest) {
         .insert({
           tarih: body.tarih,
           personel_id: body.personel_id,
-          vardiya: body.vardiya,
           dolum: body.dolum || 0,
           etiketleme: body.etiketleme || 0,
           kutulama: body.kutulama || 0,
