@@ -94,8 +94,8 @@ const KullaniciListesiPage = () => {
   };
   
   // Rol adını formatla
-  const formatRol = (rol: 'patron' | 'personel') => {
-    return rol === Rol.Patron ? 'Patron' : 'Personel';
+  const formatRol = (rol: 'yonetici' | 'personel') => {
+    return rol === Rol.Yonetici ? 'Yönetici' : 'Personel';
   };
   
   return (
@@ -177,7 +177,7 @@ const KullaniciListesiPage = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          personel.rol === Rol.Patron 
+                          personel.rol === Rol.Yonetici 
                             ? 'bg-purple-100 text-purple-800' 
                             : 'bg-green-100 text-green-800'
                         }`}>
