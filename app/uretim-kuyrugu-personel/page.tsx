@@ -106,6 +106,53 @@ const UretimKuyruguTable: React.FC<UretimKuyruguTableProps> = ({
     }
   };
 
+  // Hücre içeriğini tipine göre render eder
+  const renderCellContent = (row: any, column: any) => {
+    const columnName = column.name;
+    const value = row[columnName];
+    
+    switch (column.type) {
+      case 'boolean':
+        return (
+          <div className="flex items-center justify-center">
+            <input
+              type="checkbox"
+              checked={value === true}
+              onChange={() => onCheckboxChange(row.id, row['Reçete Adı'])}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
+              disabled={row['Üretim Yapıldı mı?'] === true}
+            />
+          </div>
+        );
+      case 'numeric':
+        if (column.editable) {
+          return (
+            <input
+              type="number"
+              value={value || ''}
+              onChange={(e) => onCellValueChange(row.id, columnName, e.target.value ? Number(e.target.value) : null)}
+              className="w-full p-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          );
+        }
+        return value !== null && value !== undefined ? value.toLocaleString('tr-TR') : '-';
+      case 'date':
+        if (!value) return '-';
+        return new Date(value).toLocaleDateString('tr-TR');
+      case 'text':
+        if (columnName === 'Reçete Adı') {
+          return (
+            <span className="text-gray-800">
+              {value || '-'}
+            </span>
+          );
+        }
+        return value || '-';
+      default:
+        return value || '-';
+    }
+  };
+
   return (
     <div className="bg-white shadow rounded-lg overflow-hidden">
       <div className="overflow-x-auto">
@@ -136,48 +183,7 @@ const UretimKuyruguTable: React.FC<UretimKuyruguTableProps> = ({
               <tr key={rowIndex} className="hover:bg-gray-50">
                 {columns.map((column) => (
                   <td key={column.name} className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
-                    {column.name === 'Üretim Yapıldı mı?' ? (
-                      <div className="flex items-center">
-                        {row[column.name] === true ? (
-                          <svg className="h-5 w-5 text-white bg-indigo-600 rounded" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        ) : (
-                          <input 
-                            type="checkbox" 
-                            className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer"
-                            checked={false}
-                            onChange={() => {
-                              // Sadece işaretlenmemiş checkbox'ları işaretlemeye izin ver
-                              if (!row[column.name]) {
-                                onCheckboxChange(row.id, row['Reçete Adı']);
-                              }
-                            }}
-                          />
-                        )}
-                      </div>
-                    ) : column.editable ? (
-                      editingCell?.rowId === row.id && editingCell?.columnName === column.name ? (
-                        <input
-                          type="text"
-                          value={tempValue}
-                          onChange={handleInputChange}
-                          onBlur={handleInputBlur}
-                          onKeyDown={handleKeyDown}
-                          className="w-full py-1 px-2 rounded border border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                          autoFocus
-                        />
-                      ) : (
-                        <div 
-                          className="hover:bg-gray-100 hover:text-indigo-600 cursor-pointer px-2 py-1 rounded transition-colors"
-                          onClick={() => handleCellClick(row.id, column.name, row[column.name])}
-                        >
-                          {row[column.name] || '-'}
-                        </div>
-                      )
-                    ) : (
-                      row[column.name]
-                    )}
+                    {renderCellContent(row, column)}
                   </td>
                 ))}
               </tr>
@@ -259,7 +265,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({ isOpen, recipeName, onConfi
   );
 };
 
-export default function UretimKuyrugPesonelPage() {
+export default function UretimKuyruguPersonelPage() {
   const tableName = 'Üretim Kuyruğu';
   const [tableData, setTableData] = useState<any[]>([]);
   const [filteredData, setFilteredData] = useState<any[]>([]);
@@ -279,7 +285,6 @@ export default function UretimKuyrugPesonelPage() {
   const filteredColumns = [
     { name: 'Reçete Adı', type: 'text' },
     { name: 'Marka', type: 'text' },
-    { name: 'Reçete ID', type: 'text' },
     { name: 'Bulk Üretim Emri(Kg)', type: 'numeric' },
     { name: 'Ambalaj Emri (ml)', type: 'numeric' },
     { name: 'Üretim Durumu', type: 'text' },
@@ -516,15 +521,19 @@ export default function UretimKuyrugPesonelPage() {
   
   // Arama fonksiyonu
   const filterData = (query: string, data = tableData) => {
+    // Önce "Bitti" durumunda olanları filtrele
+    let filteredByStatus = data.filter(row => row['Üretim Durumu'] !== 'Bitti');
+    
+    // Arama sorgusu boşsa sadece duruma göre filtrelenmiş veriyi kullan
     if (!query.trim()) {
-      setFilteredData(data);
+      setFilteredData(filteredByStatus);
       return;
     }
     
     const lowercaseQuery = query.toLowerCase().trim();
     
     // Tablonun tüm sütunlarında arama yap
-    const filtered = data.filter(row => {
+    const filtered = filteredByStatus.filter(row => {
       // Tüm sütunlarda ara
       return Object.keys(row).some(key => {
         const value = row[key];
@@ -557,7 +566,7 @@ export default function UretimKuyrugPesonelPage() {
   useEffect(() => {
     filterData(searchQuery);
   }, [searchQuery]);
-  
+
   if (!tableSchema) {
     return (
       <DashboardLayout>
@@ -595,7 +604,7 @@ export default function UretimKuyrugPesonelPage() {
         <div className="mb-4 sm:mb-0">
           <h1 className="text-2xl font-semibold text-gray-900 whitespace-normal sm:whitespace-nowrap">Üretim Kuyruğu Personel</h1>
           <p className="mt-1 text-sm text-gray-600 max-w-md">
-            Personel kullanımı için özelleştirilmiş üretim kuyruğu görünümü.
+            Personel kullanımı için özelleştirilmiş üretim kuyruğu görünümü. Sadece aktif üretimler gösterilmektedir.
           </p>
         </div>
         
@@ -613,7 +622,7 @@ export default function UretimKuyrugPesonelPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 h-10 sm:text-sm border-gray-300 rounded-md"
-              placeholder="Üretim kuyruğunda ara..."
+              placeholder="Aktif üretimlerde ara..."
             />
             {searchQuery && (
               <div className="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer" onClick={() => setSearchQuery('')}>

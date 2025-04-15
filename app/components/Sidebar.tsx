@@ -99,14 +99,19 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
 
   const menuItems = [
     { name: 'Ana Sayfa', path: '/', icon: <Home size={18} /> },
-    { name: 'ANA SAYFA-P', path: '/anasayfa-p', icon: <Home size={18} /> },
-    { name: 'Personel Rapor', path: '/personel-rapor', icon: <Clipboard size={18} /> },
     { name: 'Stok ve Üretim Müdürü', path: '/stok-uretim-muduru-beyni', icon: <Brain size={18} /> },
   ];
 
   const reportItems = [
     { name: 'Genel Raporlar', path: '/raporlar', icon: <BarChart2 size={18} /> },
     { name: 'Personel Performans', path: '/raporlar/personel-performans', icon: <Activity size={18} /> },
+  ];
+
+  const personalItems = [
+    { name: 'ANA SAYFA-P', path: '/anasayfa-p', icon: <Home size={18} /> },
+    { name: 'Üretim Kuyruğu Personel', path: '/uretim-kuyrugu-personel', icon: <Clock size={18} /> },
+    { name: 'Bitmiş Ürün Stoğu Personel', path: '/bitmis-urun-stogu-personel', icon: <Archive size={18} /> },
+    { name: 'Personel Rapor', path: '/personel-rapor', icon: <Clipboard size={18} /> },
   ];
 
   // Özel tablo sıralaması
@@ -123,9 +128,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
     { type: 'divider' },
     { name: 'Üretim Kuyruğu', icon: <Clock size={18} /> },
     { name: 'Bitmiş Ürün Stoğu', icon: <Archive size={18} /> },
-    { type: 'divider' },
-    { name: 'Üretim Kuyruğu Personel', icon: <Briefcase size={18} /> },
-    { name: 'Bitmiş Ürün Stoğu Personel', icon: <Archive size={18} /> },
   ];
 
   const changeSidebarMode = (mode: 'auto' | 'collapsed') => {
@@ -270,11 +272,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
                   <span className="mr-3 text-gray-400">{item.icon}</span>
                   {item.name}
                 </Link>
-                {index === 0 && <div className="border-b border-gray-700 my-2 mx-3 opacity-50"></div>}
+                {index === menuItems.length - 1 && <div className="border-b border-gray-700 my-2 mx-3 opacity-50"></div>}
               </React.Fragment>
             ))}
-
-            <div className="border-b border-gray-700 my-2 mx-3 opacity-50"></div>
 
             <div>
               <button
@@ -284,7 +284,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
               >
                 <span className="flex items-center">
                   <BarChart2 size={18} className="mr-3 text-gray-400" />
-                  Raporlar
+                  Yönetim
                 </span>
                 {reportsOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
               </button>
@@ -318,7 +318,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
               >
                 <span className="flex items-center">
                   <Database size={18} className="mr-3 text-gray-400" />
-                  Tablolar
+                  Şirket Veritabanı
                 </span>
                 {tablesOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
               </button>
@@ -331,11 +331,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
                     }
                     
                     // Link URL'ini güvenli bir şekilde oluşturuyoruz
-                    const linkHref = tableItem.name === 'Üretim Kuyruğu Personel' 
-                      ? "/uretim-kuyrugu-personel" 
-                      : tableItem.name === 'Bitmiş Ürün Stoğu Personel'
-                      ? "/bitmis-urun-stogu-personel"
-                      : `/tablo/${encodeURIComponent(tableItem.originalName ?? tableItem.name)}`;
+                    const linkHref = `/tablo/${encodeURIComponent(tableItem.originalName ?? tableItem.name)}`;
                     
                     // Aktif link kontrolü için path
                     const isActive = pathname === linkHref;
@@ -357,6 +353,22 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
                 </div>
               )}
             </div>
+
+            <div className="border-b border-gray-700 my-2 mx-3 opacity-50"></div>
+
+            {personalItems.map((item) => (
+              <Link
+                key={item.path}
+                href={item.path}
+                className={`
+                  flex items-center px-3 py-2 text-sm font-medium rounded-md
+                  ${pathname === item.path ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}
+                `}
+              >
+                <span className="mr-3 text-gray-400">{item.icon}</span>
+                {item.name}
+              </Link>
+            ))}
 
             <div className="border-b border-gray-700 my-2 mx-3 opacity-50"></div>
 

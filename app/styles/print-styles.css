@@ -1,0 +1,26 @@
+/* Yazdırma Stilleri */
+@media print {
+  /* Genel yazdırma stilleri */
+  .print\:hidden {
+    display: none !important;
+  }
+  
+  .print\:block {
+    display: block !important;
+  }
+  
+  /* Tablo kenar çizgilerinin görünürlüğünü artır */
+  table {
+    border-collapse: collapse;
+  }
+  
+  th, td {
+    border: 1px solid black !important;
+  }
+  
+  /* Sayfa içeriğinin taşmasını engelle */
+  @page {
+    size: A4;
+    margin: 1cm;
+  }
+} 
