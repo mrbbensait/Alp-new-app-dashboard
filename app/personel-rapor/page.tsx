@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import DashboardLayout from '../components/DashboardLayout';
 import PerformansGirisFormu from '../components/personel-performans/PerformansGirisFormu';
 import VardiyaSecici from '../components/personel-performans/VardiyaSecici';
-import { PerformansRaporu, Vardiya } from '../lib/types';
+import { PerformansRaporu, Vardiya } from '../lib/types/index';
 import { getBugununTarihi } from '../utils/date-utils';
 
 export default function PersonelRaporPage() {
