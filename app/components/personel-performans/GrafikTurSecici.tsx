@@ -3,7 +3,7 @@
 import React from 'react';
 import { BarChart, LineChart, PieChart } from 'lucide-react';
 
-export type GrafikTuru = 'cizgi' | 'bar' | 'pasta';
+export type GrafikTuru = 'cizgi' | 'bar' | 'pasta' | 'alan';
 
 interface GrafikTurSeciciProps {
   seciliGrafikTuru: GrafikTuru;
