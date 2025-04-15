@@ -14,7 +14,7 @@ import {
   Filler,
 } from 'chart.js';
 import { Line, Bar } from 'react-chartjs-2';
-import { PerformansRaporu, MaliyetFiyat } from '@/app/lib/types';
+import { PerformansRaporu, MaliyetFiyat } from '@/app/lib/types/index';
 import { GrafikTuru } from './GrafikTurSecici';
 import { formatDateTR } from '@/app/utils/date-utils';
 import { hesaplaRaporToplamKar } from '@/app/utils/hesaplamalar';
