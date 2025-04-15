@@ -21,7 +21,9 @@ import {
   Archive, 
   Briefcase,
   Brain,
-  ClipboardList
+  ClipboardList,
+  Activity,
+  Clipboard
 } from 'lucide-react';
 
 // Tabloları ve sayfaları türü
@@ -45,27 +47,66 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSidebarOpen, onVisibilityChange }) => {
   const pathname = usePathname();
-  const [tablesOpen, setTablesOpen] = useState(true);
-  const [formsOpen, setFormsOpen] = useState(false);
+  
+  // Aktif sayfa durumuna göre menülerin açık/kapalı durumunu belirleme
+  const isFormsPage = pathname.startsWith('/formlar');
+  const isTablesPage = pathname.startsWith('/tablo') || pathname === '/uretim-kuyrugu-personel';
+  const isReportsPage = pathname.startsWith('/raporlar');
+  
+  const [tablesOpen, setTablesOpen] = useState(isTablesPage);
+  const [formsOpen, setFormsOpen] = useState(isFormsPage);
+  const [reportsOpen, setReportsOpen] = useState(isReportsPage);
+  
   const sidebarRef = useRef<HTMLDivElement>(null);
   const [sidebarMode, setSidebarMode] = useState<'auto' | 'collapsed'>('auto');
   const [isDesktopSidebarVisible, setIsDesktopSidebarVisible] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // URL değiştiğinde açılır menü durumlarını güncelle
+  useEffect(() => {
+    setFormsOpen(isFormsPage);
+    setTablesOpen(isTablesPage);
+    setReportsOpen(isReportsPage);
+  }, [pathname, isFormsPage, isTablesPage, isReportsPage]);
+
   const toggleTablesMenu = () => {
     setTablesOpen(!tablesOpen);
+    // Tablolar açılırken formlar ve raporlar kapansın
+    if (!tablesOpen) {
+      setFormsOpen(false);
+      setReportsOpen(false);
+    }
   };
 
   const toggleFormsMenu = () => {
     setFormsOpen(!formsOpen);
+    // Formlar açılırken tablolar ve raporlar kapansın
+    if (!formsOpen) {
+      setTablesOpen(false);
+      setReportsOpen(false);
+    }
+  };
+
+  const toggleReportsMenu = () => {
+    setReportsOpen(!reportsOpen);
+    // Raporlar açılırken tablolar ve formlar kapansın
+    if (!reportsOpen) {
+      setTablesOpen(false);
+      setFormsOpen(false);
+    }
   };
 
   const menuItems = [
     { name: 'Ana Sayfa', path: '/', icon: <Home size={18} /> },
-    { name: 'Raporlar', path: '/raporlar', icon: <BarChart2 size={18} /> },
+    { name: 'Personel Rapor', path: '/personel-rapor', icon: <Clipboard size={18} /> },
     { name: 'Ayarlar', path: '/ayarlar', icon: <Settings size={18} /> },
     { name: 'Stok ve Üretim Müdürü', path: '/stok-uretim-muduru-beyni', icon: <Brain size={18} /> },
+  ];
+
+  const reportItems = [
+    { name: 'Genel Raporlar', path: '/raporlar', icon: <BarChart2 size={18} /> },
+    { name: 'Personel Performans', path: '/raporlar/personel-performans', icon: <Activity size={18} /> },
   ];
 
   // Özel tablo sıralaması
@@ -238,27 +279,30 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
               <button
                 type="button"
                 className="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-gray-300 rounded-md hover:bg-gray-700 hover:text-white"
-                onClick={toggleFormsMenu}
+                onClick={toggleReportsMenu}
               >
                 <span className="flex items-center">
-                  <ClipboardList size={18} className="mr-3 text-gray-400" />
-                  Formlar
+                  <BarChart2 size={18} className="mr-3 text-gray-400" />
+                  Raporlar
                 </span>
-                {formsOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                {reportsOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
               </button>
 
-              {formsOpen && (
+              {reportsOpen && (
                 <div className="mt-1 pl-4 space-y-1">
-                  <Link
-                    href="/formlar/recete-kaydi"
-                    className={`
-                      flex items-center px-3 py-2 text-sm font-medium rounded-md
-                      ${pathname === "/formlar/recete-kaydi" ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}
-                    `}
-                  >
-                    <FileText size={18} className="mr-3 text-gray-400" />
-                    Reçete Kaydı
-                  </Link>
+                  {reportItems.map((item) => (
+                    <Link
+                      key={item.path}
+                      href={item.path}
+                      className={`
+                        flex items-center px-3 py-2 text-sm font-medium rounded-md
+                        ${pathname === item.path ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}
+                      `}
+                    >
+                      <span className="mr-3 text-gray-400">{item.icon}</span>
+                      {item.name}
+                    </Link>
+                  ))}
                 </div>
               )}
             </div>
@@ -307,6 +351,37 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
                       </Link>
                     );
                   })}
+                </div>
+              )}
+            </div>
+
+            <div className="border-b border-gray-700 my-2 mx-3 opacity-50"></div>
+
+            <div>
+              <button
+                type="button"
+                className="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-gray-300 rounded-md hover:bg-gray-700 hover:text-white"
+                onClick={toggleFormsMenu}
+              >
+                <span className="flex items-center">
+                  <ClipboardList size={18} className="mr-3 text-gray-400" />
+                  Formlar
+                </span>
+                {formsOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+              </button>
+
+              {formsOpen && (
+                <div className="mt-1 pl-4 space-y-1">
+                  <Link
+                    href="/formlar/recete-kaydi"
+                    className={`
+                      flex items-center px-3 py-2 text-sm font-medium rounded-md
+                      ${pathname === "/formlar/recete-kaydi" ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}
+                    `}
+                  >
+                    <FileText size={18} className="mr-3 text-gray-400" />
+                    Reçete Kaydı
+                  </Link>
                 </div>
               )}
             </div>
