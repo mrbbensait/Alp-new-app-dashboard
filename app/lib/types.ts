@@ -17,5 +17,7 @@ export interface MaliyetFiyat {
   birim_maliyet: number;
   birim_fiyat: number;
   aktif: boolean;
-  guncelleme_tarihi: string;
+  gecerlilik_tarih: string;
+  created_at: string;
+  updated_at: string;
 } 
