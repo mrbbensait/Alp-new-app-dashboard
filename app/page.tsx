@@ -5,6 +5,7 @@ import Link from 'next/link';
 import DashboardLayout from './components/DashboardLayout';
 import { tables } from './data/schema';
 import { fetchAllFromTable, subscribeToTable, unsubscribeFromChannel } from './lib/supabase';
+import { Brain } from 'lucide-react';
 
 export default function Home() {
   
@@ -25,17 +26,7 @@ export default function Home() {
       <div className="bg-blue-50 overflow-hidden shadow-lg rounded-xl mb-6 border-2 border-blue-300 max-w-3xl mx-auto">
         <div className="px-6 py-6 flex flex-col items-center text-center">
           <div className="rounded-full bg-blue-100 p-6 mb-4 border-4 border-blue-200">
-            <svg className="h-12 w-12 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 2a2 2 0 012 2v1a2 2 0 01-2 2 2 2 0 01-2-2V4a2 2 0 012-2z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 8a6 6 0 0112 0v5a6 6 0 01-12 0V8z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16a8 8 0 0116 0" />
-              <circle cx="9" cy="10" r="1" />
-              <circle cx="15" cy="10" r="1" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 14h6" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 14v4" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 22h-2" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 22H7" />
-            </svg>
+            <Brain className="h-12 w-12 text-blue-600" />
           </div>
           <h2 className="text-2xl font-bold text-blue-800 mb-3">Yapay Zeka Asistanı</h2>
           <p className="text-blue-700 mb-4">
@@ -46,7 +37,7 @@ export default function Home() {
             target="_blank"
             className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
-            Yapay Zeka Asistanına Bağlan
+            BAĞLAN
           </Link>
         </div>
       </div>

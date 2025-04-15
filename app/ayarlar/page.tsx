@@ -2,6 +2,8 @@
 
 import React from 'react';
 import DashboardLayout from '../components/DashboardLayout';
+import Link from 'next/link';
+import { Users, UserPlus, Settings, ArrowRight } from 'lucide-react';
 
 export default function SettingsPage() {
   return (
@@ -12,6 +14,46 @@ export default function SettingsPage() {
           <p className="mt-1 text-sm text-gray-600 max-w-md">
             Sistem ayarlarını bu sayfadan yönetebilirsiniz.
           </p>
+        </div>
+      </div>
+
+      {/* Hızlı Erişim Kartları */}
+      <div className="mb-8">
+        <h2 className="text-lg font-medium text-gray-900 mb-4">Kullanıcı Yönetimi</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Kullanıcı Listesi Kartı */}
+          <Link href="/formlar/kullanici-listesi">
+            <div className="bg-white shadow-md hover:shadow-lg transition-shadow duration-300 rounded-lg p-5 border border-gray-200 hover:border-blue-500 group cursor-pointer">
+              <div className="flex items-center mb-3">
+                <div className="p-2 rounded-full bg-blue-100 text-blue-600 mr-3 group-hover:bg-blue-200 transition-colors duration-300">
+                  <Users size={20} />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 group-hover:text-blue-600 transition-colors duration-300">Kullanıcı Listesi</h3>
+              </div>
+              <p className="text-sm text-gray-600 mb-4">Sistemdeki tüm kullanıcıları görüntüleyin, yönetin ve düzenleyin.</p>
+              <div className="flex items-center text-blue-600 text-sm font-medium">
+                <span>Kullanıcıları Görüntüle</span>
+                <ArrowRight size={16} className="ml-1 group-hover:translate-x-1 transition-transform duration-300" />
+              </div>
+            </div>
+          </Link>
+
+          {/* Kullanıcı Ekle Kartı */}
+          <Link href="/formlar/kullanici-kaydi">
+            <div className="bg-white shadow-md hover:shadow-lg transition-shadow duration-300 rounded-lg p-5 border border-gray-200 hover:border-green-500 group cursor-pointer">
+              <div className="flex items-center mb-3">
+                <div className="p-2 rounded-full bg-green-100 text-green-600 mr-3 group-hover:bg-green-200 transition-colors duration-300">
+                  <UserPlus size={20} />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 group-hover:text-green-600 transition-colors duration-300">Kullanıcı Ekle</h3>
+              </div>
+              <p className="text-sm text-gray-600 mb-4">Sisteme yeni kullanıcı ekleyin ve gerekli yetkileri atayın.</p>
+              <div className="flex items-center text-green-600 text-sm font-medium">
+                <span>Yeni Kullanıcı Ekle</span>
+                <ArrowRight size={16} className="ml-1 group-hover:translate-x-1 transition-transform duration-300" />
+              </div>
+            </div>
+          </Link>
         </div>
       </div>
 
