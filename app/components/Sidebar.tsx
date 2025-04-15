@@ -125,6 +125,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
     { name: 'Bitmiş Ürün Stoğu', icon: <Archive size={18} /> },
     { type: 'divider' },
     { name: 'Üretim Kuyruğu Personel', icon: <Briefcase size={18} /> },
+    { name: 'Bitmiş Ürün Stoğu Personel', icon: <Archive size={18} /> },
   ];
 
   const changeSidebarMode = (mode: 'auto' | 'collapsed') => {
@@ -332,6 +333,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
                     // Link URL'ini güvenli bir şekilde oluşturuyoruz
                     const linkHref = tableItem.name === 'Üretim Kuyruğu Personel' 
                       ? "/uretim-kuyrugu-personel" 
+                      : tableItem.name === 'Bitmiş Ürün Stoğu Personel'
+                      ? "/bitmis-urun-stogu-personel"
                       : `/tablo/${encodeURIComponent(tableItem.originalName ?? tableItem.name)}`;
                     
                     // Aktif link kontrolü için path
