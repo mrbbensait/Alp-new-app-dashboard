@@ -69,6 +69,7 @@ export async function POST(request: NextRequest) {
         ad_soyad: body.ad_soyad,
         kullanici_adi: body.kullanici_adi,
         rol: body.rol,
+        sifre: body.sifre,
         // Ek alanlar (varsa)
         email: body.email,
         telefon: body.telefon,
@@ -126,6 +127,7 @@ export async function PUT(request: NextRequest) {
     if (body.ad_soyad) updates.ad_soyad = body.ad_soyad;
     if (body.kullanici_adi) updates.kullanici_adi = body.kullanici_adi;
     if (body.rol) updates.rol = body.rol;
+    if (body.sifre) updates.sifre = body.sifre;
     if (body.email !== undefined) updates.email = body.email;
     if (body.telefon !== undefined) updates.telefon = body.telefon;
     if (body.ise_baslama_tarihi !== undefined) updates.ise_baslama_tarihi = body.ise_baslama_tarihi;
@@ -173,19 +175,65 @@ export async function DELETE(request: NextRequest) {
       );
     }
     
+    // Önce personelin var olup olmadığını kontrol et
+    const { data: personel, error: findError } = await supabase
+      .from('personel')
+      .select('id, ad_soyad')
+      .eq('id', id)
+      .maybeSingle();
+    
+    if (findError) {
+      console.error('Personel arama hatası:', findError);
+      throw new Error(findError.message || 'Personel aranırken hata oluştu');
+    }
+    
+    if (!personel) {
+      return NextResponse.json(
+        { success: false, error: `${id} ID'li personel bulunamadı` },
+        { status: 404 }
+      );
+    }
+    
     // Personeli sil
     const { error } = await supabase
       .from('personel')
       .delete()
       .eq('id', id);
     
-    if (error) throw error;
+    if (error) {
+      // Foreign key constraint hatasını daha detaylı bir şekilde ele al
+      if (error.message && error.message.includes('violates foreign key constraint')) {
+        console.error('Foreign key hatası (tam hata mesajı):', error);
+        
+        // Hangi tablonun kısıtlama uyguladığını bulmaya çalış
+        const constraintMatch = error.message.match(/constraint\s+"([^"]+)"/);
+        const constraintName = constraintMatch ? constraintMatch[1] : 'bilinmeyen kısıtlama';
+        
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: `${personel.ad_soyad} adlı kullanıcı diğer tablolarla ilişkili olduğu için silinemiyor. 
+            Kısıtlama: ${constraintName}
+            Tam hata: ${error.message}`
+          },
+          { status: 400 }
+        );
+      }
+      
+      throw new Error(error.message || 'Veritabanı silme hatası');
+    }
     
-    return NextResponse.json({ success: true });
-  } catch (error) {
+    return NextResponse.json({ 
+      success: true,
+      message: `${personel.ad_soyad} adlı kullanıcı başarıyla silindi`
+    });
+  } catch (error: any) {
     console.error('Personel silinirken hata:', error);
     return NextResponse.json(
-      { success: false, error: 'Personel silinirken bir hata oluştu' },
+      { 
+        success: false, 
+        error: error.message || 'Personel silinirken bir hata oluştu'
+      },
       { status: 500 }
     );
   }

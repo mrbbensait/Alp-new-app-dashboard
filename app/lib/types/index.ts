@@ -3,7 +3,8 @@ export interface Personel {
   id: string;
   ad_soyad: string;
   kullanici_adi: string;
-  rol: 'yonetici' | 'personel';
+  rol: 'patron' | 'yonetici' | 'personel';
+  sifre?: string;
   email?: string;
   telefon?: string;
   ise_baslama_tarihi?: string;
@@ -78,6 +79,7 @@ export enum IslemTuru {
 
 // Rol enum
 export enum Rol {
+  Patron = 'patron',
   Yonetici = 'yonetici',
   Personel = 'personel'
 }

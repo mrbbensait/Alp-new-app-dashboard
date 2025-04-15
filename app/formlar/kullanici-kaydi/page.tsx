@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/app/components/DashboardLayout';
 import { Rol } from '@/app/lib/types/index';
 import { toast } from 'react-hot-toast';
+import { Eye, EyeOff } from 'lucide-react';
 
 const KullaniciKaydiPage = () => {
   const router = useRouter();
@@ -15,7 +16,7 @@ const KullaniciKaydiPage = () => {
     kullanici_adi: string;
     sifre: string;
     sifreTekrar: string;
-    rol: "yonetici" | "personel";
+    rol: "patron" | "yonetici" | "personel";
   }>({
     ad_soyad: "",
     kullanici_adi: "",
@@ -23,6 +24,10 @@ const KullaniciKaydiPage = () => {
     sifreTekrar: "",
     rol: "personel",
   });
+  
+  // Şifre görünürlük durumları
+  const [sifreGorunur, setSifreGorunur] = useState(false);
+  const [sifreTekrarGorunur, setSifreTekrarGorunur] = useState(false);
   
   // Yükleme/hata durumları
   const [isLoading, setIsLoading] = useState(false);
@@ -166,14 +171,23 @@ const KullaniciKaydiPage = () => {
                 >
                   Şifre <span className="text-red-600">*</span>
                 </label>
-                <input
-                  type="password"
-                  id="sifre"
-                  name="sifre"
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                  value={formData.sifre}
-                  onChange={handleChange}
-                />
+                <div className="relative mt-1">
+                  <input
+                    type={sifreGorunur ? "text" : "password"}
+                    id="sifre"
+                    name="sifre"
+                    className="block w-full rounded-md border border-gray-300 px-3 py-2 pr-10"
+                    value={formData.sifre}
+                    onChange={handleChange}
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+                    onClick={() => setSifreGorunur(!sifreGorunur)}
+                  >
+                    {sifreGorunur ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
 
               <div>
@@ -183,14 +197,23 @@ const KullaniciKaydiPage = () => {
                 >
                   Şifre Tekrar <span className="text-red-600">*</span>
                 </label>
-                <input
-                  type="password"
-                  id="sifreTekrar"
-                  name="sifreTekrar"
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                  value={formData.sifreTekrar}
-                  onChange={handleChange}
-                />
+                <div className="relative mt-1">
+                  <input
+                    type={sifreTekrarGorunur ? "text" : "password"}
+                    id="sifreTekrar"
+                    name="sifreTekrar"
+                    className="block w-full rounded-md border border-gray-300 px-3 py-2 pr-10"
+                    value={formData.sifreTekrar}
+                    onChange={handleChange}
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+                    onClick={() => setSifreTekrarGorunur(!sifreTekrarGorunur)}
+                  >
+                    {sifreTekrarGorunur ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
 
               <div>
@@ -207,6 +230,7 @@ const KullaniciKaydiPage = () => {
                   value={formData.rol}
                   onChange={handleChange}
                 >
+                  <option value="patron">Patron</option>
                   <option value="yonetici">Yönetici</option>
                   <option value="personel">Personel</option>
                 </select>
