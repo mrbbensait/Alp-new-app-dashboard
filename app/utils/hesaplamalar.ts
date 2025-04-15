@@ -1,4 +1,4 @@
-import { PerformansRaporu, MaliyetFiyat, IslemTuru } from '../lib/types';
+import { PerformansRaporu, MaliyetFiyat, IslemTuru } from '../lib/types/index';
 import { getTarihAraligi } from './date-utils';
 
 /**
