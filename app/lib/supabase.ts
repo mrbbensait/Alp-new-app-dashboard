@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { Database } from '@supabase/auth-helpers-nextjs';
+// import { Database } from '@supabase/auth-helpers-nextjs';
 
 // Supabase URL ve anonim API anahtarı çevresel değişkenlerden alınır
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
