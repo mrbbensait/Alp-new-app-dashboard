@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/app/lib/supabase';
-import { IslemTuru } from '@/app/lib/types';
+import { IslemTuru } from '@/app/lib/types/index';
 
 // Tüm maliyet-fiyat verilerini getir
 export async function GET(request: NextRequest) {

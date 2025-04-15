@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Vardiya } from '@/app/lib/types';
+import { Vardiya } from '@/app/lib/types/index';
 import { Sun, Moon } from 'lucide-react';
 
 interface VardiyaSeciciProps {

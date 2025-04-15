@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/app/components/DashboardLayout';
-import { PerformansRaporu, MaliyetFiyat } from '@/app/lib/types';
+import { PerformansRaporu, MaliyetFiyat } from '@/app/lib/types/index';
 import TarihAralikSecici, { TarihAraligi } from '@/app/components/personel-performans/TarihAralikSecici';
 import GrafikTurSecici, { GrafikTuru } from '@/app/components/personel-performans/GrafikTurSecici';
 import PerformansGrafikleri from '@/app/components/personel-performans/PerformansGrafikleri';
@@ -687,7 +687,7 @@ export default function PersonelPerformansPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(item.guncelleme_tarihi).toLocaleDateString('tr-TR')}
+                          {new Date(item.gecerlilik_tarih).toLocaleDateString('tr-TR')}
                         </td>
                       </tr>
                     ))}

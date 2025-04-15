@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { PerformansRaporu, Vardiya } from '@/app/lib/types';
+import { PerformansRaporu, Vardiya } from '@/app/lib/types/index';
 import { getBugununTarihi, formatDateTR } from '@/app/utils/date-utils';
 
 interface PerformansGirisFormuProps {
