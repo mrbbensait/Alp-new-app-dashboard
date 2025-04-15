@@ -17,9 +17,9 @@ export default function PersonelHomePage() {
   const menuCards = [
     {
       title: 'Üretim Kuyruğu',
-      description: 'Mevcut üretim siparişlerini ve üretim durumlarını görüntüleyin.',
+      description: 'Üretimi ve ambalajlamayı bekleyen üretim planlama tablosu.',
       icon: <Clock size={24} />,
-      path: '/tablo/Üretim Kuyruğu',
+      path: '/uretim-kuyrugu-personel',
       color: 'blue',
       bgColor: 'bg-blue-50',
       iconBgColor: 'bg-blue-100',
@@ -29,10 +29,11 @@ export default function PersonelHomePage() {
       buttonColor: 'text-blue-600',
     },
     {
-      title: 'Bitmiş Ürün Stoğu',
-      description: 'Tamamlanan ürünlerin stok durumunu takip edin.',
+      title: 'Teslimat GİR',
+      description: 'Müşterilere teslim ettiğiniz ürünleri girmeyi unutmayınız!',
+      subtitle: '(Müşterinin Bitmiş Ürün Stoğu)',
       icon: <Archive size={24} />,
-      path: '/tablo/Bitmiş Ürün Stoğu',
+      path: '/bitmis-urun-stogu-personel',
       color: 'indigo',
       bgColor: 'bg-indigo-50',
       iconBgColor: 'bg-indigo-100',
@@ -69,7 +70,7 @@ export default function PersonelHomePage() {
     },
     {
       title: 'SatınAlma Siparişleri',
-      description: 'Bekleyen ve tamamlanan satın alma siparişlerini görüntüleyin.',
+      description: 'Sipariş edilmiş, şirketinize teslim edilmeyi bekleyen ürünler.',
       icon: <ShoppingCart size={24} />,
       path: '/tablo/SatınAlma siparişleri',
       color: 'purple',
@@ -111,21 +112,26 @@ export default function PersonelHomePage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {menuCards.map((card, index) => (
           <Link key={index} href={card.path}>
-            <div className={`h-full ${card.bgColor} rounded-xl shadow-sm border border-gray-200 ${card.hoverBorderColor} transition-all duration-300 hover:shadow-md group p-6 flex flex-col`}>
+            <div className={`h-full ${card.bgColor} rounded-xl shadow-sm border-2 border-gray-200 ${card.hoverBorderColor} transform hover:-translate-y-1 transition-all duration-300 hover:shadow-lg group p-6 flex flex-col`}>
               <div className="flex items-start mb-4">
-                <div className={`p-3 rounded-full ${card.iconBgColor} ${card.iconColor} mr-4`}>
+                <div className={`p-3 rounded-full ${card.iconBgColor} ${card.iconColor} mr-4 shadow-md`}>
                   {card.icon}
                 </div>
-                <h3 className={`text-lg font-medium text-gray-900 ${card.hoverTextColor} transition-colors duration-300`}>
-                  {card.title}
-                </h3>
+                <div>
+                  <h3 className={`text-xl font-bold text-gray-900 ${card.hoverTextColor} transition-colors duration-300`}>
+                    {card.title}
+                  </h3>
+                  {card.subtitle && (
+                    <p className="text-sm text-gray-500 mt-1">{card.subtitle}</p>
+                  )}
+                </div>
               </div>
-              <p className="text-sm text-gray-600 mb-4 flex-grow">
+              <p className="text-base text-gray-600 mb-4 flex-grow">
                 {card.description}
               </p>
-              <div className={`flex items-center ${card.buttonColor} text-sm font-medium mt-2`}>
+              <div className={`flex items-center ${card.buttonColor} text-base font-medium mt-2`}>
                 <span>Görüntüle</span>
-                <ArrowRight size={16} className="ml-1 group-hover:translate-x-1 transition-transform duration-300" />
+                <ArrowRight size={18} className="ml-1 group-hover:translate-x-1 transition-transform duration-300" />
               </div>
             </div>
           </Link>

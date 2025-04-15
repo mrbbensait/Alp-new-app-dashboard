@@ -13,6 +13,7 @@ interface ReactToPrintProps {
   onBeforePrint?: () => Promise<void>;
   onAfterPrint?: () => Promise<void>;
   removeAfterPrint?: boolean;
+  pageStyle?: string;
 }
 
 interface FormulationModalProps {
@@ -68,15 +69,54 @@ const FormulationModal: React.FC<FormulationModalProps> = ({
     content: () => contentRef.current,
     documentTitle: `${recipeName} - Formülasyon`,
     onBeforePrint: () => {
-      console.log('Yazdırma başlıyor');
+      console.log('Yazdırma başlıyor', contentRef.current);
+      // Yazdırma stili için CSS sınıfı ekle
+      document.body.classList.add('printing');
       return Promise.resolve();
     },
     onAfterPrint: () => {
       console.log('Yazdırma tamamlandı');
+      // Yazdırma stili için CSS sınıfı kaldır
+      document.body.classList.remove('printing');
       return Promise.resolve();
     },
-    removeAfterPrint: true,
+    removeAfterPrint: false,
+    pageStyle: `
+      @page {
+        size: auto;
+        margin: 10mm;
+      }
+      @media print {
+        .print:hidden {
+          display: none !important;
+        }
+        body {
+          print-color-adjust: exact;
+          -webkit-print-color-adjust: exact;
+        }
+      }
+    `,
   } as ReactToPrintProps);
+
+  // Yazdırma için güvenli wrapper fonksiyon
+  const handlePrintClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    console.log('Yazdırma butonu tıklandı', contentRef.current);
+    if (contentRef.current) {
+      // requestAnimationFrame kullanarak tarayıcının bir sonraki çizimini bekle
+      requestAnimationFrame(() => {
+        try {
+          handlePrint();
+        } catch (err) {
+          console.error('Yazdırma işlemi sırasında hata:', err);
+          toast.error('Yazdırma işlemi sırasında hata oluştu');
+        }
+      });
+    } else {
+      console.error('Yazdırılacak içerik bulunamadı (contentRef.current null)');
+      toast.error('Yazdırma işlemi yapılamadı: İçerik bulunamadı');
+    }
+  };
 
   // Modal açıldığında formülasyonları ve stok verilerini yükle
   useEffect(() => {
@@ -428,249 +468,256 @@ const FormulationModal: React.FC<FormulationModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative bg-white rounded-lg max-w-4xl mx-auto my-10 p-5 shadow-xl">
-        {/* Modal başlığı ve kontrol butonları */}
-        <div className="flex justify-between items-center mb-4 border-b pb-4">
-          <h2 className="text-lg font-semibold text-gray-800">
-            {recipeName} - Formülasyon Detayları
-          </h2>
-          <div className="flex space-x-2">
-            <button
-              type="button"
-              onClick={() => handlePrint && handlePrint()}
-              className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-              </svg>
-              Yazdır
-            </button>
-            <button
-              onClick={onClose}
-              className="px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
-            >
-              Kapat
-            </button>
-          </div>
+    <div className="fixed z-10 inset-0 overflow-y-auto">
+      <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+          <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
         </div>
 
-        {/* Hata mesajı */}
-        {error && (
-          <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-5xl sm:w-full">
+          {/* Header */}
+          <div className="bg-gray-50 px-4 py-3 sm:px-6 flex justify-between items-center">
+            <h3 className="text-lg leading-6 font-medium text-gray-900">
+              {recipeName} - Formülasyon
+            </h3>
+            <div className="flex space-x-2">
+              <button
+                type="button"
+                onClick={handlePrintClick}
+                className="inline-flex items-center p-1.5 border border-transparent rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                 </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-red-700">{error}</p>
-              </div>
+                Yazdır
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="bg-white rounded-md p-1.5 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500"
+              >
+                Kapat
+              </button>
             </div>
           </div>
-        )}
 
-        {/* Başarı mesajı */}
-        {success && (
-          <div className="bg-green-50 border-l-4 border-green-400 p-4 mb-4">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-green-700">{success}</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Modal içeriği - Formülasyon tablosu */}
-        <div ref={contentRef} className="overflow-y-auto max-h-[calc(100vh-200px)] p-2">
-          <div className="printable-content">
-            {/* Reçete bilgileri */}
-            <div className="mb-4 print:block">
-              <h3 className="text-base font-semibold">Reçete Bilgileri</h3>
-              <div className="grid grid-cols-4 gap-4 text-sm">
-                <div>
-                  <span className="text-gray-600">Reçete Adı:</span> {recipeName}
+          {/* Hata mesajı */}
+          {error && (
+            <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
                 </div>
-                <div>
-                  <span className="text-gray-600">Reçete ID:</span> {recipeId}
-                </div>
-                <div>
-                  <span className="text-gray-600">Marka:</span> {brand}
-                </div>
-                <div>
-                  <span className="inline-block px-3 py-1 bg-blue-100 text-blue-800 rounded-full font-medium">
-                    Toplam%: {calculateTotalPercentage()}
-                  </span>
+                <div className="ml-3">
+                  <p className="text-sm text-red-700">{error}</p>
                 </div>
               </div>
             </div>
+          )}
 
-            {loading ? (
-              <div className="flex justify-center items-center py-10">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                <span className="ml-2 text-sm">Veriler yükleniyor...</span>
+          {/* Başarı mesajı */}
+          {success && (
+            <div className="bg-green-50 border-l-4 border-green-400 p-4 mb-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-green-700">{success}</p>
+                </div>
               </div>
-            ) : (
-              <>
-                <table className="min-w-full divide-y divide-gray-200 text-sm">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/3">
-                        Hammadde Adı
-                      </th>
-                      <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
-                        Oran (100Kg)
-                      </th>
-                      <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
-                        Birim
-                      </th>
-                      <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/3">
-                        Stok Kategori
-                      </th>
-                      <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider print:hidden">
-                        İşlemler
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {formulations.map((formulation, index) => (
-                      <tr key={formulation.id || `new-${index}`} className="hover:bg-gray-50">
-                        <td className="px-3 py-2">
-                          {formulation.isEditing ? (
-                            <div className="relative">
+            </div>
+          )}
+
+          {/* Modal içeriği - Formülasyon tablosu */}
+          <div ref={contentRef} className="overflow-y-auto max-h-[calc(100vh-200px)] p-2">
+            <div className="printable-content">
+              {/* Reçete bilgileri */}
+              <div className="mb-4 print:block">
+                <h3 className="text-base font-semibold">Reçete Bilgileri</h3>
+                <div className="grid grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600">Reçete Adı:</span> {recipeName}
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Reçete ID:</span> {recipeId}
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Marka:</span> {brand}
+                  </div>
+                  <div>
+                    <span className="inline-block px-3 py-1 bg-blue-100 text-blue-800 rounded-full font-medium">
+                      Toplam%: {calculateTotalPercentage()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {loading ? (
+                <div className="flex justify-center items-center py-10">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                  <span className="ml-2 text-sm">Veriler yükleniyor...</span>
+                </div>
+              ) : (
+                <>
+                  <table className="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/3">
+                          Hammadde Adı
+                        </th>
+                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
+                          Oran (100Kg)
+                        </th>
+                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
+                          Birim
+                        </th>
+                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/3">
+                          Stok Kategori
+                        </th>
+                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider print:hidden">
+                          İşlemler
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {formulations.map((formulation, index) => (
+                        <tr key={formulation.id || `new-${index}`} className="hover:bg-gray-50">
+                          <td className="px-3 py-2">
+                            {formulation.isEditing ? (
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  value={searchTerm}
+                                  onChange={(e) => setSearchTerm(e.target.value)}
+                                  placeholder="Hammadde ara..."
+                                  className="form-input rounded-md shadow-sm border-gray-300 w-full text-xs mb-1"
+                                />
+                                {searchTerm && (
+                                  <div className="absolute z-10 w-full bg-white shadow-lg rounded-md max-h-32 overflow-y-auto border border-gray-300">
+                                    {filteredStockItems.length > 0 ? (
+                                      filteredStockItems.map((item) => (
+                                        <button
+                                          key={item.id || item.ID}
+                                          type="button"
+                                          onClick={() => handleHammaddeChange(index, item["Hammadde Adı"])}
+                                          className="w-full text-left px-2 py-1 text-xs hover:bg-blue-100"
+                                        >
+                                          {item["Hammadde Adı"]}
+                                        </button>
+                                      ))
+                                    ) : (
+                                      <div className="p-2 text-xs text-gray-500">Hammadde bulunamadı</div>
+                                    )}
+                                  </div>
+                                )}
+                                {/* Seçilen hammadde gösterimi */}
+                                <div className="mt-1 p-1 border rounded-md bg-gray-50 text-xs">
+                                  {formulation["Hammadde Adı"] || "Henüz hammadde seçilmedi"}
+                                </div>
+                              </div>
+                            ) : (
+                              formulation["Hammadde Adı"]
+                            )}
+                          </td>
+                          <td className="px-3 py-2">
+                            {formulation.isEditing ? (
+                              <input
+                                type="number"
+                                value={formulation["Oran(100Kg)"]}
+                                onChange={(e) => handleInputChange(index, "Oran(100Kg)", parseFloat(e.target.value) || 0)}
+                                className="form-input rounded-md shadow-sm border-gray-300 w-full text-xs"
+                                step="0.01"
+                                min="0"
+                                required
+                              />
+                            ) : (
+                              formulation["Oran(100Kg)"]
+                            )}
+                          </td>
+                          <td className="px-3 py-2">
+                            {formulation.isEditing ? (
+                              <select
+                                value={formulation["Birim"]}
+                                onChange={(e) => handleInputChange(index, "Birim", e.target.value)}
+                                className="form-select rounded-md shadow-sm border-gray-300 w-full text-xs"
+                              >
+                                <option value="Kg">Kg</option>
+                                <option value="Adet">Adet</option>
+                              </select>
+                            ) : (
+                              formulation["Birim"]
+                            )}
+                          </td>
+                          <td className="px-3 py-2">
+                            {formulation.isEditing ? (
                               <input
                                 type="text"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                placeholder="Hammadde ara..."
-                                className="form-input rounded-md shadow-sm border-gray-300 w-full text-xs mb-1"
+                                value={formulation["Stok Kategori"]}
+                                className="form-input rounded-md shadow-sm border-gray-300 w-full text-xs bg-gray-100"
+                                readOnly
                               />
-                              {searchTerm && (
-                                <div className="absolute z-10 w-full bg-white shadow-lg rounded-md max-h-32 overflow-y-auto border border-gray-300">
-                                  {filteredStockItems.length > 0 ? (
-                                    filteredStockItems.map((item) => (
-                                      <button
-                                        key={item.id || item.ID}
-                                        type="button"
-                                        onClick={() => handleHammaddeChange(index, item["Hammadde Adı"])}
-                                        className="w-full text-left px-2 py-1 text-xs hover:bg-blue-100"
-                                      >
-                                        {item["Hammadde Adı"]}
-                                      </button>
-                                    ))
-                                  ) : (
-                                    <div className="p-2 text-xs text-gray-500">Hammadde bulunamadı</div>
-                                  )}
-                                </div>
-                              )}
-                              {/* Seçilen hammadde gösterimi */}
-                              <div className="mt-1 p-1 border rounded-md bg-gray-50 text-xs">
-                                {formulation["Hammadde Adı"] || "Henüz hammadde seçilmedi"}
+                            ) : (
+                              formulation["Stok Kategori"]
+                            )}
+                          </td>
+                          <td className="px-3 py-2 print:hidden">
+                            {formulation.isEditing ? (
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={() => handleSaveFormulation(formulation)}
+                                  className="px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-xs"
+                                >
+                                  Kaydet
+                                </button>
+                                <button
+                                  onClick={() => handleCancel(index)}
+                                  className="px-2 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 text-xs"
+                                >
+                                  İptal
+                                </button>
                               </div>
-                            </div>
-                          ) : (
-                            formulation["Hammadde Adı"]
-                          )}
-                        </td>
-                        <td className="px-3 py-2">
-                          {formulation.isEditing ? (
-                            <input
-                              type="number"
-                              value={formulation["Oran(100Kg)"]}
-                              onChange={(e) => handleInputChange(index, "Oran(100Kg)", parseFloat(e.target.value) || 0)}
-                              className="form-input rounded-md shadow-sm border-gray-300 w-full text-xs"
-                              step="0.01"
-                              min="0"
-                              required
-                            />
-                          ) : (
-                            formulation["Oran(100Kg)"]
-                          )}
-                        </td>
-                        <td className="px-3 py-2">
-                          {formulation.isEditing ? (
-                            <select
-                              value={formulation["Birim"]}
-                              onChange={(e) => handleInputChange(index, "Birim", e.target.value)}
-                              className="form-select rounded-md shadow-sm border-gray-300 w-full text-xs"
-                            >
-                              <option value="Kg">Kg</option>
-                              <option value="Adet">Adet</option>
-                            </select>
-                          ) : (
-                            formulation["Birim"]
-                          )}
-                        </td>
-                        <td className="px-3 py-2">
-                          {formulation.isEditing ? (
-                            <input
-                              type="text"
-                              value={formulation["Stok Kategori"]}
-                              className="form-input rounded-md shadow-sm border-gray-300 w-full text-xs bg-gray-100"
-                              readOnly
-                            />
-                          ) : (
-                            formulation["Stok Kategori"]
-                          )}
-                        </td>
-                        <td className="px-3 py-2 print:hidden">
-                          {formulation.isEditing ? (
-                            <div className="flex space-x-2">
-                              <button
-                                onClick={() => handleSaveFormulation(formulation)}
-                                className="px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-xs"
-                              >
-                                Kaydet
-                              </button>
-                              <button
-                                onClick={() => handleCancel(index)}
-                                className="px-2 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 text-xs"
-                              >
-                                İptal
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex space-x-2">
-                              <button
-                                onClick={() => handleEdit(index)}
-                                className="px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-xs"
-                              >
-                                Düzenle
-                              </button>
-                              <button
-                                onClick={() => handleDelete(formulation)}
-                                className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-xs"
-                              >
-                                Sil
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                            ) : (
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={() => handleEdit(index)}
+                                  className="px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-xs"
+                                >
+                                  Düzenle
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(formulation)}
+                                  className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-xs"
+                                >
+                                  Sil
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
 
-                {/* Yeni formülasyon ekleme butonu */}
-                <div className="mt-4 print:hidden">
-                  <button
-                    onClick={handleAddFormulation}
-                    className="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600 flex items-center"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Hammadde Ekle
-                  </button>
-                </div>
-              </>
-            )}
+                  {/* Yeni formülasyon ekleme butonu */}
+                  <div className="mt-4 print:hidden">
+                    <button
+                      onClick={handleAddFormulation}
+                      className="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600 flex items-center"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Hammadde Ekle
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>

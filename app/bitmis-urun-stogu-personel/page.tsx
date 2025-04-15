@@ -2,14 +2,171 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '../components/DashboardLayout';
-import DataTable from '../components/DataTable';
 import { tables } from '../data/schema';
 import { 
   fetchAllFromTable, 
   fetchFilteredData, 
   subscribeToTable, 
-  unsubscribeFromChannel 
+  unsubscribeFromChannel,
+  updateData,
+  createTeslimatGecmisi
 } from '../lib/supabase';
+import TeslimatModal from '../components/modals/TeslimatModal';
+
+// Özelleştirilmiş tablo bileşeni
+interface BitmisProduksijonTableProps {
+  columns: {
+    name: string;
+    type: string;
+  }[];
+  data?: any[];
+  tableName: string;
+  onTeslimatClick: (rowId: number, recipeName: string) => void;
+}
+
+const BitmisProduksijonTable: React.FC<BitmisProduksijonTableProps> = ({ 
+  columns, 
+  data = [], 
+  tableName,
+  onTeslimatClick
+}) => {
+  const [sortColumn, setSortColumn] = useState<string | null>('id');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // Başlangıçta veya veri değiştiğinde varsayılan sıralamayı uygula
+  useEffect(() => {
+    if (data.length > 0 && data[0]?.id) {
+      setSortColumn('id');
+      setSortDirection('desc');
+    }
+  }, [data]);
+
+  const handleSort = (columnName: string) => {
+    if (sortColumn === columnName) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(columnName);
+      setSortDirection('asc');
+    }
+  };
+
+  // Sütuna göre sıralama
+  const sortedData = [...data].sort((a, b) => {
+    if (!sortColumn) return 0;
+    
+    const valueA = a[sortColumn];
+    const valueB = b[sortColumn];
+    
+    if (valueA === valueB) return 0;
+    
+    const direction = sortDirection === 'asc' ? 1 : -1;
+    
+    if (valueA === null || valueA === undefined) return 1 * direction;
+    if (valueB === null || valueB === undefined) return -1 * direction;
+    
+    if (typeof valueA === 'string' && typeof valueB === 'string') {
+      return valueA.localeCompare(valueB, 'tr') * direction;
+    }
+    
+    return (valueA < valueB ? -1 : 1) * direction;
+  });
+
+  // Hücre değerini render etme fonksiyonu
+  const renderCellValue = (row: any, column: {name: string, type: string}) => {
+    const value = row[column.name];
+    
+    if (value === null || value === undefined) {
+      return '-';
+    }
+
+    if (column.name === 'Reçete Adı') {
+      return value; // Tıklanabilir değil, düz metin
+    }
+
+    if (column.type === 'numeric') {
+      return typeof value === 'number' ? value.toLocaleString('tr-TR') : value;
+    }
+
+    if (column.type === 'boolean') {
+      return value === true ? 'Evet' : 'Hayır';
+    }
+
+    if (column.type === 'date') {
+      return value instanceof Date ? value.toLocaleDateString('tr-TR') : value;
+    }
+
+    return value;
+  };
+
+  return (
+    <div className="bg-white shadow rounded-lg overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              {columns.map((column) => (
+                <th
+                  key={column.name}
+                  scope="col"
+                  className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort(column.name)}
+                >
+                  <div className="flex items-center space-x-1">
+                    <span>{column.name}</span>
+                    {sortColumn === column.name && (
+                      <span>
+                        {sortDirection === 'asc' ? ' ↑' : ' ↓'}
+                      </span>
+                    )}
+                  </div>
+                </th>
+              ))}
+              <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                İşlemler
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {sortedData.map((row, rowIndex) => (
+              <tr key={rowIndex} className="hover:bg-gray-50">
+                {columns.map((column) => (
+                  <td key={column.name} className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                    {renderCellValue(row, column)}
+                  </td>
+                ))}
+                <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                  <button
+                    onClick={() => onTeslimatClick(row.id, row['Reçete Adı'])}
+                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  >
+                    Teslimat Gir
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      
+      {sortedData.length === 0 && (
+        <div className="px-6 py-4 text-center text-sm text-gray-500">
+          Veri bulunamadı
+        </div>
+      )}
+      
+      <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 sm:px-6">
+        <div className="flex justify-between items-center">
+          <div className="text-sm text-gray-700">
+            Toplam {sortedData.length} kayıt
+            {sortColumn === 'id' && sortDirection === 'desc' && (
+              <span className="ml-2 text-xs text-gray-500">(Yeni girişler üstte)</span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function BitmisurunstoguPersonelPage() {
   const tableName = 'Bitmiş Ürün Stoğu';
@@ -20,6 +177,9 @@ export default function BitmisurunstoguPersonelPage() {
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [autoRefreshTimer, setAutoRefreshTimer] = useState<NodeJS.Timeout | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<{id: number, recipeName: string} | null>(null);
+  const [updating, setUpdating] = useState(false);
   
   // Tablo şeması bulma
   const tableSchema = tables.find(table => table.name === tableName);
@@ -30,7 +190,8 @@ export default function BitmisurunstoguPersonelPage() {
       'Reçete Adı', 
       'Müşteri', 
       'Ambalaj (ml)', 
-      'STOK / ADET', 
+      'STOK / ADET',
+      'Teslim Edilen',
       'Kalan Adet'
     ].includes(column.name)
   ) || [];
@@ -113,15 +274,18 @@ export default function BitmisurunstoguPersonelPage() {
   
   // Arama fonksiyonu
   const filterData = (query: string, data = tableData) => {
+    // Öncelikle kalan adeti sıfır olan ürünleri filtrele
+    const nonZeroStock = data.filter(row => row['Kalan Adet'] > 0);
+    
     if (!query.trim()) {
-      setFilteredData(data);
+      setFilteredData(nonZeroStock);
       return;
     }
     
     const lowercaseQuery = query.toLowerCase().trim();
     
     // Tablonun tüm sütunlarında arama yap
-    const filtered = data.filter(row => {
+    const filtered = nonZeroStock.filter(row => {
       // Tüm sütunlarda ara
       return Object.keys(row).some(key => {
         const value = row[key];
@@ -163,6 +327,58 @@ export default function BitmisurunstoguPersonelPage() {
       }
     };
   }, [autoRefreshTimer]);
+  
+  // Teslimat Gir butonuna tıklanınca
+  const handleTeslimatClick = (rowId: number, recipeName: string) => {
+    setSelectedItem({ id: rowId, recipeName });
+    setIsModalOpen(true);
+  };
+  
+  // Teslimat modalında onay
+  const handleTeslimatConfirm = async (teslimatMiktari: number) => {
+    if (!selectedItem) return;
+    
+    setUpdating(true);
+    try {
+      // Seçilen ürünü bul
+      const urun = tableData.find(row => row.id === selectedItem.id);
+      if (!urun) throw new Error('Ürün bulunamadı');
+      
+      // Mevcut teslim edilen miktarı al
+      const mevcutTeslimat = urun['Teslim Edilen'] || 0;
+      
+      // Yeni teslim edilen miktarı hesapla
+      const yeniTeslimat = Number(mevcutTeslimat) + Number(teslimatMiktari);
+      
+      // Ürünü güncelle
+      await updateData(tableName, selectedItem.id, {
+        'Teslim Edilen': yeniTeslimat
+      });
+      
+      // TeslimatGecmisi tablosuna kayıt ekle
+      await createTeslimatGecmisi(
+        selectedItem.id,
+        teslimatMiktari
+      );
+      
+      // Modalı kapat ve veriyi yenile
+      setIsModalOpen(false);
+      setSelectedItem(null);
+      scheduleAutoRefresh();
+      
+    } catch (error) {
+      console.error('Teslimat kaydedilirken hata oluştu:', error);
+      alert('Teslimat kaydedilirken bir hata oluştu. Lütfen tekrar deneyin.');
+    } finally {
+      setUpdating(false);
+    }
+  };
+  
+  // Teslimat modalında iptal
+  const handleTeslimatCancel = () => {
+    setIsModalOpen(false);
+    setSelectedItem(null);
+  };
   
   if (!tableSchema) {
     return (
@@ -269,12 +485,22 @@ export default function BitmisurunstoguPersonelPage() {
           </div>
         </div>
       ) : (
-        <DataTable
+        <BitmisProduksijonTable
           columns={filteredColumns}
-          data={filteredData.length > 0 ? filteredData : tableData}
+          data={filteredData.length > 0 ? filteredData : tableData.filter(row => row['Kalan Adet'] > 0)}
           tableName={tableName}
+          onTeslimatClick={handleTeslimatClick}
         />
       )}
+      
+      {/* Teslimat Modal */}
+      <TeslimatModal
+        isOpen={isModalOpen}
+        urunAdi={selectedItem?.recipeName || ''}
+        onConfirm={handleTeslimatConfirm}
+        onCancel={handleTeslimatCancel}
+        isUpdating={updating}
+      />
     </DashboardLayout>
   );
 } 

@@ -11,6 +11,7 @@ import {
   subscribeToTable, 
   unsubscribeFromChannel 
 } from '../../lib/supabase';
+import TeslimatGecmisiModal from '../../components/modals/TeslimatGecmisiModal';
 
 export default function TablePage() {
   const { tableName } = useParams<{ tableName: string }>();
@@ -23,6 +24,8 @@ export default function TablePage() {
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [autoRefreshTimer, setAutoRefreshTimer] = useState<NodeJS.Timeout | null>(null);
+  const [teslimatModalOpen, setTeslimatModalOpen] = useState(false);
+  const [selectedUrun, setSelectedUrun] = useState<{id: number, name: string} | null>(null);
   
   // Tablo şeması bulma
   const tableSchema = tables.find(table => table.name === decodedTableName);
@@ -147,6 +150,17 @@ export default function TablePage() {
     filterData(searchQuery);
   }, [searchQuery, tableData]);
   
+  // Reçete adına tıklandığında teslimat geçmişi modalını aç (Bitmiş Ürün Stoğu tablosu için)
+  const handleReceteClick = (receteAdi: string, urunId: number) => {
+    if (decodedTableName === 'Bitmiş Ürün Stoğu') {
+      setSelectedUrun({
+        id: urunId,
+        name: receteAdi
+      });
+      setTeslimatModalOpen(true);
+    }
+  };
+  
   // Component unmount olduğunda zamanlayıcıları temizle
   useEffect(() => {
     return () => {
@@ -264,10 +278,21 @@ export default function TablePage() {
           </div>
         </div>
       ) : (
-        <DataTable 
+        <DataTable
           columns={tableSchema.columns}
-          tableName={decodedTableName} 
-          data={filteredData}
+          data={filteredData.length > 0 ? filteredData : tableData}
+          tableName={decodedTableName}
+          onReceteClick={handleReceteClick}
+        />
+      )}
+
+      {/* Teslimat Geçmişi Modalı */}
+      {decodedTableName === 'Bitmiş Ürün Stoğu' && (
+        <TeslimatGecmisiModal
+          isOpen={teslimatModalOpen}
+          urunId={selectedUrun?.id || 0}
+          urunAdi={selectedUrun?.name || ''}
+          onClose={() => setTeslimatModalOpen(false)}
         />
       )}
     </DashboardLayout>

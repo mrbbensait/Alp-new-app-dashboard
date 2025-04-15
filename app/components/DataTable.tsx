@@ -9,6 +9,7 @@ interface DataTableProps {
   }[];
   data?: any[];
   tableName: string;
+  onReceteClick?: (receteAdi: string, urunId: number) => void;
 }
 
 // Modal bileşeni
@@ -63,7 +64,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({ isOpen, productName, onConf
   );
 };
 
-const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName }) => {
+const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, onReceteClick }) => {
   const [sortColumn, setSortColumn] = useState<string | null>('id');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [updatingRow, setUpdatingRow] = useState<number | null>(null);
@@ -194,9 +195,21 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName }) 
   };
 
   // Hücre değerini render etme fonksiyonu
-  const renderCellValue = (value: any, columnType: string) => {
+  const renderCellValue = (value: any, columnType: string, columnName: string, row: any) => {
     if (value === null || value === undefined) {
       return '-';
+    }
+
+    // Bitmiş Ürün Stoğu tablosunda Reçete Adı sütunu tıklanabilir olsun
+    if (tableName === 'Bitmiş Ürün Stoğu' && columnName === 'Reçete Adı' && onReceteClick) {
+      return (
+        <span 
+          className="cursor-pointer text-indigo-600 hover:text-indigo-900 hover:underline"
+          onClick={() => onReceteClick(value, row.id)}
+        >
+          {value}
+        </span>
+      );
     }
 
     if (columnType === 'numeric') {
@@ -342,7 +355,7 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName }) 
                           isRecipeName ? (
                             <span className="text-indigo-600 font-medium">{row[column.name]}</span>
                           ) : (
-                            renderCellValue(row[column.name], column.type)
+                            renderCellValue(row[column.name], column.type, column.name, row)
                           )
                         )}
                       </td>

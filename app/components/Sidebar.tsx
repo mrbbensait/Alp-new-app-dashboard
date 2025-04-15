@@ -66,7 +66,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
   // URL değiştiğinde açılır menü durumlarını güncelle
   useEffect(() => {
     setFormsOpen(isFormsPage);
-    setTablesOpen(isTablesPage);
+    setTablesOpen(isTablesPage || pathname === '/bitmis-urun-stogu-personel');
     setReportsOpen(isReportsPage);
   }, [pathname, isFormsPage, isTablesPage, isReportsPage]);
 

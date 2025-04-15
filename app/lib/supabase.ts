@@ -1,4 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { Database } from '@supabase/auth-helpers-nextjs';
 
 // Supabase URL ve anonim API anahtarı çevresel değişkenlerden alınır
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -213,4 +215,65 @@ export function unsubscribeFromChannel(subscription: any) {
   if (subscription) {
     supabase.removeChannel(subscription);
   }
-} 
+}
+
+/**
+ * TeslimatGecmisi tablosuna yeni bir teslimat kaydı ekler
+ * @param urunId Teslimat yapılan ürünün id'si
+ * @param teslimatMiktari Teslim edilen miktar
+ * @param kullanici Teslimatı yapan kullanıcı (opsiyonel)
+ * @returns Eklenen kayıt
+ */
+export const createTeslimatGecmisi = async (
+  urunId: number,
+  teslimatMiktari: number,
+  kullanici?: string
+) => {
+  try {
+    const { data, error } = await supabase
+      .from('TeslimatGecmisi')
+      .insert([
+        {
+          urun_id: urunId,
+          teslimat_miktari: teslimatMiktari,
+          kullanici: kullanici || null
+        }
+      ])
+      .select();
+
+    if (error) {
+      console.error('Teslimat geçmişi eklenirken hata oluştu:', error);
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Teslimat geçmişi eklenirken beklenmeyen hata:', error);
+    throw error;
+  }
+};
+
+/**
+ * Belirli bir ürüne ait teslimat geçmişini getirir
+ * @param urunId Teslimat geçmişi sorgulanacak ürünün id'si
+ * @returns Teslimat geçmişi kayıtları
+ */
+export const getTeslimatGecmisi = async (urunId: number) => {
+  try {
+    const { data, error } = await supabase
+      .from('TeslimatGecmisi')
+      .select('*')
+      .eq('urun_id', urunId)
+      .order('teslimat_tarihi', { ascending: false });
+
+    if (error) {
+      console.error('Teslimat geçmişi getirilirken hata oluştu:', error);
+      throw error;
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Teslimat geçmişi getirilirken beklenmeyen hata:', error);
+    throw error;
+  }
+}; 
