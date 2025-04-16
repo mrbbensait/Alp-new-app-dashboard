@@ -169,12 +169,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
       path: '/formlar/recete-kaydi',
       icon: <FileText size={18} />,
       roles: ['patron', 'yonetici']
-    },
-    {
-      name: 'Kullanıcı Kaydı',
-      path: '/formlar/kullanici-kaydi',
-      icon: <Users size={18} />,
-      roles: ['patron', 'yonetici']
     }
   ];
 
@@ -516,18 +510,20 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
           </div>
         </nav>
         
-        <div className="border-t border-gray-700 mt-auto">
-          <Link
-            href="/ayarlar"
-            className={`
-              flex items-center px-3 py-2 mt-2 text-sm font-medium rounded-md mx-2
-              ${pathname === "/ayarlar" ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}
-            `}
-          >
-            <span className="mr-3 text-gray-400"><Settings size={18} /></span>
-            Ayarlar
-          </Link>
-        </div>
+        {(userRole === 'patron' || userRole === 'yonetici') && (
+          <div className="border-t border-gray-700 mt-auto">
+            <Link
+              href="/ayarlar"
+              className={`
+                flex items-center px-3 py-2 mt-2 text-sm font-medium rounded-md mx-2
+                ${pathname === "/ayarlar" ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}
+              `}
+            >
+              <span className="mr-3 text-gray-400"><Settings size={18} /></span>
+              Ayarlar
+            </Link>
+          </div>
+        )}
 
         <div className="text-xs text-gray-400 border-t border-gray-700">
           <div className="px-4 py-2">

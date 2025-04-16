@@ -99,6 +99,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         localStorage.setItem('isLoggedIn', 'true');
         localStorage.setItem('user', JSON.stringify(userData));
         
+        // Middleware için kullanıcı verilerini cookie olarak kaydet
+        // 7 günlük bir cookie olarak ayarla
+        document.cookie = `userData=${encodeURIComponent(JSON.stringify(userData))}; path=/; max-age=${60*60*24*7}; SameSite=Lax`;
+        
         setUser(userData);
         setIsLoading(false);
         return true;
@@ -117,6 +121,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const logout = () => {
     localStorage.removeItem('isLoggedIn');
     localStorage.removeItem('user');
+    
+    // Cookie'yi de temizle
+    document.cookie = 'userData=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
+    
     setUser(null);
     router.push('/login');
   };
