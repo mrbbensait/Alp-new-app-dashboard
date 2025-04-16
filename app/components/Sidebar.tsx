@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { tableNames } from '../data/schema';
+import { useAuth } from '../lib/AuthContext';
 import { 
   Home, 
   BarChart2, 
@@ -32,11 +33,13 @@ type TableItem = {
   originalName?: string;
   icon: React.ReactNode;
   type?: never;
+  roles?: string[];
 } | {
   type: 'divider';
   name?: never;
   originalName?: never;
   icon?: never;
+  roles?: never;
 };
 
 interface SidebarProps {
@@ -47,6 +50,8 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSidebarOpen, onVisibilityChange }) => {
   const pathname = usePathname();
+  const { user } = useAuth();
+  const userRole = user?.rol || 'personel';
   
   // Aktif sayfa durumuna göre menülerin açık/kapalı durumunu belirleme
   const isFormsPage = pathname.startsWith('/formlar');
@@ -97,38 +102,125 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
     }
   };
 
-  const menuItems = [
-    { name: 'Ana Sayfa', path: '/', icon: <Home size={18} /> },
-    { name: 'Stok ve Üretim Müdürü', path: '/stok-uretim-muduru-beyni', icon: <Brain size={18} /> },
+  // Patron ve yöneticilerin erişebileceği sayfalar
+  const adminMenuItems = [
+    { 
+      name: 'Ana Sayfa', 
+      path: '/', 
+      icon: <Home size={18} />,
+      roles: ['patron', 'yonetici']
+    },
+    { 
+      name: 'Stok ve Üretim Müdürü', 
+      path: '/stok-uretim-muduru-beyni', 
+      icon: <Brain size={18} />,
+      roles: ['patron', 'yonetici'] 
+    },
   ];
 
+  // Yönetim raporları - patron ve yöneticilerin erişebileceği
   const reportItems = [
-    { name: 'Genel Raporlar', path: '/raporlar', icon: <BarChart2 size={18} /> },
-    { name: 'Personel Performans', path: '/raporlar/personel-performans', icon: <Activity size={18} /> },
+    { 
+      name: 'Genel Raporlar', 
+      path: '/raporlar', 
+      icon: <BarChart2 size={18} />,
+      roles: ['patron', 'yonetici']
+    },
+    { 
+      name: 'Personel Performans', 
+      path: '/raporlar/personel-performans', 
+      icon: <Activity size={18} />,
+      roles: ['patron', 'yonetici']
+    },
   ];
 
+  // Sadece personelin erişebileceği sayfalar
   const personalItems = [
-    { name: 'ANA SAYFA-P', path: '/anasayfa-p', icon: <Home size={18} /> },
-    { name: 'Üretim Kuyruğu Personel', path: '/uretim-kuyrugu-personel', icon: <Clock size={18} /> },
-    { name: 'Bitmiş Ürün Stoğu Personel', path: '/bitmis-urun-stogu-personel', icon: <Archive size={18} /> },
-    { name: 'Personel Rapor', path: '/personel-rapor', icon: <Clipboard size={18} /> },
+    { 
+      name: 'ANA SAYFA-P', 
+      path: '/anasayfa-p', 
+      icon: <Home size={18} />,
+      roles: ['personel'] 
+    },
+    { 
+      name: 'Üretim Kuyruğu Personel', 
+      path: '/uretim-kuyrugu-personel', 
+      icon: <Clock size={18} />,
+      roles: ['personel']
+    },
+    { 
+      name: 'Bitmiş Ürün Stoğu Personel', 
+      path: '/bitmis-urun-stogu-personel', 
+      icon: <Archive size={18} />,
+      roles: ['personel']
+    },
+    { 
+      name: 'Personel Rapor', 
+      path: '/personel-rapor', 
+      icon: <Clipboard size={18} />,
+      roles: ['personel']
+    },
+  ];
+
+  // Form sayfaları
+  const formItems = [
+    {
+      name: 'Reçete Kaydı',
+      path: '/formlar/recete-kaydi',
+      icon: <FileText size={18} />,
+      roles: ['patron', 'yonetici']
+    },
+    {
+      name: 'Kullanıcı Kaydı',
+      path: '/formlar/kullanici-kaydi',
+      icon: <Users size={18} />,
+      roles: ['patron', 'yonetici']
+    }
   ];
 
   // Özel tablo sıralaması
   const tableOrder: TableItem[] = [
-    { name: 'Müşteriler', icon: <Users size={18} /> },
-    { name: 'Tedarikçiler', originalName: 'suppliers', icon: <Truck size={18} /> },
+    { name: 'Müşteriler', icon: <Users size={18} />, roles: ['patron', 'yonetici'] },
+    { name: 'Tedarikçiler', originalName: 'suppliers', icon: <Truck size={18} />, roles: ['patron', 'yonetici'] },
     { type: 'divider' },
-    { name: 'Reçeteler', icon: <FileText size={18} /> },
-    { name: 'Formülasyonlar', icon: <Beaker size={18} /> },
+    { name: 'Reçeteler', icon: <FileText size={18} />, roles: ['patron', 'yonetici'] },
+    { name: 'Formülasyonlar', icon: <Beaker size={18} />, roles: ['patron', 'yonetici'] },
     { type: 'divider' },
-    { name: 'SatınAlma siparişleri', icon: <ShoppingCart size={18} /> },
+    { name: 'SatınAlma siparişleri', icon: <ShoppingCart size={18} />, roles: ['patron', 'yonetici'] },
     { type: 'divider' },
-    { name: 'STOK', originalName: 'Stok', icon: <Package size={18} /> },
+    { name: 'STOK', originalName: 'Stok', icon: <Package size={18} />, roles: ['patron', 'yonetici'] },
     { type: 'divider' },
-    { name: 'Üretim Kuyruğu', icon: <Clock size={18} /> },
-    { name: 'Bitmiş Ürün Stoğu', icon: <Archive size={18} /> },
+    { name: 'Üretim Kuyruğu', icon: <Clock size={18} />, roles: ['patron', 'yonetici'] },
+    { name: 'Bitmiş Ürün Stoğu', icon: <Archive size={18} />, roles: ['patron', 'yonetici'] },
   ];
+
+  // Kullanıcının rolüne göre erişebileceği menü öğelerini filtrele
+  const filteredAdminMenuItems = adminMenuItems.filter(item => item.roles?.includes(userRole));
+  const filteredReportItems = reportItems.filter(item => item.roles?.includes(userRole));
+  const filteredPersonalItems = personalItems.filter(item => item.roles?.includes(userRole));
+  const filteredFormItems = formItems.filter(item => item.roles?.includes(userRole));
+  const filteredTableOrder = tableOrder.filter(item => 
+    item.type === 'divider' || item.roles?.includes(userRole)
+  );
+
+  // Divider'ları temizle (ardışık divider'lar veya başta/sonda divider varsa)
+  const cleanedTableOrder = filteredTableOrder.filter((item, index, arr) => {
+    // Eğer divider ise, önceki öğe de divider değilse ve son öğe değilse göster
+    if (item.type === 'divider') {
+      // İlk öğe divider ise gösterme
+      if (index === 0) return false;
+      // Son öğe divider ise gösterme
+      if (index === arr.length - 1) return false;
+      // Önceki öğe de divider ise gösterme
+      if (arr[index - 1].type === 'divider') return false;
+      // Sonraki öğe de divider ise veya yoksa gösterme
+      if (index + 1 >= arr.length || arr[index + 1].type === 'divider') return false;
+      
+      return true;
+    }
+    // Divider değilse göster
+    return true;
+  });
 
   const changeSidebarMode = (mode: 'auto' | 'collapsed') => {
     setSidebarMode(mode);
@@ -260,40 +352,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
 
         <nav className="mt-5 px-2 flex-grow">
           <div className="space-y-1">
-            {menuItems.map((item, index) => (
-              <React.Fragment key={item.path}>
-                <Link
-                  href={item.path}
-                  className={`
-                    flex items-center px-3 py-2 text-sm font-medium rounded-md
-                    ${pathname === item.path ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}
-                  `}
-                >
-                  <span className="mr-3 text-gray-400">{item.icon}</span>
-                  {item.name}
-                </Link>
-                {index === menuItems.length - 1 && <div className="border-b border-gray-700 my-2 mx-3 opacity-50"></div>}
-              </React.Fragment>
-            ))}
-
-            <div>
-              <button
-                type="button"
-                className="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-gray-300 rounded-md hover:bg-gray-700 hover:text-white"
-                onClick={toggleReportsMenu}
-              >
-                <span className="flex items-center">
-                  <BarChart2 size={18} className="mr-3 text-gray-400" />
-                  Yönetim
-                </span>
-                {reportsOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-              </button>
-
-              {reportsOpen && (
-                <div className="mt-1 pl-4 space-y-1">
-                  {reportItems.map((item) => (
+            {/* Yönetici menü öğeleri */}
+            {filteredAdminMenuItems.length > 0 && (
+              <>
+                {filteredAdminMenuItems.map((item, index) => (
+                  <React.Fragment key={item.path}>
                     <Link
-                      key={item.path}
                       href={item.path}
                       className={`
                         flex items-center px-3 py-2 text-sm font-medium rounded-md
@@ -303,103 +367,152 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
                       <span className="mr-3 text-gray-400">{item.icon}</span>
                       {item.name}
                     </Link>
-                  ))}
-                </div>
-              )}
-            </div>
+                    {index === filteredAdminMenuItems.length - 1 && <div className="border-b border-gray-700 my-2 mx-3 opacity-50"></div>}
+                  </React.Fragment>
+                ))}
+              </>
+            )}
 
-            <div className="border-b border-gray-700 my-2 mx-3 opacity-50"></div>
-
-            <div>
-              <button
-                type="button"
-                className="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-gray-300 rounded-md hover:bg-gray-700 hover:text-white"
-                onClick={toggleTablesMenu}
-              >
-                <span className="flex items-center">
-                  <Database size={18} className="mr-3 text-gray-400" />
-                  Şirket Veritabanı
-                </span>
-                {tablesOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-              </button>
-
-              {tablesOpen && (
-                <div className="mt-1 pl-4 space-y-1">
-                  {tableOrder.map((tableItem, index) => {
-                    if (tableItem.type === 'divider') {
-                      return <div key={`divider-${index}`} className="border-b border-gray-700 my-2 mx-2 opacity-50"></div>;
-                    }
-                    
-                    // Link URL'ini güvenli bir şekilde oluşturuyoruz
-                    const linkHref = `/tablo/${encodeURIComponent(tableItem.originalName ?? tableItem.name)}`;
-                    
-                    // Aktif link kontrolü için path
-                    const isActive = pathname === linkHref;
-                    
-                    return (
-                      <Link
-                        key={tableItem.name}
-                        href={linkHref}
-                        className={`
-                          flex items-center px-3 py-2 text-sm font-medium rounded-md
-                          ${isActive ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}
-                        `}
-                      >
-                        <span className="mr-3 text-gray-400">{tableItem.icon}</span>
-                        {tableItem.name}
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            <div className="border-b border-gray-700 my-2 mx-3 opacity-50"></div>
-
-            {personalItems.map((item) => (
-              <Link
-                key={item.path}
-                href={item.path}
-                className={`
-                  flex items-center px-3 py-2 text-sm font-medium rounded-md
-                  ${pathname === item.path ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}
-                `}
-              >
-                <span className="mr-3 text-gray-400">{item.icon}</span>
-                {item.name}
-              </Link>
-            ))}
-
-            <div className="border-b border-gray-700 my-2 mx-3 opacity-50"></div>
-
-            <div>
-              <button
-                type="button"
-                className="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-gray-300 rounded-md hover:bg-gray-700 hover:text-white"
-                onClick={toggleFormsMenu}
-              >
-                <span className="flex items-center">
-                  <ClipboardList size={18} className="mr-3 text-gray-400" />
-                  Formlar
-                </span>
-                {formsOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-              </button>
-
-              {formsOpen && (
-                <div className="mt-1 pl-4 space-y-1">
+            {/* Personel özel menü öğeleri */}
+            {filteredPersonalItems.length > 0 && (
+              <>
+                {filteredPersonalItems.map((item) => (
                   <Link
-                    href="/formlar/recete-kaydi"
+                    key={item.path}
+                    href={item.path}
                     className={`
                       flex items-center px-3 py-2 text-sm font-medium rounded-md
-                      ${pathname === "/formlar/recete-kaydi" ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}
+                      ${pathname === item.path ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}
                     `}
                   >
-                    <FileText size={18} className="mr-3 text-gray-400" />
-                    Reçete Kaydı
+                    <span className="mr-3 text-gray-400">{item.icon}</span>
+                    {item.name}
                   </Link>
-                </div>
-              )}
-            </div>
+                ))}
+                <div className="border-b border-gray-700 my-2 mx-3 opacity-50"></div>
+              </>
+            )}
+
+            {/* Raporlar menüsü - Sadece yöneticiler için */}
+            {filteredReportItems.length > 0 && (
+              <div>
+                <button
+                  type="button"
+                  className="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-gray-300 rounded-md hover:bg-gray-700 hover:text-white"
+                  onClick={toggleReportsMenu}
+                >
+                  <span className="flex items-center">
+                    <BarChart2 size={18} className="mr-3 text-gray-400" />
+                    Yönetim
+                  </span>
+                  {reportsOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                </button>
+
+                {reportsOpen && (
+                  <div className="mt-1 pl-4 space-y-1">
+                    {filteredReportItems.map((item) => (
+                      <Link
+                        key={item.path}
+                        href={item.path}
+                        className={`
+                          flex items-center px-3 py-2 text-sm font-medium rounded-md
+                          ${pathname === item.path ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}
+                        `}
+                      >
+                        <span className="mr-3 text-gray-400">{item.icon}</span>
+                        {item.name}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {filteredReportItems.length > 0 && <div className="border-b border-gray-700 my-2 mx-3 opacity-50"></div>}
+
+            {/* Tablolar menüsü - Sadece yöneticiler için */}
+            {cleanedTableOrder.some(item => item.type !== 'divider') && (
+              <div>
+                <button
+                  type="button"
+                  className="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-gray-300 rounded-md hover:bg-gray-700 hover:text-white"
+                  onClick={toggleTablesMenu}
+                >
+                  <span className="flex items-center">
+                    <Database size={18} className="mr-3 text-gray-400" />
+                    Şirket Veritabanı
+                  </span>
+                  {tablesOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                </button>
+
+                {tablesOpen && (
+                  <div className="mt-1 pl-4 space-y-1">
+                    {cleanedTableOrder.map((tableItem, index) => {
+                      if (tableItem.type === 'divider') {
+                        return <div key={`divider-${index}`} className="border-b border-gray-700 my-2 mx-2 opacity-50"></div>;
+                      }
+                      
+                      // Link URL'ini güvenli bir şekilde oluşturuyoruz
+                      const linkHref = `/tablo/${encodeURIComponent(tableItem.originalName ?? tableItem.name)}`;
+                      
+                      // Aktif link kontrolü için path
+                      const isActive = pathname === linkHref;
+                      
+                      return (
+                        <Link
+                          key={tableItem.name}
+                          href={linkHref}
+                          className={`
+                            flex items-center px-3 py-2 text-sm font-medium rounded-md
+                            ${isActive ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}
+                          `}
+                        >
+                          <span className="mr-3 text-gray-400">{tableItem.icon}</span>
+                          {tableItem.name}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {cleanedTableOrder.some(item => item.type !== 'divider') && <div className="border-b border-gray-700 my-2 mx-3 opacity-50"></div>}
+
+            {/* Formlar menüsü - Sadece yöneticiler için */}
+            {filteredFormItems.length > 0 && (
+              <div>
+                <button
+                  type="button"
+                  className="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-gray-300 rounded-md hover:bg-gray-700 hover:text-white"
+                  onClick={toggleFormsMenu}
+                >
+                  <span className="flex items-center">
+                    <ClipboardList size={18} className="mr-3 text-gray-400" />
+                    Formlar
+                  </span>
+                  {formsOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                </button>
+
+                {formsOpen && (
+                  <div className="mt-1 pl-4 space-y-1">
+                    {filteredFormItems.map((item) => (
+                      <Link
+                        key={item.path}
+                        href={item.path}
+                        className={`
+                          flex items-center px-3 py-2 text-sm font-medium rounded-md
+                          ${pathname === item.path ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}
+                        `}
+                      >
+                        <span className="mr-3 text-gray-400">{item.icon}</span>
+                        {item.name}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </nav>
         
