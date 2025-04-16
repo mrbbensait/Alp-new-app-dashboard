@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '../components/DashboardLayout';
 import { tables } from '../data/schema';
 import { fetchAllFromTable, subscribeToTable, unsubscribeFromChannel, updateData } from '../lib/supabase';
+import UretimEmriModal from '../components/modals/UretimEmriModal';
 
 // Özel DataTable bileşeni
 interface UretimKuyruguTableProps {
@@ -17,6 +18,7 @@ interface UretimKuyruguTableProps {
   tableName: string;
   onCheckboxChange: (rowId: number, recipeName: string) => void;
   onCellValueChange: (rowId: number, columnName: string, value: any) => void;
+  onReceteClick: (row: any) => void;
 }
 
 const UretimKuyruguTable: React.FC<UretimKuyruguTableProps> = ({ 
@@ -24,7 +26,8 @@ const UretimKuyruguTable: React.FC<UretimKuyruguTableProps> = ({
   data = [], 
   tableName,
   onCheckboxChange,
-  onCellValueChange
+  onCellValueChange,
+  onReceteClick
 }) => {
   const [sortColumn, setSortColumn] = useState<string | null>('id');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -142,7 +145,10 @@ const UretimKuyruguTable: React.FC<UretimKuyruguTableProps> = ({
       case 'text':
         if (columnName === 'Reçete Adı') {
           return (
-            <span className="text-gray-800">
+            <span 
+              className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer font-medium"
+              onClick={() => onReceteClick(row)}
+            >
               {value || '-'}
             </span>
           );
@@ -277,6 +283,8 @@ export default function UretimKuyruguPersonelPage() {
   const [updating, setUpdating] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0); // Sayfayı yenilemek için kullanılacak key
   const [autoRefreshTimer, setAutoRefreshTimer] = useState<NodeJS.Timeout | null>(null);
+  const [isUretimEmriModalOpen, setIsUretimEmriModalOpen] = useState(false);
+  const [selectedRecete, setSelectedRecete] = useState<any>(null);
 
   // Tablo şeması bulma
   const tableSchema = tables.find(table => table.name === tableName);
@@ -567,6 +575,14 @@ export default function UretimKuyruguPersonelPage() {
     filterData(searchQuery);
   }, [searchQuery]);
 
+  // Reçete adına tıklama işleyicisi
+  const handleReceteClick = (row: any) => {
+    console.log('Reçete tıklandı:', row);
+    setSelectedRecete(row);
+    setIsUretimEmriModalOpen(true);
+    console.log('Modal durumu değişti:', { isUretimEmriModalOpen: true, selectedRecete: row });
+  };
+
   if (!tableSchema) {
     return (
       <DashboardLayout>
@@ -600,6 +616,20 @@ export default function UretimKuyruguPersonelPage() {
         onCancel={handleCancel}
       />
       
+      {/* Üretim Emri Modal */}
+      {selectedRecete && (
+        <UretimEmriModal
+          isOpen={isUretimEmriModalOpen}
+          onClose={() => {
+            console.log('Modal kapatıldı');
+            setIsUretimEmriModalOpen(false);
+            setSelectedRecete(null);
+          }}
+          receteAdi={selectedRecete['Reçete Adı']}
+          uretimMiktari={selectedRecete['Bulk Üretim Emri(Kg)'] || 0}
+        />
+      )}
+      
       <div className="mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-center">
         <div className="mb-4 sm:mb-0">
           <h1 className="text-2xl font-semibold text-gray-900 whitespace-normal sm:whitespace-nowrap">Üretim Kuyruğu Personel</h1>
@@ -620,7 +650,10 @@ export default function UretimKuyruguPersonelPage() {
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                filterData(e.target.value);
+              }}
               className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 h-10 sm:text-sm border-gray-300 rounded-md"
               placeholder="Aktif üretimlerde ara..."
             />
@@ -683,12 +716,13 @@ export default function UretimKuyruguPersonelPage() {
           </div>
         </div>
       ) : (
-        <UretimKuyruguTable 
+        <UretimKuyruguTable
           columns={filteredColumns}
-          tableName="Üretim Kuyruğu"
           data={filteredData}
+          tableName={tableName}
           onCheckboxChange={handleCheckboxChange}
           onCellValueChange={handleCellValueChange}
+          onReceteClick={handleReceteClick}
         />
       )}
       
