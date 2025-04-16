@@ -12,12 +12,12 @@ export default function Home() {
   return (
     <DashboardLayout>
       {/* Hoşgeldiniz Başlık */}
-      <div className="relative bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl p-6 mb-6 overflow-hidden">
+      <div className="relative bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl p-3 mb-4 overflow-hidden">
         <div className="absolute inset-0 bg-pattern opacity-10"></div>
-        <div className="relative">
-          <h1 className="text-3xl font-bold text-white">Hoş Geldiniz</h1>
-          <p className="text-lg text-white opacity-90 mt-2">
-            AlpLeo Ai Tam Entegre Yapay Zeka Stok ve Üretim Yönetimi sistemine hoş geldiniz.
+        <div className="relative text-center">
+          <h1 className="text-2xl font-bold text-white">HOŞGELDİNİZ</h1>
+          <p className="text-md text-white opacity-90">
+            Tam Entegre Yapay Zeka Stok ve Üretim Yönetim Sistemi
           </p>
         </div>
       </div>

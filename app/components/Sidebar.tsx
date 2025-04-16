@@ -50,7 +50,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
   
   // Aktif sayfa durumuna göre menülerin açık/kapalı durumunu belirleme
   const isFormsPage = pathname.startsWith('/formlar');
-  const isTablesPage = pathname.startsWith('/tablo') || pathname === '/uretim-kuyrugu-personel';
+  const isTablesPage = pathname.startsWith('/tablo');
   const isReportsPage = pathname.startsWith('/raporlar');
   
   const [tablesOpen, setTablesOpen] = useState(isTablesPage);
@@ -66,7 +66,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
   // URL değiştiğinde açılır menü durumlarını güncelle
   useEffect(() => {
     setFormsOpen(isFormsPage);
-    setTablesOpen(isTablesPage || pathname === '/bitmis-urun-stogu-personel');
+    setTablesOpen(isTablesPage);
     setReportsOpen(isReportsPage);
   }, [pathname, isFormsPage, isTablesPage, isReportsPage]);
 
