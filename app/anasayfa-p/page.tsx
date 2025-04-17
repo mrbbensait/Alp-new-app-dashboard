@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import DashboardLayout from '../components/DashboardLayout';
+import Notes from '../components/Notes';
 import { 
   Clock, 
   Archive, 
@@ -90,6 +91,11 @@ export default function PersonelHomePage() {
         <p className="mt-1 text-sm text-gray-600">
           Hoş geldiniz, günlük işlemlerinize kolayca erişebilirsiniz.
         </p>
+      </div>
+      
+      {/* Notlar Bölümü */}
+      <div className="mb-8 flex justify-start">
+        <Notes maxNotes={5} />
       </div>
       
       {/* Yapay Zeka Öne Çıkan Bölüm */}
