@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import DashboardLayout from '../components/DashboardLayout';
 import Notes from '../components/Notes';
+import TalepFormu from '../components/TalepFormu';
 import { 
   Clock, 
   Archive, 
@@ -93,9 +94,14 @@ export default function PersonelHomePage() {
         </p>
       </div>
       
-      {/* Notlar Bölümü */}
-      <div className="mb-8 flex justify-start">
-        <Notes maxNotes={5} />
+      {/* Notlar ve Talepler Bölümü */}
+      <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="md:col-span-1 w-full">
+          <Notes maxNotes={5} />
+        </div>
+        <div className="md:col-span-1 w-full">
+          <TalepFormu maxTalepler={5} />
+        </div>
       </div>
       
       {/* Yapay Zeka Öne Çıkan Bölüm */}

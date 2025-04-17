@@ -304,7 +304,7 @@ const Notes: React.FC<NotesProps> = ({ maxNotes = 3 }) => {
   };
 
   return (
-    <div className="bg-white shadow rounded-lg overflow-hidden w-1/2">
+    <div className="bg-white shadow rounded-lg overflow-hidden w-full">
       <div className="p-4 sm:p-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold text-gray-800">NOTLAR</h2>
