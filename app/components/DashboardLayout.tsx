@@ -125,6 +125,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         <main className="flex-1 overflow-y-auto overflow-x-auto p-3 sm:p-6 md:p-8">
           {children}
         </main>
+        
+        <footer className="text-center py-2 text-xs text-gray-400">
+          Designed & Coded by Sait Arslan
+        </footer>
       </div>
     </div>
   );
