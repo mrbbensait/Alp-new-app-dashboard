@@ -33,13 +33,11 @@ type TableItem = {
   originalName?: string;
   icon: React.ReactNode;
   type?: never;
-  roles?: string[];
 } | {
   type: 'divider';
   name?: never;
   originalName?: never;
   icon?: never;
-  roles?: never;
 };
 
 interface SidebarProps {
@@ -51,7 +49,6 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSidebarOpen, onVisibilityChange }) => {
   const pathname = usePathname();
   const { user } = useAuth();
-  const userRole = user?.rol || 'personel';
   
   // Aktif sayfa durumuna göre menülerin açık/kapalı durumunu belirleme
   const isFormsPage = pathname.startsWith('/formlar');
@@ -102,63 +99,55 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
     }
   };
 
-  // Patron ve yöneticilerin erişebileceği sayfalar
+  // Tüm kullanıcıların erişebileceği sayfalar
   const adminMenuItems = [
     { 
       name: 'Ana Sayfa', 
       path: '/', 
-      icon: <Home size={18} />,
-      roles: ['patron', 'yonetici']
+      icon: <Home size={18} />
     },
     { 
       name: 'Stok ve Üretim Müdürü', 
       path: '/stok-uretim-muduru-beyni', 
-      icon: <Brain size={18} />,
-      roles: ['patron', 'yonetici'] 
+      icon: <Brain size={18} />
     },
   ];
 
-  // Yönetim raporları - patron ve yöneticilerin erişebileceği
+  // Yönetim raporları - tüm kullanıcıların erişebileceği
   const reportItems = [
     { 
       name: 'Genel Raporlar', 
       path: '/raporlar', 
-      icon: <BarChart2 size={18} />,
-      roles: ['patron', 'yonetici']
+      icon: <BarChart2 size={18} />
     },
     { 
       name: 'Personel Performans', 
       path: '/raporlar/personel-performans', 
-      icon: <Activity size={18} />,
-      roles: ['patron', 'yonetici']
+      icon: <Activity size={18} />
     },
   ];
 
-  // Sadece personelin erişebileceği sayfalar
+  // Personel sayfaları - tüm kullanıcıların erişebileceği
   const personalItems = [
     { 
       name: 'ANA SAYFA-P', 
       path: '/anasayfa-p', 
-      icon: <Home size={18} />,
-      roles: ['personel'] 
+      icon: <Home size={18} />
     },
     { 
       name: 'Üretim Kuyruğu Personel', 
       path: '/uretim-kuyrugu-personel', 
-      icon: <Clock size={18} />,
-      roles: ['personel']
+      icon: <Clock size={18} />
     },
     { 
       name: 'Bitmiş Ürün Stoğu Personel', 
       path: '/bitmis-urun-stogu-personel', 
-      icon: <Archive size={18} />,
-      roles: ['personel']
+      icon: <Archive size={18} />
     },
     { 
       name: 'Personel Rapor', 
       path: '/personel-rapor', 
-      icon: <Clipboard size={18} />,
-      roles: ['personel']
+      icon: <Clipboard size={18} />
     },
   ];
 
@@ -167,35 +156,31 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
     {
       name: 'Reçete Kaydı',
       path: '/formlar/recete-kaydi',
-      icon: <FileText size={18} />,
-      roles: ['patron', 'yonetici']
+      icon: <FileText size={18} />
     }
   ];
 
   // Özel tablo sıralaması
   const tableOrder: TableItem[] = [
-    { name: 'Müşteriler', icon: <Users size={18} />, roles: ['patron', 'yonetici'] },
-    { name: 'Tedarikçiler', originalName: 'suppliers', icon: <Truck size={18} />, roles: ['patron', 'yonetici'] },
+    { name: 'Müşteriler', icon: <Users size={18} /> },
+    { name: 'Tedarikçiler', originalName: 'suppliers', icon: <Truck size={18} /> },
     { type: 'divider' },
-    { name: 'Reçeteler', icon: <FileText size={18} />, roles: ['patron', 'yonetici'] },
-    { name: 'Formülasyonlar', icon: <Beaker size={18} />, roles: ['patron', 'yonetici'] },
+    { name: 'Reçeteler', icon: <FileText size={18} /> },
     { type: 'divider' },
-    { name: 'SatınAlma siparişleri', icon: <ShoppingCart size={18} />, roles: ['patron', 'yonetici'] },
+    { name: 'SatınAlma siparişleri', icon: <ShoppingCart size={18} /> },
     { type: 'divider' },
-    { name: 'STOK', originalName: 'Stok', icon: <Package size={18} />, roles: ['patron', 'yonetici'] },
+    { name: 'STOK', originalName: 'Stok', icon: <Package size={18} /> },
     { type: 'divider' },
-    { name: 'Üretim Kuyruğu', icon: <Clock size={18} />, roles: ['patron', 'yonetici'] },
-    { name: 'Bitmiş Ürün Stoğu', icon: <Archive size={18} />, roles: ['patron', 'yonetici'] },
+    { name: 'Üretim Kuyruğu', icon: <Clock size={18} /> },
+    { name: 'Bitmiş Ürün Stoğu', icon: <Archive size={18} /> },
   ];
 
-  // Kullanıcının rolüne göre erişebileceği menü öğelerini filtrele
-  const filteredAdminMenuItems = adminMenuItems.filter(item => item.roles?.includes(userRole));
-  const filteredReportItems = reportItems.filter(item => item.roles?.includes(userRole));
-  const filteredPersonalItems = personalItems.filter(item => item.roles?.includes(userRole));
-  const filteredFormItems = formItems.filter(item => item.roles?.includes(userRole));
-  const filteredTableOrder = tableOrder.filter(item => 
-    item.type === 'divider' || item.roles?.includes(userRole)
-  );
+  // Filtreleme işlemlerini kaldırdık, herkes her şeyi görsün
+  const filteredAdminMenuItems = adminMenuItems;
+  const filteredReportItems = reportItems;
+  const filteredPersonalItems = personalItems;
+  const filteredFormItems = formItems;
+  const filteredTableOrder = tableOrder;
 
   // Divider'ları temizle (ardışık divider'lar veya başta/sonda divider varsa)
   const cleanedTableOrder = filteredTableOrder.filter((item, index, arr) => {
@@ -510,24 +495,21 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
           </div>
         </nav>
         
-        {(userRole === 'patron' || userRole === 'yonetici') && (
-          <div className="border-t border-gray-700 mt-auto">
-            <Link
-              href="/ayarlar"
-              className={`
-                flex items-center px-3 py-2 mt-2 text-sm font-medium rounded-md mx-2
-                ${pathname === "/ayarlar" ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}
-              `}
-            >
-              <span className="mr-3 text-gray-400"><Settings size={18} /></span>
-              Ayarlar
-            </Link>
-          </div>
-        )}
-
         <div className="text-xs text-gray-400 border-t border-gray-700">
           <div className="px-4 py-2">
-            <p className="mb-2">Kenar çubuğu kontrolü</p>
+            <div className="mt-auto">
+              <Link
+                href="/ayarlar"
+                className={`
+                  flex items-center px-3 py-2 mt-2 text-sm font-medium rounded-md mx-2
+                  ${pathname === "/ayarlar" ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}
+                `}
+              >
+                <span className="mr-3 text-gray-400"><Settings size={18} /></span>
+                Ayarlar
+              </Link>
+            </div>
+            <p className="mb-2 mt-4">Kenar çubuğu kontrolü</p>
             <div className="space-y-1">
               <div 
                 className="flex items-center cursor-pointer hover:bg-gray-700 px-2 py-1 rounded"
@@ -553,10 +535,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
                 <span className={sidebarMode === 'collapsed' ? 'text-white' : ''}>Kenara Küçült</span>
               </div>
             </div>
+            <p className="mt-4">© 2023 Üretim Yönetim Sistemi</p>
           </div>
         </div>
         
-        {/* Versiyon Bilgisi */}
         <div className="mt-auto px-4 py-3 text-xs text-gray-400 border-t border-gray-700 text-center">
           Versiyon 3.4.1
         </div>
@@ -573,6 +555,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
           </svg>
         </button>
       )}
+
+      {/* Menü açma kapama butonu */}
+      <button
+        className="fixed top-4 left-4 z-40 lg:hidden bg-white p-2 rounded-md shadow-md border border-gray-200 hover:bg-gray-100 transition-colors"
+        onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+        aria-label={isMobileSidebarOpen ? "Menüyü kapat" : "Menüyü aç"}
+      >
+        {/* ... existing code ... */}
+      </button>
     </>
   );
 };

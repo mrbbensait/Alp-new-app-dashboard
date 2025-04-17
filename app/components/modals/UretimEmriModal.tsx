@@ -108,12 +108,20 @@ const UretimEmriModal: React.FC<UretimEmriModalProps> = ({
       <head>
         <title>Üretim Emri - ${receteAdi}</title> 
         <meta charset="UTF-8">
-        ${headStyles} {/* Tüm stilleri ve linkleri buraya ekle */} 
-        <script src="https://cdn.tailwindcss.com"></script> {/* Tailwind CDN hala gerekli */} 
+        ${headStyles}
+        <script src="https://cdn.tailwindcss.com"></script>
         <style>
-           /* iframe için ek veya override stiller (gerekirse) */
+           /* iframe için ek veya override stiller */
            body { margin: 0; }
-           /* Yazdırma stilleri hala burada olabilir veya headStyles içinde zaten vardır */
+           @page {
+             size: A4;
+             margin: 10mm;
+           }
+           /* Sayfayı tek sayfada tutmak için */
+           .print-container {
+             page-break-inside: avoid;
+             min-height: auto !important;
+           }
            ${document.getElementById('print-styles')?.innerHTML || ''} 
         </style>
       </head>

@@ -63,6 +63,12 @@ const UretimEmriPDF: React.FC<UretimEmriProps> = (props) => {
             size: A4;
             margin: 10mm; 
         }
+        /* Sayfayı tek sayfada tutmak için */
+        .print-container {
+          page-break-inside: avoid !important;
+          page-break-after: avoid !important;
+          min-height: auto !important;
+        }
       }
     `;
     document.head.appendChild(style);
@@ -80,7 +86,6 @@ const UretimEmriPDF: React.FC<UretimEmriProps> = (props) => {
       id="uretim-emri-pdf-content"
       ref={contentRef}
       className="bg-white p-0 w-[210mm] border-2 border-black shadow-lg print-container"
-      style={{ minHeight: '297mm' }}
     >
       {/* Üretim Emri Belgesi - Ana Çerçeve */}
       <div className="w-full border-collapse">
@@ -188,8 +193,8 @@ const UretimEmriPDF: React.FC<UretimEmriProps> = (props) => {
                   <td className="border border-black p-1 h-7"></td>
                 </tr>
               ))}
-              {/* Boş satırları doldur */}
-              {Array.from({ length: Math.max(0, 20 - hammaddeler.length) }).map((_, index) => (
+              {/* Boş satırları doldur - 20 yerine en fazla 10 satır göster */}
+              {Array.from({ length: Math.max(0, Math.min(10, 10 - hammaddeler.length)) }).map((_, index) => (
                 <tr key={`empty-${index}`}>
                   <td className="border border-black p-1 h-7"></td>
                   <td className="border border-black p-1 h-7"></td>

@@ -1,41 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// Rol bazlı sayfa erişim kontrolü
-const ROLE_BASED_PATHS = {
-  personel: [
-    '/anasayfa-p', 
-    '/uretim-kuyrugu-personel', 
-    '/bitmis-urun-stogu-personel', 
-    '/personel-rapor',
-    '/login',
-    '/api'
-  ],
-  yonetici: [
-    '/', 
-    '/stok-uretim-muduru-beyni', 
-    '/raporlar', 
-    '/raporlar/personel-performans',
-    '/tablo',
-    '/formlar',
-    '/ayarlar',
-    '/login',
-    '/api'
-  ],
-  patron: [
-    '/', 
-    '/stok-uretim-muduru-beyni', 
-    '/raporlar', 
-    '/raporlar/personel-performans',
-    '/tablo',
-    '/formlar',
-    '/ayarlar',
-    '/login',
-    '/api'
-  ]
-};
-
-// Bu middleware, bazı sayfalara erişmeden önce tarayıcı tarafında kontrol yapar
+// Bu middleware, sayfalara erişmeden önce tarayıcı tarafında giriş kontrolü yapar
 export function middleware(request: NextRequest) {
   // API isteklerini her zaman izin ver
   if (request.nextUrl.pathname.startsWith('/api')) {
@@ -56,7 +22,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Local storage'dan kullanıcı bilgisini kontrol et
+  // Kullanıcı bilgisi kontrolü
   const userDataCookie = request.cookies.get('userData');
   
   if (!userDataCookie || !userDataCookie.value) {
@@ -65,40 +31,14 @@ export function middleware(request: NextRequest) {
   }
   
   try {
-    // Cookie'den kullanıcı rolünü al
-    const userData = JSON.parse(decodeURIComponent(userDataCookie.value));
-    const userRole = userData.rol || 'personel';
-    
-    // Kullanıcının mevcut istek yapabileceği sayfaların listesi
-    const allowedPaths = ROLE_BASED_PATHS[userRole as keyof typeof ROLE_BASED_PATHS] || [];
-    
-    // İstenen sayfa yolu
-    const pathname = request.nextUrl.pathname;
-    
-    // Sayfanın başlangıcı izin verilen yollarla eşleşiyor mu kontrol et
-    const isAllowed = allowedPaths.some(path => {
-      // Tam eşleşme kontrolü
-      if (pathname === path) return true;
-      
-      // Alt dizinler kontrolü, örn: /tablo/Stok, /formlar/recete-kaydi
-      if (path.endsWith('/')) return false; // Sonunda slash varsa alt dizin kabul etmez
-      return pathname.startsWith(path + '/');
-    });
-    
-    if (!isAllowed) {
-      // İzin verilmeyen bir sayfaya erişmeye çalışırsa, rolüne göre anasayfaya yönlendir
-      if (userRole === 'personel') {
-        return NextResponse.redirect(new URL('/anasayfa-p', request.url));
-      } else {
-        return NextResponse.redirect(new URL('/', request.url));
-      }
-    }
+    // Cookie'den kullanıcı bilgisini al
+    JSON.parse(decodeURIComponent(userDataCookie.value));
+    // Kullanıcı giriş yapmış, tüm sayfalara erişebilir
+    return NextResponse.next();
   } catch (error) {
     // JSON parse hatası veya başka bir sorun varsa login sayfasına yönlendir
     return NextResponse.redirect(new URL('/login', request.url));
   }
-  
-  return NextResponse.next();
 }
 
 // Matcher, middleware'in hangi sayfalarda çalışacağını belirtir

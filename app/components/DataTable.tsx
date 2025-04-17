@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { updateData } from '../lib/supabase';
+import { updateData, insertData } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import FormulationModal from './modals/FormulationModal';
+import { useAuth } from '../lib/AuthContext';
+import TeslimBilgisiModal from './modals/TeslimBilgisiModal';
 
 interface DataTableProps {
   columns: {
@@ -71,10 +74,25 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState<{ id: number, columnName: string, productName: string } | null>(null);
   const [autoRefreshTimer, setAutoRefreshTimer] = useState<NodeJS.Timeout | null>(null);
+  const [editingCell, setEditingCell] = useState<{rowId: number, columnName: string} | null>(null);
+  const [inputValue, setInputValue] = useState<string>("");
+  // Optimistik güncelleme için geçici değerleri tutacak state
+  const [optimisticUpdates, setOptimisticUpdates] = useState<{[key: number]: {[key: string]: any}}>({});
   
   // Formülasyon modalı için state
   const [isFormulationModalOpen, setIsFormulationModalOpen] = useState(false);
   const [selectedRecipe, setSelectedRecipe] = useState<{ name: string, id: string, brand: string } | null>(null);
+  
+  // Teslim bilgisi modalı için state'ler
+  const [isTeslimBilgisiModalOpen, setIsTeslimBilgisiModalOpen] = useState(false);
+  const [teslimBilgisi, setTeslimBilgisi] = useState<{
+    urunAdi: string;
+    personelAdi: string;
+    teslimTarihi: string;
+  } | null>(null);
+
+  // Auth context'ten kullanıcı bilgisini al
+  const { user } = useAuth();
 
   // Başlangıçta veya veri değiştiğinde varsayılan sıralamayı uygula
   useEffect(() => {
@@ -137,6 +155,21 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
       });
       console.log(`${selectedRow.columnName} güncellendi: ${selectedRow.id}`);
       
+      // Satınalma siparişleri tablosuna yapılan işlemlerde teslim alan personel bilgisini kaydet
+      if (tableName === 'SatınAlma siparişleri' && selectedRow.columnName === 'TeslimDurumu' && user) {
+        try {
+          // teslim_alan_personel tablosuna kayıt ekle
+          await insertData('teslim_alan_personel', {
+            siparis_id: selectedRow.id,
+            personel_id: user.id,
+          });
+          console.log(`Teslim alan personel kaydedildi: ${user.ad_soyad}`);
+        } catch (personelError) {
+          console.error('Teslim alan personel kaydedilirken hata oluştu:', personelError);
+          // Ana işlemi etkilememesi için bu hatayı yutuyoruz
+        }
+      }
+      
       // Modal kapatılıyor
       setIsModalOpen(false);
       setSelectedRow(null);
@@ -156,6 +189,76 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
   const handleModalCancel = () => {
     setIsModalOpen(false);
     setSelectedRow(null);
+  };
+
+  // Notlar hücresi tıklama işleyicisi
+  const handleNotesClick = (rowId: number, columnName: string, currentValue: string) => {
+    setEditingCell({ rowId, columnName });
+    setInputValue(currentValue || "");
+  };
+
+  // Input değişim işleyicisi
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setInputValue(e.target.value);
+  };
+
+  // Input blur olayı işleyicisi
+  const handleInputBlur = async () => {
+    if (editingCell) {
+      const { rowId, columnName } = editingCell;
+      const rowData = data.find(row => row.id === rowId);
+      
+      // Değer değiştiyse güncelleme yap
+      if (rowData && rowData[columnName] !== inputValue) {
+        // Hemen optimistik güncelleme yap
+        setOptimisticUpdates(prev => ({
+          ...prev,
+          [rowId]: {
+            ...(prev[rowId] || {}),
+            [columnName]: inputValue
+          }
+        }));
+        
+        setUpdatingRow(rowId);
+        
+        try {
+          // Veritabanını güncelle
+          await updateData(tableName, rowId, { [columnName]: inputValue });
+          console.log(`${columnName} güncellendi: ${rowId}`);
+          
+          // Otomatik yenileme planla (kullanıcının istediği gibi 3 saniye)
+          scheduleAutoRefresh();
+        } catch (error) {
+          console.error(`${columnName} güncellenirken hata oluştu:`, error);
+          alert(`${columnName} güncellenirken bir hata oluştu. Lütfen tekrar deneyin.`);
+          
+          // Hata durumunda optimistik güncellemeyi geri al
+          setOptimisticUpdates(prev => {
+            const newUpdates = { ...prev };
+            if (newUpdates[rowId]) {
+              delete newUpdates[rowId][columnName];
+              if (Object.keys(newUpdates[rowId]).length === 0) {
+                delete newUpdates[rowId];
+              }
+            }
+            return newUpdates;
+          });
+        } finally {
+          setUpdatingRow(null);
+        }
+      }
+      
+      setEditingCell(null);
+    }
+  };
+
+  // Enter veya Escape tuşları için işleyici
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleInputBlur();
+    } else if (e.key === 'Escape') {
+      setEditingCell(null);
+    }
   };
 
   // Sütuna göre sıralama
@@ -194,10 +297,84 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
     setIsFormulationModalOpen(true);
   };
 
+  // Ürün adına tıklama işleyicisi - teslim bilgilerini göster
+  const handleUrunAdiClick = async (urunId: number, urunAdi: string) => {
+    try {
+      // Teslim alan personel bilgilerini çek
+      const { data, error } = await supabase
+        .from('teslim_alan_personel')
+        .select(`
+          id, 
+          teslim_tarihi,
+          personel:personel_id (
+            ad_soyad
+          )
+        `)
+        .eq('siparis_id', urunId)
+        .single();
+      
+      if (error) {
+        console.error('Teslim bilgisi çekilirken hata oluştu:', error);
+        alert('Bu ürün için teslim bilgisi bulunamadı.');
+        return;
+      }
+      
+      if (data) {
+        // Veri yapısını kontrol et ve güvenli bir şekilde personel adını çek
+        let personelAdi = 'Bilinmiyor';
+        
+        try {
+          if (data.personel && typeof data.personel === 'object' && 'ad_soyad' in data.personel) {
+            const adSoyad = data.personel.ad_soyad;
+            personelAdi = typeof adSoyad === 'string' ? adSoyad : 'Bilinmiyor';
+          }
+        } catch (e) {
+          console.error('Personel adı ayrıştırılırken hata:', e);
+        }
+        
+        // Teslim bilgilerini gösterecek modalı aç
+        setTeslimBilgisi({
+          urunAdi,
+          personelAdi,
+          teslimTarihi: new Date(data.teslim_tarihi).toLocaleString('tr-TR')
+        });
+        setIsTeslimBilgisiModalOpen(true);
+      } else {
+        alert('Bu ürün için teslim bilgisi bulunamadı.');
+      }
+    } catch (error) {
+      console.error('Teslim bilgisi alınırken hata oluştu:', error);
+      alert('Teslim bilgisi alınırken bir hata oluştu.');
+    }
+  };
+
+  // Değerleri görüntüleme fonksiyonu - optimistik değerleri de göz önünde bulundur
+  const getDisplayValue = (row: any, columnName: string) => {
+    // Optimistik güncelleme varsa onu göster
+    if (optimisticUpdates[row.id] && optimisticUpdates[row.id][columnName] !== undefined) {
+      return optimisticUpdates[row.id][columnName];
+    }
+    
+    // Yoksa original değeri göster
+    return row[columnName];
+  };
+
   // Hücre değerini render etme fonksiyonu
   const renderCellValue = (value: any, columnType: string, columnName: string, row: any) => {
     if (value === null || value === undefined) {
       return '-';
+    }
+
+    // SatınAlma siparişleri tablosunda ve Alınan Ürün sütununda tıklanabilir link göster
+    if (tableName === 'SatınAlma siparişleri' && columnName === 'Alınan Ürün' && row.TeslimDurumu === true) {
+      return (
+        <span 
+          className="cursor-pointer text-indigo-600 hover:text-indigo-900 hover:underline"
+          onClick={() => handleUrunAdiClick(row.id, value)}
+        >
+          {value}
+        </span>
+      );
     }
 
     // Bitmiş Ürün Stoğu tablosunda Reçete Adı sütunu tıklanabilir olsun
@@ -247,6 +424,13 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
           brand={selectedRecipe.brand}
         />
       )}
+      
+      {/* Teslim Bilgisi Modalı */}
+      <TeslimBilgisiModal
+        isOpen={isTeslimBilgisiModalOpen}
+        teslimBilgisi={teslimBilgisi}
+        onClose={() => setIsTeslimBilgisiModalOpen(false)}
+      />
     
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
@@ -296,14 +480,20 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
                     const isRecipeNameColumn = column.name === 'Reçete Adı';
                     const isRecipeName = isRecipeTable && isRecipeNameColumn;
                     
+                    // Notlar sütunu kontrolü
+                    const isNotesColumn = column.name === 'Notlar';
+                    const isEditingThisCell = editingCell?.rowId === row.id && editingCell?.columnName === column.name;
+                    
                     return (
                       <td 
                         key={column.name} 
-                        className={`px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 ${isRecipeName ? 'cursor-pointer hover:text-indigo-600 hover:underline' : ''}`}
-                        onClick={isRecipeName ? () => handleRecipeClick(
-                          row[column.name], 
-                          row['Reçete ID'] || '', 
-                          row['Marka'] || '') : undefined}
+                        className={`px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 ${isRecipeName ? 'cursor-pointer hover:text-indigo-600 hover:underline' : ''} ${isNotesColumn && isSatinAlmaTable ? 'cursor-pointer hover:bg-gray-100' : ''}`}
+                        onClick={isRecipeName ? 
+                          () => handleRecipeClick(row[column.name], row['Reçete ID'] || '', row['Marka'] || '') : 
+                          (isNotesColumn && isSatinAlmaTable && !isEditingThisCell) ? 
+                            () => handleNotesClick(row.id, column.name, getDisplayValue(row, column.name) || "") : 
+                            undefined
+                        }
                       >
                         {isTeslimColumn && isSatinAlmaTable ? (
                           // Teslim Durumu sütunu için checkbox göster
@@ -331,6 +521,32 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
                               </div>
                             )}
                           </div>
+                        ) : isNotesColumn && isSatinAlmaTable ? (
+                          // Notlar sütunu için düzenleme alanı
+                          isEditingThisCell ? (
+                            <textarea
+                              value={inputValue}
+                              onChange={handleInputChange}
+                              onBlur={handleInputBlur}
+                              onKeyDown={handleKeyDown}
+                              className="w-full p-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 min-h-[60px] text-sm"
+                              autoFocus
+                            />
+                          ) : (
+                            updatingRow === row.id && column.name === 'Notlar' ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600 mr-2"></div>
+                            ) : (
+                              <div className="flex">
+                                <span>
+                                  {/* Optimistik değeri veya normal değeri göster */}
+                                  {getDisplayValue(row, column.name) || '-'}
+                                </span>
+                                <svg className="h-4 w-4 text-gray-400 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                </svg>
+                              </div>
+                            )
+                          )
                         ) : column.type === 'boolean' ? (
                           <div className="flex items-center">
                             {row[column.name] === true ? (

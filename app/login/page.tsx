@@ -12,14 +12,10 @@ export default function LoginPage() {
   const router = useRouter();
   const { isAuthenticated, login, user } = useAuth();
 
-  // Kullanıcı zaten giriş yapmışsa rolüne göre sayfaya yönlendir
+  // Kullanıcı zaten giriş yapmışsa ana sayfaya yönlendir
   useEffect(() => {
     if (isAuthenticated && user) {
-      if (user.rol === 'personel') {
-        router.push('/anasayfa-p');
-      } else {
-        router.push('/');
-      }
+      router.push('/');
     }
   }, [isAuthenticated, router, user]);
 
@@ -33,17 +29,8 @@ export default function LoginPage() {
       const success = await login(username, password);
       
       if (success) {
-        // Kullanıcının rolüne göre yönlendir (ancak AuthContext'in useEffect'i de aynı işi yapacaktır)
-        // Sayfayı yenilemek için window.location kullanabiliriz, böylece middleware'e de geçer
-        const userData = localStorage.getItem('user');
-        if (userData) {
-          const user = JSON.parse(userData);
-          if (user.rol === 'personel') {
-            window.location.href = '/anasayfa-p';
-          } else {
-            window.location.href = '/';
-          }
-        }
+        // Bütün kullanıcılar için ana sayfaya yönlendir
+        window.location.href = '/';
       } else {
         setError('Kullanıcı adı veya şifre hatalı');
       }

@@ -12,6 +12,7 @@ import {
   createTeslimatGecmisi
 } from '../lib/supabase';
 import TeslimatModal from '../components/modals/TeslimatModal';
+import { useAuth } from '../lib/AuthContext';
 
 // Özelleştirilmiş tablo bileşeni
 interface BitmisProduksijonTableProps {
@@ -180,6 +181,7 @@ export default function BitmisurunstoguPersonelPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<{id: number, recipeName: string} | null>(null);
   const [updating, setUpdating] = useState(false);
+  const { user } = useAuth();
   
   // Tablo şeması bulma
   const tableSchema = tables.find(table => table.name === tableName);
@@ -335,7 +337,7 @@ export default function BitmisurunstoguPersonelPage() {
   };
   
   // Teslimat modalında onay
-  const handleTeslimatConfirm = async (teslimatMiktari: number) => {
+  const handleTeslimatConfirm = async (teslimatMiktari: number, teslimEden: string) => {
     if (!selectedItem) return;
     
     setUpdating(true);
@@ -358,7 +360,8 @@ export default function BitmisurunstoguPersonelPage() {
       // TeslimatGecmisi tablosuna kayıt ekle
       await createTeslimatGecmisi(
         selectedItem.id,
-        teslimatMiktari
+        teslimatMiktari,
+        teslimEden
       );
       
       // Modalı kapat ve veriyi yenile
@@ -500,6 +503,7 @@ export default function BitmisurunstoguPersonelPage() {
         onConfirm={handleTeslimatConfirm}
         onCancel={handleTeslimatCancel}
         isUpdating={updating}
+        kullaniciAdSoyad={user?.ad_soyad || ''}
       />
     </DashboardLayout>
   );

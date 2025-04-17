@@ -1,28 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState } from 'react';
 import DashboardLayout from '@/app/components/DashboardLayout';
-import { Rol } from '@/app/lib/types/index';
 import { toast } from 'react-hot-toast';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/app/lib/AuthContext';
 
 const KullaniciKaydiPage = () => {
-  const router = useRouter();
   const { user } = useAuth();
-  
-  useEffect(() => {
-    // Personel rolündeki kullanıcıları ana sayfaya yönlendir
-    if (user?.rol === 'personel') {
-      router.push('/anasayfa-p');
-    }
-  }, [user, router]);
-
-  // Personel rolündeki kullanıcılar için içeriği gösterme
-  if (user?.rol === 'personel') {
-    return null;
-  }
   
   // Form durumu
   const [formData, setFormData] = useState<{

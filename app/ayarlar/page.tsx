@@ -1,27 +1,13 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import DashboardLayout from '../components/DashboardLayout';
 import Link from 'next/link';
 import { Users, UserPlus, Settings, ArrowRight } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
-import { useRouter } from 'next/navigation';
 
 export default function SettingsPage() {
   const { user } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    // Personel rolündeki kullanıcıları ana sayfaya yönlendir
-    if (user?.rol === 'personel') {
-      router.push('/anasayfa-p');
-    }
-  }, [user, router]);
-
-  // Personel rolündeki kullanıcılar için içeriği gösterme
-  if (user?.rol === 'personel') {
-    return null;
-  }
 
   return (
     <DashboardLayout>

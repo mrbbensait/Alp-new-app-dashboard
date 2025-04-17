@@ -25,7 +25,7 @@ export default function TablePage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [autoRefreshTimer, setAutoRefreshTimer] = useState<NodeJS.Timeout | null>(null);
   const [teslimatModalOpen, setTeslimatModalOpen] = useState(false);
-  const [selectedUrun, setSelectedUrun] = useState<{id: number, name: string} | null>(null);
+  const [selectedUrun, setSelectedUrun] = useState<{id: number, name: string, musteri: string, ambalaj: string, stok: number, kalanAdet: number} | null>(null);
   
   // Tablo şeması bulma
   const tableSchema = tables.find(table => table.name === decodedTableName);
@@ -153,9 +153,16 @@ export default function TablePage() {
   // Reçete adına tıklandığında teslimat geçmişi modalını aç (Bitmiş Ürün Stoğu tablosu için)
   const handleReceteClick = (receteAdi: string, urunId: number) => {
     if (decodedTableName === 'Bitmiş Ürün Stoğu') {
+      // Tıklanan ürünün tüm bilgilerini bul
+      const urunBilgisi = tableData.find(item => item.id === urunId);
+      
       setSelectedUrun({
         id: urunId,
-        name: receteAdi
+        name: receteAdi,
+        musteri: urunBilgisi?.['Müşteri'] || 'Belirtilmemiş',
+        ambalaj: urunBilgisi?.['Ambalaj (ml)'] || 'Belirtilmemiş',
+        stok: urunBilgisi?.['STOK / ADET'] || 0,
+        kalanAdet: urunBilgisi?.['Kalan Adet'] || 0
       });
       setTeslimatModalOpen(true);
     }
@@ -293,6 +300,10 @@ export default function TablePage() {
           urunId={selectedUrun?.id || 0}
           urunAdi={selectedUrun?.name || ''}
           onClose={() => setTeslimatModalOpen(false)}
+          musteri={selectedUrun?.musteri}
+          ambalaj={selectedUrun?.ambalaj}
+          stok={selectedUrun?.stok}
+          kalanAdet={selectedUrun?.kalanAdet}
         />
       )}
     </DashboardLayout>

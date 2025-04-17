@@ -5,9 +5,10 @@ import React, { useState } from 'react';
 interface TeslimatModalProps {
   isOpen: boolean;
   urunAdi: string;
-  onConfirm: (teslimatMiktari: number) => void;
+  onConfirm: (teslimatMiktari: number, teslimEden: string) => void;
   onCancel: () => void;
   isUpdating: boolean;
+  kullaniciAdSoyad?: string; // Mevcut kullanıcının adı
 }
 
 const TeslimatModal: React.FC<TeslimatModalProps> = ({ 
@@ -15,9 +16,11 @@ const TeslimatModal: React.FC<TeslimatModalProps> = ({
   urunAdi, 
   onConfirm, 
   onCancel, 
-  isUpdating 
+  isUpdating,
+  kullaniciAdSoyad = ''
 }) => {
   const [teslimatMiktari, setTeslimatMiktari] = useState<string>('');
+  const [teslimEden, setTeslimEden] = useState<string>(kullaniciAdSoyad);
   const [hataVar, setHataVar] = useState<boolean>(false);
   
   if (!isOpen) return null;
@@ -29,6 +32,10 @@ const TeslimatModal: React.FC<TeslimatModalProps> = ({
       setHataVar(false);
     }
   };
+
+  const handleTeslimEdenChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setTeslimEden(e.target.value);
+  };
   
   const handleSubmit = () => {
     const miktar = Number(teslimatMiktari);
@@ -38,12 +45,13 @@ const TeslimatModal: React.FC<TeslimatModalProps> = ({
       return;
     }
     
-    onConfirm(miktar);
+    onConfirm(miktar, teslimEden);
     setTeslimatMiktari('');
   };
   
   const handleCancel = () => {
     setTeslimatMiktari('');
+    setTeslimEden(kullaniciAdSoyad);
     setHataVar(false);
     onCancel();
   };
@@ -87,6 +95,22 @@ const TeslimatModal: React.FC<TeslimatModalProps> = ({
                 Lütfen geçerli bir teslimat miktarı girin
               </p>
             )}
+          </div>
+
+          <div className="mt-4">
+            <label htmlFor="teslimEden" className="block text-left text-sm font-medium text-gray-700 mb-1">Teslim Eden</label>
+            <div className="flex rounded-md shadow-sm">
+              <input
+                type="text"
+                name="teslimEden"
+                id="teslimEden"
+                className="focus:ring-indigo-500 focus:border-indigo-500 block w-full px-4 py-2 sm:text-sm border border-gray-300 rounded-md"
+                placeholder="Teslim eden kişi"
+                value={teslimEden}
+                onChange={handleTeslimEdenChange}
+                disabled={isUpdating}
+              />
+            </div>
           </div>
           
           <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3">
