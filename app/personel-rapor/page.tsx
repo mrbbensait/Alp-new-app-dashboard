@@ -33,7 +33,7 @@ export default function PersonelRaporPage() {
           setPersoneller(data.data.map((p: any) => ({ id: p.id, ad_soyad: p.ad_soyad })));
           
           if (user && user.id) {
-            setSelectedPersonelId(user.id);
+            setSelectedPersonelId(String(user.id));
           } else if (data.data.length > 0) {
             setSelectedPersonelId(data.data[0].id);
           }
