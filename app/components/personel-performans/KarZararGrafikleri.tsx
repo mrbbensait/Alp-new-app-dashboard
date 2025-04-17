@@ -12,8 +12,9 @@ import {
   Tooltip,
   Legend,
   Filler,
+  ArcElement,
 } from 'chart.js';
-import { Line, Bar } from 'react-chartjs-2';
+import { Line, Bar, Pie } from 'react-chartjs-2';
 import { PerformansRaporu, MaliyetFiyat } from '@/app/lib/types/index';
 import { GrafikTuru } from './GrafikTurSecici';
 import { formatDateTR } from '@/app/utils/date-utils';
@@ -29,7 +30,8 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  Filler
+  Filler,
+  ArcElement,
 );
 
 interface KarZararGrafikleriProps {
@@ -147,6 +149,34 @@ const KarZararGrafikleri: React.FC<KarZararGrafikleriProps> = ({
     ].filter(Boolean) as any[]
   };
   
+  // Pasta grafiği için kâr verileri
+  const pieDataKar = {
+    labels: ['Dolum Karı', 'Etiketleme Karı', 'Kutulama Karı', 'Selefon Karı'],
+    datasets: [
+      {
+        data: [
+          tarihler.reduce((sum, tarih) => sum + gunlukKarVerileri[tarih].dolum, 0),
+          tarihler.reduce((sum, tarih) => sum + gunlukKarVerileri[tarih].etiketleme, 0),
+          tarihler.reduce((sum, tarih) => sum + gunlukKarVerileri[tarih].kutulama, 0),
+          tarihler.reduce((sum, tarih) => sum + gunlukKarVerileri[tarih].selefon, 0)
+        ],
+        backgroundColor: [
+          'rgba(53, 162, 235, 0.7)',
+          'rgba(75, 192, 192, 0.7)',
+          'rgba(255, 99, 132, 0.7)',
+          'rgba(255, 159, 64, 0.7)'
+        ],
+        borderColor: [
+          'rgb(53, 162, 235)',
+          'rgb(75, 192, 192)',
+          'rgb(255, 99, 132)',
+          'rgb(255, 159, 64)'
+        ],
+        borderWidth: 1,
+      },
+    ],
+  };
+  
   // Çizgi ve bar grafiği için seçenekler
   const lineBarOptions = {
     responsive: true,
@@ -191,6 +221,35 @@ const KarZararGrafikleri: React.FC<KarZararGrafikleriProps> = ({
     }
   };
   
+  // Pasta grafiği için kâr seçenekleri
+  const pieOptionsKar = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'top' as const,
+      },
+      title: {
+        display: true,
+        text: 'Kâr Dağılımı (₺)',
+      },
+      tooltip: {
+         callbacks: {
+            label: function(context: any) {
+                let label = context.label || '';
+                if (label) {
+                    label += ': ';
+                }
+                if (context.parsed !== null) {
+                    // Para birimi formatı ekle
+                    label += new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(context.parsed);
+                }
+                return label;
+            }
+        }
+      }
+    },
+  };
+  
   if (raporlar.length === 0) {
     return (
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col items-center justify-center min-h-[300px]">
@@ -214,6 +273,13 @@ const KarZararGrafikleri: React.FC<KarZararGrafikleriProps> = ({
       
       {grafikTuru === 'alan' && (
         <Line options={areaOptions} data={lineBarData} />
+      )}
+
+      {/* Pasta grafiği eklendi */}
+      {grafikTuru === 'pasta' && (
+        <div className="max-w-md mx-auto">
+          <Pie options={pieOptionsKar} data={pieDataKar} />
+        </div>
       )}
     </div>
   );

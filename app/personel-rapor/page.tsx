@@ -16,42 +16,15 @@ export default function PersonelRaporPage() {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [hata, setHata] = useState<string>('');
   const [basarili, setBasarili] = useState<boolean>(false);
-  const [personeller, setPersoneller] = useState<{id: string, ad_soyad: string}[]>([]);
-  const [selectedPersonelId, setSelectedPersonelId] = useState<string>('');
   
   useEffect(() => {
-    const fetchPersoneller = async () => {
-      try {
-        const response = await fetch('/api/personel');
-        if (!response.ok) {
-          throw new Error('Personel listesi alınamadı');
-        }
-        
-        const data = await response.json();
-        
-        if (data.success && data.data.length > 0) {
-          setPersoneller(data.data.map((p: any) => ({ id: p.id, ad_soyad: p.ad_soyad })));
-          
-          if (user && user.id) {
-            setSelectedPersonelId(String(user.id));
-          } else if (data.data.length > 0) {
-            setSelectedPersonelId(data.data[0].id);
-          }
-        }
-      } catch (error) {
-        console.error('Personel listesi alınırken hata:', error);
-        setHata('Personel listesi alınırken bir hata oluştu.');
-      }
-    };
-    
-    fetchPersoneller();
-  }, [user]);
-  
-  useEffect(() => {
-    if (selectedPersonelId) {
-      bugununRaporunuGetir(selectedPersonelId);
+    if (user && user.id) {
+      bugununRaporunuGetir(String(user.id));
+    } else {
+      setIsLoading(false);
+      setHata('Giriş yapmış kullanıcı bilgisi bulunamadı.');
     }
-  }, [selectedPersonelId]);
+  }, [user]);
   
   const bugununRaporunuGetir = async (personelId: string) => {
     setIsLoading(true);
@@ -82,8 +55,8 @@ export default function PersonelRaporPage() {
   };
   
   const handleRaporGonder = async (rapor: Omit<PerformansRaporu, 'id' | 'created_at' | 'updated_at'>) => {
-    if (!selectedPersonelId) {
-      setHata('Lütfen bir personel seçiniz.');
+    if (!user || !user.id) {
+      setHata('Lütfen giriş yapınız.');
       return;
     }
     
@@ -99,7 +72,7 @@ export default function PersonelRaporPage() {
         },
         body: JSON.stringify({
           ...rapor,
-          personel_id: selectedPersonelId,
+          personel_id: String(user.id),
         }),
       });
       
@@ -134,6 +107,12 @@ export default function PersonelRaporPage() {
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-2xl font-bold text-gray-800 mb-6">Personel Performans Raporu</h1>
         
+        {user && user.ad_soyad && (
+          <div className="mb-6 p-3 bg-blue-50 border border-blue-200 rounded-md">
+            <p className="text-lg font-medium text-gray-800">Personel: {user.ad_soyad}</p>
+          </div>
+        )}
+        
         {hata && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-md">
             {hata}
@@ -146,32 +125,11 @@ export default function PersonelRaporPage() {
           </div>
         )}
         
-        {personeller.length > 0 && (
-          <div className="mb-6">
-            <label htmlFor="personel-select" className="block text-sm font-medium text-gray-700 mb-1">
-              Personel Seçin
-            </label>
-            <select
-              id="personel-select"
-              value={selectedPersonelId}
-              onChange={(e) => setSelectedPersonelId(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">Personel Seçiniz</option>
-              {personeller.map((personel) => (
-                <option key={personel.id} value={personel.id}>
-                  {personel.ad_soyad}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-        
         {isLoading ? (
           <div className="flex justify-center items-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
           </div>
-        ) : selectedPersonelId ? (
+        ) : user && user.id ? (
           <PerformansGirisFormu
             mevcutRapor={mevcutRapor}
             onSubmit={handleRaporGonder}
@@ -179,7 +137,7 @@ export default function PersonelRaporPage() {
           />
         ) : (
           <div className="p-4 bg-yellow-50 border border-yellow-200 text-yellow-700 rounded-md">
-            Lütfen rapor için personel seçin.
+            Raporu görüntülemek veya göndermek için lütfen giriş yapınız. 
           </div>
         )}
       </div>

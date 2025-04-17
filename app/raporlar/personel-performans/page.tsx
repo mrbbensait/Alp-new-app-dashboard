@@ -36,15 +36,42 @@ export default function PersonelPerformansPage() {
   const [duzenlemeModu, setDuzenlemeModu] = useState<boolean>(false);
   const [guncelMaliyetFiyatlar, setGuncelMaliyetFiyatlar] = useState<MaliyetFiyat[]>([]);
   
-  // Gösterilen veri seçenekleri
-  const [gosterilecekVeriler, setGosterilecekVeriler] = useState({
+  // Gösterilen veri seçenekleri - AYRILDI
+  // const [gosterilecekVeriler, setGosterilecekVeriler] = useState({
+  //   dolum: false,
+  //   etiketleme: false,
+  //   kutulama: false,
+  //   selefon: false,
+  //   toplam: true,
+  //   kar: false // Bu alanın ne işe yaradığı belirsiz, şimdilik kaldırıldı/yorum satırına alındı.
+  // });
+
+  const [gosterilecekPerformansVerileri, setGosterilecekPerformansVerileri] = useState({
     dolum: false,
     etiketleme: false,
     kutulama: false,
     selefon: false,
     toplam: true,
-    kar: false
   });
+
+  const [gosterilecekKarZararVerileri, setGosterilecekKarZararVerileri] = useState({
+    dolum: false,
+    etiketleme: false,
+    kutulama: false,
+    selefon: false,
+    toplam: true,
+  });
+  
+  // Renk eşleştirmesi için yardımcı nesne
+  const veriRenkleri: Record<string, { bg: string; text: string; hoverBg: string }> = {
+    dolum: { bg: 'bg-blue-500', text: 'text-white', hoverBg: 'hover:bg-blue-600' },
+    etiketleme: { bg: 'bg-teal-500', text: 'text-white', hoverBg: 'hover:bg-teal-600' }, // Yeşil yerine Teal kullandım (Chart.js ile daha uyumlu)
+    kutulama: { bg: 'bg-red-500', text: 'text-white', hoverBg: 'hover:bg-red-600' },
+    selefon: { bg: 'bg-orange-500', text: 'text-white', hoverBg: 'hover:bg-orange-600' },
+    toplam: { bg: 'bg-purple-600', text: 'text-white', hoverBg: 'hover:bg-purple-700' },
+    varsayilan_secili: { bg: 'bg-gray-700', text: 'text-white', hoverBg: 'hover:bg-gray-800' }, // Genel seçili stil
+    varsayilan_secili_degil: { bg: 'bg-gray-200', text: 'text-gray-700', hoverBg: 'hover:bg-gray-300' },
+  };
   
   // Performans özeti verileri
   const [performansOzeti, setPerformansOzeti] = useState({
@@ -165,9 +192,23 @@ export default function PersonelPerformansPage() {
     setKarZararGrafikTuru(yeniGrafikTuru);
   };
   
-  // Gösterilecek verileri değiştir
-  const handleGosterilecekVerileriDegistir = (alan: keyof typeof gosterilecekVeriler) => {
-    setGosterilecekVeriler(onceki => ({
+  // Gösterilecek verileri değiştir - AYRILDI
+  // const handleGosterilecekVerileriDegistir = (alan: keyof typeof gosterilecekVeriler) => {
+  //   setGosterilecekVeriler(onceki => ({
+  //     ...onceki,
+  //     [alan]: !onceki[alan]
+  //   }));
+  // };
+
+  const handleGosterilecekPerformansVerileriDegistir = (alan: keyof typeof gosterilecekPerformansVerileri) => {
+    setGosterilecekPerformansVerileri(onceki => ({
+      ...onceki,
+      [alan]: !onceki[alan]
+    }));
+  };
+
+  const handleGosterilecekKarZararVerileriDegistir = (alan: keyof typeof gosterilecekKarZararVerileri) => {
+    setGosterilecekKarZararVerileri(onceki => ({
       ...onceki,
       [alan]: !onceki[alan]
     }));
@@ -179,33 +220,66 @@ export default function PersonelPerformansPage() {
   // Birim maliyet ve fiyatları güncelle
   const handleMaliyetFiyatGuncelle = async () => {
     setIsLoading(true);
+    setHata(''); // Hata mesajını sıfırla
+    let basariliGuncelleme = true;
+
     try {
-      // Maliyet ve fiyat güncelleme isteği
-      const response = await fetch('/api/maliyet-fiyat/guncelle', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ maliyetFiyatlar: guncelMaliyetFiyatlar }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Maliyet ve fiyat bilgileri güncellenemedi');
+      // Değişen maliyet/fiyatları bul ve güncelleme isteklerini gönder
+      const guncellemeIstekleri = guncelMaliyetFiyatlar
+        .filter((guncel, index) => {
+          // Orijinal maliyet/fiyat verisini bul
+          const orijinal = maliyetFiyatlar.find(item => item.id === guncel.id);
+          // Değişiklik olup olmadığını kontrol et
+          return orijinal && (orijinal.birim_maliyet !== guncel.birim_maliyet || orijinal.birim_fiyat !== guncel.birim_fiyat);
+        })
+        .map(item => {
+          return fetch('/api/maliyet-fiyat', { // Endpoint güncellendi
+            method: 'PUT', // Metod güncellendi
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            // Sadece id ve değişen alanları gönder
+            body: JSON.stringify({
+              id: item.id,
+              birim_maliyet: item.birim_maliyet,
+              birim_fiyat: item.birim_fiyat,
+              // aktif: true, // Aktiflik durumu burada değiştirilmemeli
+              // gecerlilik_tarih: new Date().toISOString() // Backend halledecek
+            }),
+          });
+        });
+
+      // Tüm güncelleme isteklerini paralel olarak çalıştır
+      const sonuclar = await Promise.all(guncellemeIstekleri);
+
+      // İsteklerin başarılı olup olmadığını kontrol et
+      for (const response of sonuclar) {
+        if (!response.ok) {
+          basariliGuncelleme = false;
+          const errorData = await response.json().catch(() => ({})); // Hata mesajını yakala
+          console.error('Güncelleme hatası:', response.status, errorData);
+          // Tek tek hataları göstermek yerine genel bir hata mesajı verilebilir
+          // throw new Error(errorData.error || `Kayıt güncellenemedi (ID: ${response.url})`);
+        }
       }
-      
-      const data = await response.json();
-      
-      if (data.success) {
+
+      if (basariliGuncelleme) {
+        // Başarılı olursa state'i güncelle ve düzenleme modunu kapat
         setMaliyetFiyatlar(guncelMaliyetFiyatlar);
         setDuzenlemeModu(false);
         // Performans özetini tekrar hesapla
         hesaplaPerformansOzeti(raporlar, guncelMaliyetFiyatlar);
       } else {
-        throw new Error('Veri güncellenirken bir hata oluştu');
+        // Hata durumunda genel mesaj
+        throw new Error('Bazı maliyet ve fiyat bilgileri güncellenirken hata oluştu.');
       }
-    } catch (error) {
+
+    } catch (error: any) { // Hata tipini any olarak belirttik
       console.error('Veri güncellenirken hata:', error);
-      setHata('Maliyet ve fiyat bilgileri güncellenirken bir hata oluştu.');
+      setHata(error.message || 'Maliyet ve fiyat bilgileri güncellenirken bir hata oluştu.');
+      // Hata durumunda, kullanıcının girdiği değerlerin kaybolmaması için
+      // guncelMaliyetFiyatlar state'ini koru ve düzenleme modunu açık bırak.
+      // setDuzenlemeModu(false); // Bu satır kaldırıldı
     } finally {
       setIsLoading(false);
     }
@@ -262,89 +336,45 @@ export default function PersonelPerformansPage() {
               {/* Sol Kolon - Performans Grafiği ve Özeti */}
               <div className="space-y-6">
                 {/* Performans Grafiği */}
-                <div>
-                  <div className="flex justify-between items-center mb-3">
-                    <h2 className="text-lg font-medium text-gray-800">Performans Grafiği</h2>
+                <div className="col-span-1 md:col-span-2 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-lg font-semibold text-gray-700">Performans Grafiği</h2>
                     <GrafikTurSecici 
                       seciliGrafikTuru={performansGrafikTuru}
                       onGrafikTuruDegistir={handlePerformansGrafikTuruDegistir}
                     />
                   </div>
                   
-                  <PerformansGrafikleri
-                    raporlar={raporlar}
-                    maliyetFiyatlar={maliyetFiyatlar}
-                    grafikTuru={performansGrafikTuru}
-                    baslangicTarihi={baslangicTarihi}
-                    bitisTarihi={bitisTarihi}
-                    gosterilecekVeriler={gosterilecekVeriler}
-                  />
+                  {isLoading ? (
+                    <div className="flex justify-center items-center h-64">
+                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                    </div>
+                  ) : (
+                    <PerformansGrafikleri
+                      raporlar={raporlar}
+                      maliyetFiyatlar={maliyetFiyatlar}
+                      grafikTuru={performansGrafikTuru}
+                      baslangicTarihi={baslangicTarihi}
+                      bitisTarihi={bitisTarihi}
+                      gosterilecekVeriler={gosterilecekPerformansVerileri}
+                    />
+                  )}
                   
-                  <div className="flex flex-wrap gap-2 mt-3 justify-center">
-                    <button
-                      type="button"
-                      className={`px-3 py-1 rounded-lg text-xs font-medium flex items-center gap-1 ${
-                        gosterilecekVeriler.dolum 
-                          ? 'bg-blue-100 text-blue-700' 
-                          : 'bg-gray-100 text-gray-500'
-                      }`}
-                      onClick={() => handleGosterilecekVerileriDegistir('dolum')}
-                    >
-                      <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                      Dolum
-                    </button>
-                    
-                    <button
-                      type="button"
-                      className={`px-3 py-1 rounded-lg text-xs font-medium flex items-center gap-1 ${
-                        gosterilecekVeriler.etiketleme 
-                          ? 'bg-green-100 text-green-700' 
-                          : 'bg-gray-100 text-gray-500'
-                      }`}
-                      onClick={() => handleGosterilecekVerileriDegistir('etiketleme')}
-                    >
-                      <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                      Etiketleme
-                    </button>
-                    
-                    <button
-                      type="button"
-                      className={`px-3 py-1 rounded-lg text-xs font-medium flex items-center gap-1 ${
-                        gosterilecekVeriler.kutulama 
-                          ? 'bg-purple-100 text-purple-700' 
-                          : 'bg-gray-100 text-gray-500'
-                      }`}
-                      onClick={() => handleGosterilecekVerileriDegistir('kutulama')}
-                    >
-                      <span className="w-2 h-2 rounded-full bg-purple-500"></span>
-                      Kutulama
-                    </button>
-                    
-                    <button
-                      type="button"
-                      className={`px-3 py-1 rounded-lg text-xs font-medium flex items-center gap-1 ${
-                        gosterilecekVeriler.selefon 
-                          ? 'bg-amber-100 text-amber-700' 
-                          : 'bg-gray-100 text-gray-500'
-                      }`}
-                      onClick={() => handleGosterilecekVerileriDegistir('selefon')}
-                    >
-                      <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                      Selefon
-                    </button>
-                    
-                    <button
-                      type="button"
-                      className={`px-3 py-1 rounded-lg text-xs font-medium flex items-center gap-1 ${
-                        gosterilecekVeriler.toplam 
-                          ? 'bg-indigo-100 text-indigo-700' 
-                          : 'bg-gray-100 text-gray-500'
-                      }`}
-                      onClick={() => handleGosterilecekVerileriDegistir('toplam')}
-                    >
-                      <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-                      Toplam İş
-                    </button>
+                  <div className="mt-4 flex flex-wrap gap-2 justify-center">
+                    {(Object.keys(gosterilecekPerformansVerileri) as Array<keyof typeof gosterilecekPerformansVerileri>).map((alan) => {
+                      const renkStili = gosterilecekPerformansVerileri[alan]
+                        ? veriRenkleri[alan] || veriRenkleri.varsayilan_secili
+                        : veriRenkleri.varsayilan_secili_degil;
+                      return (
+                        <button
+                          key={alan}
+                          onClick={() => handleGosterilecekPerformansVerileriDegistir(alan)}
+                          className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${renkStili.bg} ${renkStili.text} ${renkStili.hoverBg}`}
+                        >
+                          {alan.charAt(0).toUpperCase() + alan.slice(1)}
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
                 
@@ -394,89 +424,52 @@ export default function PersonelPerformansPage() {
               {/* Sağ Kolon - Kar/Zarar Grafiği ve Finansal Özet */}
               <div className="space-y-6">
                 {/* Kar/Zarar Grafiği */}
-                <div>
-                  <div className="flex justify-between items-center mb-3">
-                    <h2 className="text-lg font-medium text-gray-800">Kar/Zarar Grafiği</h2>
+                <div className="col-span-1 md:col-span-2 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-lg font-semibold text-gray-700">Kar/Zarar Grafiği (₺)</h2>
                     <GrafikTurSecici 
                       seciliGrafikTuru={karZararGrafikTuru}
                       onGrafikTuruDegistir={handleKarZararGrafikTuruDegistir}
                     />
                   </div>
                   
-                  <KarZararGrafikleri
-                    raporlar={raporlar}
-                    maliyetFiyatlar={maliyetFiyatlar}
-                    grafikTuru={karZararGrafikTuru}
-                    baslangicTarihi={baslangicTarihi}
-                    bitisTarihi={bitisTarihi}
-                    gosterilecekVeriler={gosterilecekVeriler}
-                  />
+                  {isLoading ? (
+                    <div className="flex justify-center items-center h-64">
+                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                    </div>
+                  ) : (
+                    <KarZararGrafikleri
+                      raporlar={raporlar}
+                      maliyetFiyatlar={maliyetFiyatlar}
+                      grafikTuru={karZararGrafikTuru}
+                      baslangicTarihi={baslangicTarihi}
+                      bitisTarihi={bitisTarihi}
+                      gosterilecekVeriler={gosterilecekKarZararVerileri}
+                    />
+                  )}
                   
-                  <div className="flex flex-wrap gap-2 mt-3 justify-center">
-                    <button
-                      type="button"
-                      className={`px-3 py-1 rounded-lg text-xs font-medium flex items-center gap-1 ${
-                        gosterilecekVeriler.dolum 
-                          ? 'bg-blue-100 text-blue-700' 
-                          : 'bg-gray-100 text-gray-500'
-                      }`}
-                      onClick={() => handleGosterilecekVerileriDegistir('dolum')}
-                    >
-                      <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                      Dolum Karı
-                    </button>
-                    
-                    <button
-                      type="button"
-                      className={`px-3 py-1 rounded-lg text-xs font-medium flex items-center gap-1 ${
-                        gosterilecekVeriler.etiketleme 
-                          ? 'bg-green-100 text-green-700' 
-                          : 'bg-gray-100 text-gray-500'
-                      }`}
-                      onClick={() => handleGosterilecekVerileriDegistir('etiketleme')}
-                    >
-                      <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                      Etiketleme Karı
-                    </button>
-                    
-                    <button
-                      type="button"
-                      className={`px-3 py-1 rounded-lg text-xs font-medium flex items-center gap-1 ${
-                        gosterilecekVeriler.kutulama 
-                          ? 'bg-purple-100 text-purple-700' 
-                          : 'bg-gray-100 text-gray-500'
-                      }`}
-                      onClick={() => handleGosterilecekVerileriDegistir('kutulama')}
-                    >
-                      <span className="w-2 h-2 rounded-full bg-purple-500"></span>
-                      Kutulama Karı
-                    </button>
-                    
-                    <button
-                      type="button"
-                      className={`px-3 py-1 rounded-lg text-xs font-medium flex items-center gap-1 ${
-                        gosterilecekVeriler.selefon 
-                          ? 'bg-amber-100 text-amber-700' 
-                          : 'bg-gray-100 text-gray-500'
-                      }`}
-                      onClick={() => handleGosterilecekVerileriDegistir('selefon')}
-                    >
-                      <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                      Selefon Karı
-                    </button>
-                    
-                    <button
-                      type="button"
-                      className={`px-3 py-1 rounded-lg text-xs font-medium flex items-center gap-1 ${
-                        gosterilecekVeriler.toplam 
-                          ? 'bg-indigo-100 text-indigo-700' 
-                          : 'bg-gray-100 text-gray-500'
-                      }`}
-                      onClick={() => handleGosterilecekVerileriDegistir('toplam')}
-                    >
-                      <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-                      Toplam Kar
-                    </button>
+                  <div className="mt-4 flex flex-wrap gap-2 justify-center">
+                    {(Object.keys(gosterilecekKarZararVerileri) as Array<keyof typeof gosterilecekKarZararVerileri>).map((alan) => {
+                      const renkStili = gosterilecekKarZararVerileri[alan]
+                        ? veriRenkleri[alan] || veriRenkleri.varsayilan_secili
+                        : veriRenkleri.varsayilan_secili_degil;
+                      // Etiketleri belirle
+                      const etiket = 
+                        alan === 'dolum' ? 'Dolum Karı' :
+                        alan === 'etiketleme' ? 'Etiketleme Karı' :
+                        alan === 'kutulama' ? 'Kutulama Karı' :
+                        alan === 'selefon' ? 'Selefon Karı' :
+                        alan === 'toplam' ? 'Toplam Kar' : alan;
+                      return (
+                        <button
+                          key={alan}
+                          onClick={() => handleGosterilecekKarZararVerileriDegistir(alan)}
+                          className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${renkStili.bg} ${renkStili.text} ${renkStili.hoverBg}`}
+                        >
+                          {etiket}
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
                 
