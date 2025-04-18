@@ -372,7 +372,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
       >
         <div className="flex items-center justify-center px-4 py-4 border-b border-gray-700">
           <div className="text-xl font-bold leading-tight text-center tracking-wide">
-            ALPLEO Dashboard
+            Alp Ai Dashboard
           </div>
           <button
             type="button"
@@ -607,7 +607,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
         </div>
         
         <div className="mt-auto px-4 py-3 text-xs text-gray-400 border-t border-gray-700 text-center">
-          Versiyon 3.4.1
+          Versiyon 4.3.1
         </div>
       </aside>
       

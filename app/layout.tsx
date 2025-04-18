@@ -7,8 +7,8 @@ import { AuthProvider } from "./lib/AuthContext";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Üretim Yönetim Sistemi",
-  description: "Üretim ve stok yönetimi için dashboard uygulaması",
+  title: "Tam Entegre Yapay Zeka'lı Stok ve Üretim Yönetim Sistemi",
+  description: "Üretim ve stok yönetimi için yapay zeka destekli dashboard uygulaması",
 };
 
 export const viewport: Viewport = {

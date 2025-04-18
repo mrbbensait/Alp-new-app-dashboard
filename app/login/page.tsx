@@ -82,15 +82,19 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="mb-8">
+        <img src="/images/alpai-logo.png" alt="Alp Ai Logo" className="h-64" />
+      </div>
       <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-xl shadow-lg">
         <div className="text-center">
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-            Üretim Yönetim Sistemi
+          <h2 className="mt-6 text-2xl font-extrabold text-gray-900 whitespace-nowrap">
+            Tam Entegre Yapay ZEKA
           </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Lütfen bilgilerinizle giriş yapın
-          </p>
+          <h2 className="text-3xl font-extrabold text-gray-900">
+            Stok ve Üretim<br />
+            Yönetim Sistemi
+          </h2>
         </div>
         
         {error && (
@@ -148,6 +152,10 @@ export default function LoginPage() {
             </button>
           </div>
         </form>
+        
+        <div className="mt-6 text-center">
+          <p className="text-xs text-gray-400">Designed & Coded by Sait Arslan</p>
+        </div>
       </div>
     </div>
   );
