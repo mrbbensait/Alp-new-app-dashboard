@@ -4,20 +4,59 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../lib/AuthContext';
 
+interface Sayfa {
+  id: string;
+  sayfa_adi: string;
+  sayfa_yolu: string;
+}
+
 export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const { isAuthenticated, login, user } = useAuth();
+  const { isAuthenticated, login, user, sayfaYetkileri, fetchSayfaYetkileri } = useAuth();
 
-  // Kullanıcı zaten giriş yapmışsa ana sayfaya yönlendir
+  // Kullanıcı zaten giriş yapmışsa rolüne göre uygun sayfaya yönlendir
   useEffect(() => {
     if (isAuthenticated && user) {
-      router.push('/');
+      // Sayfa yetkilerini kontrol et ve yönlendir
+      const yonlendir = () => {
+        // Eğer yetkiler henüz yüklenmemişse, yükle
+        if (sayfaYetkileri.length === 0) {
+          fetchSayfaYetkileri()
+            .then(yetkiler => {
+              // Uygun sayfaya yönlendir
+              yonlendirUygunSayfaya(yetkiler);
+            })
+            .catch(error => {
+              console.error('Sayfa yetkileri alınamadı:', error);
+              router.push('/');
+            });
+        } else {
+          // Yetkiler zaten yüklenmişse, doğrudan yönlendir
+          yonlendirUygunSayfaya(sayfaYetkileri);
+        }
+      };
+      
+      // Yönlendirme işlemi
+      const yonlendirUygunSayfaya = (yetkiler: string[]) => {
+        if (yetkiler.includes('/')) {
+          router.push('/');
+        } else if (yetkiler.includes('/anasayfa-p')) {
+          router.push('/anasayfa-p');
+        } else if (yetkiler.length > 0) {
+          router.push(yetkiler[0]);
+        } else {
+          // Hiç sayfa yetkisi yoksa ana sayfaya yönlendir
+          router.push('/');
+        }
+      };
+      
+      yonlendir();
     }
-  }, [isAuthenticated, router, user]);
+  }, [isAuthenticated, router, user, sayfaYetkileri, fetchSayfaYetkileri]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,8 +68,8 @@ export default function LoginPage() {
       const success = await login(username, password);
       
       if (success) {
-        // Bütün kullanıcılar için ana sayfaya yönlendir
-        window.location.href = '/';
+        // Giriş başarılı olduktan sonra roller kontrol edilecek ve yönlendirme yapılacak
+        // useEffect hook'u bu kontrolleri otomatik olarak yapacak
       } else {
         setError('Kullanıcı adı veya şifre hatalı');
       }

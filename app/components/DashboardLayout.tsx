@@ -2,17 +2,21 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../lib/AuthContext';
+import { supabase } from '../lib/supabase';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
+  pageTitle?: string;
+  pageSubtitle?: string;
 }
 
-const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
+const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, pageTitle, pageSubtitle }) => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [sidebarMode, setSidebarMode] = useState<'auto' | 'collapsed'>('auto');
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
   const router = useRouter();
   const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const [userRolAd, setUserRolAd] = useState('Kullanıcı');
 
   // Kullanıcı giriş yapmadıysa login sayfasına yönlendir
   useEffect(() => {
@@ -21,17 +25,46 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     }
   }, [isAuthenticated, isLoading, router]);
 
+  // Kullanıcının rolünü çek
+  useEffect(() => {
+    const fetchUserRol = async () => {
+      if (user && user.rol_id) {
+        try {
+          const { data, error } = await supabase
+            .from('roller')
+            .select('rol_ad')
+            .eq('id', user.rol_id)
+            .single();
+            
+          if (error) throw error;
+          
+          if (data) {
+            setUserRolAd(data.rol_ad);
+          }
+        } catch (error) {
+          console.error('Rol bilgisi alınırken hata:', error);
+          // Hata durumunda varsayılan değer kullanılacak (state'in başlangıç değeri)
+        }
+      }
+    };
+    
+    fetchUserRol();
+  }, [user]);
+
   // localStorage'dan sidebar modunu almak için
   useEffect(() => {
     const savedMode = localStorage.getItem('sidebarMode') as 'auto' | 'collapsed' | null;
     if (savedMode) {
       setSidebarMode(savedMode);
-      setIsSidebarVisible(savedMode !== 'collapsed');
+      const isVisible = savedMode !== 'collapsed';
+      setIsSidebarVisible(isVisible);
+      console.log('Initial sidebar mode:', savedMode, 'isVisible:', isVisible);
     } else if (localStorage.getItem('sidebarMode') === 'pinned') {
       // Eski 'pinned' modu artık desteklenmiyor, 'auto'ya dönüştür
       setSidebarMode('auto');
       localStorage.setItem('sidebarMode', 'auto');
       setIsSidebarVisible(true);
+      console.log('Converting pinned mode to auto, isVisible: true');
     }
 
     // localStorage'daki değişiklikleri dinlemek için event listener
@@ -40,7 +73,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         const newMode = e.newValue as 'auto' | 'collapsed' | null;
         if (newMode) {
           setSidebarMode(newMode);
-          setIsSidebarVisible(newMode !== 'collapsed');
+          const isVisible = newMode !== 'collapsed';
+          setIsSidebarVisible(isVisible);
+          console.log('Storage changed - mode:', newMode, 'isVisible:', isVisible);
         }
       }
     };
@@ -53,21 +88,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
   // Sidebar görünürlüğünü güncellemek için
   const updateSidebarVisibility = (isVisible: boolean) => {
+    console.log('Sidebar visibility changed:', isVisible);
     setIsSidebarVisible(isVisible);
-  };
-
-  // Kullanıcı rolü çevirisi
-  const getRoleName = (rol?: string): string => {
-    switch (rol?.toLowerCase()) {
-      case 'patron':
-        return 'Patron';
-      case 'yonetici':
-        return 'Yönetici';
-      case 'personel':
-        return 'Personel';
-      default:
-        return 'Kullanıcı';
-    }
   };
 
   // Kullanıcı kimliği doğrulanmadıysa veya yükleme devam ediyorsa içeriği gösterme
@@ -83,14 +105,25 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="relative h-screen w-full bg-gray-50 overflow-hidden">
       <Sidebar 
         isMobileSidebarOpen={isMobileSidebarOpen}
         setIsMobileSidebarOpen={setIsMobileSidebarOpen}
         onVisibilityChange={updateSidebarVisibility}
       />
 
-      <div className={`flex flex-col flex-1 overflow-hidden transition-all duration-300 ${isSidebarVisible ? 'md:ml-0 md:w-[calc(100%-16rem)]' : 'md:ml-0 md:w-full'}`}>
+      <div 
+        className="flex flex-col overflow-hidden transition-all duration-300"
+        style={{
+          width: isSidebarVisible ? 'calc(100% - 16rem)' : '100%',
+          position: 'absolute',
+          left: isSidebarVisible ? '16rem' : '0',
+          top: 0,
+          right: 0,
+          bottom: 0,
+          transition: 'all 0.3s ease-in-out'
+        }}
+      >
         <header className="bg-white shadow-sm z-10">
           <div className="px-4 py-3 sm:px-6 md:px-8 flex justify-between items-center">
             <button
@@ -102,12 +135,19 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <h1 className="text-lg font-semibold text-gray-800 md:hidden truncate ml-2">Üretim Yönetimi</h1>
+            
+            {/* Sayfa başlığı ve alt başlığı */}
+            <div className="flex flex-col">
+              {pageTitle && <h1 className="text-lg font-semibold text-gray-800">{pageTitle}</h1>}
+              {pageSubtitle && <p className="text-sm text-gray-600">{pageSubtitle}</p>}
+            </div>
+            
             <div className="flex-1 md:ml-4"></div>
+            
             <div className="flex items-center space-x-4">
               <div className="flex flex-col items-end">
                 <span className="text-sm font-medium text-gray-700">{user?.ad_soyad || user?.kullanici_adi || 'Kullanıcı'}</span>
-                <span className="text-xs text-gray-500">{getRoleName(user?.rol)}</span>
+                <span className="text-xs text-gray-500">{userRolAd}</span>
               </div>
               <button 
                 onClick={logout}
@@ -122,7 +162,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto overflow-x-auto p-3 sm:p-6 md:p-8">
+        <main className="flex-1 overflow-y-auto overflow-x-auto p-1 sm:p-2 md:p-3">
           {children}
         </main>
         

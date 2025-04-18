@@ -19,6 +19,7 @@ import {
   hesaplaRaporToplamKar,
   enKarliIslemTuru
 } from '@/app/utils/hesaplamalar';
+import PageGuard from '@/app/components/PageGuard';
 
 export default function PersonelPerformansPage() {
   // Durum değişkenleri
@@ -307,402 +308,404 @@ export default function PersonelPerformansPage() {
   };
   
   return (
-    <DashboardLayout>
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">Personel Performans Analizi</h1>
-        
-        {hata && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-md">
-            {hata}
+    <PageGuard sayfaYolu="/raporlar/personel-performans">
+      <DashboardLayout>
+        <div className="container mx-auto px-4 py-8">
+          <h1 className="text-2xl font-bold text-gray-800 mb-6">Personel Performans Analizi</h1>
+          
+          {hata && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-md">
+              {hata}
+            </div>
+          )}
+          
+          <div className="grid grid-cols-1 gap-6 mb-8">
+            <div>
+              <TarihAralikSecici 
+                onTarihAralikiDegistir={handleTarihAralikDegistir}
+                defaultAralik="haftalik"
+              />
+            </div>
           </div>
-        )}
-        
-        <div className="grid grid-cols-1 gap-6 mb-8">
-          <div>
-            <TarihAralikSecici 
-              onTarihAralikiDegistir={handleTarihAralikDegistir}
-              defaultAralik="haftalik"
-            />
-          </div>
-        </div>
-        
-        {isLoading ? (
-          <div className="flex justify-center items-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-              {/* Sol Kolon - Performans Grafiği ve Özeti */}
-              <div className="space-y-6">
-                {/* Performans Grafiği */}
-                <div className="col-span-1 md:col-span-2 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-lg font-semibold text-gray-700">Performans Grafiği</h2>
-                    <GrafikTurSecici 
-                      seciliGrafikTuru={performansGrafikTuru}
-                      onGrafikTuruDegistir={handlePerformansGrafikTuruDegistir}
-                    />
+          
+          {isLoading ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                {/* Sol Kolon - Performans Grafiği ve Özeti */}
+                <div className="space-y-6">
+                  {/* Performans Grafiği */}
+                  <div className="col-span-1 md:col-span-2 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <div className="flex justify-between items-center mb-4">
+                      <h2 className="text-lg font-semibold text-gray-700">Performans Grafiği</h2>
+                      <GrafikTurSecici 
+                        seciliGrafikTuru={performansGrafikTuru}
+                        onGrafikTuruDegistir={handlePerformansGrafikTuruDegistir}
+                      />
+                    </div>
+                    
+                    {isLoading ? (
+                      <div className="flex justify-center items-center h-64">
+                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                      </div>
+                    ) : (
+                      <PerformansGrafikleri
+                        raporlar={raporlar}
+                        maliyetFiyatlar={maliyetFiyatlar}
+                        grafikTuru={performansGrafikTuru}
+                        baslangicTarihi={baslangicTarihi}
+                        bitisTarihi={bitisTarihi}
+                        gosterilecekVeriler={gosterilecekPerformansVerileri}
+                      />
+                    )}
+                    
+                    <div className="mt-4 flex flex-wrap gap-2 justify-center">
+                      {(Object.keys(gosterilecekPerformansVerileri) as Array<keyof typeof gosterilecekPerformansVerileri>).map((alan) => {
+                        const renkStili = gosterilecekPerformansVerileri[alan]
+                          ? veriRenkleri[alan] || veriRenkleri.varsayilan_secili
+                          : veriRenkleri.varsayilan_secili_degil;
+                        return (
+                          <button
+                            key={alan}
+                            onClick={() => handleGosterilecekPerformansVerileriDegistir(alan)}
+                            className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${renkStili.bg} ${renkStili.text} ${renkStili.hoverBg}`}
+                          >
+                            {alan.charAt(0).toUpperCase() + alan.slice(1)}
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
                   
-                  {isLoading ? (
-                    <div className="flex justify-center items-center h-64">
-                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                  {/* Performans Özeti */}
+                  <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 h-[260px] flex flex-col">
+                    <h2 className="text-base font-medium text-gray-800 mb-3">Performans Özeti</h2>
+                    
+                    <div className="grid grid-cols-2 gap-5 mb-4">
+                      <div>
+                        <p className="text-xs text-gray-600 mb-1">Toplam Dolum</p>
+                        <p className="text-lg font-semibold text-gray-900">
+                          {performansOzeti.toplamDolum.toLocaleString()}
+                        </p>
+                      </div>
+                      
+                      <div>
+                        <p className="text-xs text-gray-600 mb-1">Toplam Etiketleme</p>
+                        <p className="text-lg font-semibold text-gray-900">
+                          {performansOzeti.toplamEtiketleme.toLocaleString()}
+                        </p>
+                      </div>
+                      
+                      <div>
+                        <p className="text-xs text-gray-600 mb-1">Toplam Kutulama</p>
+                        <p className="text-lg font-semibold text-gray-900">
+                          {performansOzeti.toplamKutulama.toLocaleString()}
+                        </p>
+                      </div>
+                      
+                      <div>
+                        <p className="text-xs text-gray-600 mb-1">Toplam Selefon</p>
+                        <p className="text-lg font-semibold text-gray-900">
+                          {performansOzeti.toplamSelefon.toLocaleString()}
+                        </p>
+                      </div>
                     </div>
-                  ) : (
-                    <PerformansGrafikleri
-                      raporlar={raporlar}
-                      maliyetFiyatlar={maliyetFiyatlar}
-                      grafikTuru={performansGrafikTuru}
-                      baslangicTarihi={baslangicTarihi}
-                      bitisTarihi={bitisTarihi}
-                      gosterilecekVeriler={gosterilecekPerformansVerileri}
-                    />
-                  )}
-                  
-                  <div className="mt-4 flex flex-wrap gap-2 justify-center">
-                    {(Object.keys(gosterilecekPerformansVerileri) as Array<keyof typeof gosterilecekPerformansVerileri>).map((alan) => {
-                      const renkStili = gosterilecekPerformansVerileri[alan]
-                        ? veriRenkleri[alan] || veriRenkleri.varsayilan_secili
-                        : veriRenkleri.varsayilan_secili_degil;
-                      return (
-                        <button
-                          key={alan}
-                          onClick={() => handleGosterilecekPerformansVerileriDegistir(alan)}
-                          className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${renkStili.bg} ${renkStili.text} ${renkStili.hoverBg}`}
-                        >
-                          {alan.charAt(0).toUpperCase() + alan.slice(1)}
-                        </button>
-                      )
-                    })}
+                    
+                    <div className="border-t border-gray-200 pt-3 mt-auto">
+                      <p className="text-xs text-gray-600 mb-1">Toplam Yapılan İş</p>
+                      <p className="text-xl font-bold text-blue-600">
+                        {performansOzeti.toplamIslem.toLocaleString()}
+                      </p>
+                    </div>
                   </div>
                 </div>
                 
-                {/* Performans Özeti */}
-                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 h-[260px] flex flex-col">
-                  <h2 className="text-base font-medium text-gray-800 mb-3">Performans Özeti</h2>
-                  
-                  <div className="grid grid-cols-2 gap-5 mb-4">
-                    <div>
-                      <p className="text-xs text-gray-600 mb-1">Toplam Dolum</p>
-                      <p className="text-lg font-semibold text-gray-900">
-                        {performansOzeti.toplamDolum.toLocaleString()}
-                      </p>
+                {/* Sağ Kolon - Kar/Zarar Grafiği ve Finansal Özet */}
+                <div className="space-y-6">
+                  {/* Kar/Zarar Grafiği */}
+                  <div className="col-span-1 md:col-span-2 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <div className="flex justify-between items-center mb-4">
+                      <h2 className="text-lg font-semibold text-gray-700">Kar/Zarar Grafiği (₺)</h2>
+                      <GrafikTurSecici 
+                        seciliGrafikTuru={karZararGrafikTuru}
+                        onGrafikTuruDegistir={handleKarZararGrafikTuruDegistir}
+                      />
                     </div>
                     
-                    <div>
-                      <p className="text-xs text-gray-600 mb-1">Toplam Etiketleme</p>
-                      <p className="text-lg font-semibold text-gray-900">
-                        {performansOzeti.toplamEtiketleme.toLocaleString()}
-                      </p>
-                    </div>
+                    {isLoading ? (
+                      <div className="flex justify-center items-center h-64">
+                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                      </div>
+                    ) : (
+                      <KarZararGrafikleri
+                        raporlar={raporlar}
+                        maliyetFiyatlar={maliyetFiyatlar}
+                        grafikTuru={karZararGrafikTuru}
+                        baslangicTarihi={baslangicTarihi}
+                        bitisTarihi={bitisTarihi}
+                        gosterilecekVeriler={gosterilecekKarZararVerileri}
+                      />
+                    )}
                     
-                    <div>
-                      <p className="text-xs text-gray-600 mb-1">Toplam Kutulama</p>
-                      <p className="text-lg font-semibold text-gray-900">
-                        {performansOzeti.toplamKutulama.toLocaleString()}
-                      </p>
-                    </div>
-                    
-                    <div>
-                      <p className="text-xs text-gray-600 mb-1">Toplam Selefon</p>
-                      <p className="text-lg font-semibold text-gray-900">
-                        {performansOzeti.toplamSelefon.toLocaleString()}
-                      </p>
+                    <div className="mt-4 flex flex-wrap gap-2 justify-center">
+                      {(Object.keys(gosterilecekKarZararVerileri) as Array<keyof typeof gosterilecekKarZararVerileri>).map((alan) => {
+                        const renkStili = gosterilecekKarZararVerileri[alan]
+                          ? veriRenkleri[alan] || veriRenkleri.varsayilan_secili
+                          : veriRenkleri.varsayilan_secili_degil;
+                        // Etiketleri belirle
+                        const etiket = 
+                          alan === 'dolum' ? 'Dolum Karı' :
+                          alan === 'etiketleme' ? 'Etiketleme Karı' :
+                          alan === 'kutulama' ? 'Kutulama Karı' :
+                          alan === 'selefon' ? 'Selefon Karı' :
+                          alan === 'toplam' ? 'Toplam Kar' : alan;
+                        return (
+                          <button
+                            key={alan}
+                            onClick={() => handleGosterilecekKarZararVerileriDegistir(alan)}
+                            className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${renkStili.bg} ${renkStili.text} ${renkStili.hoverBg}`}
+                          >
+                            {etiket}
+                          </button>
+                        )
+                      })}
                     </div>
                   </div>
                   
-                  <div className="border-t border-gray-200 pt-3 mt-auto">
-                    <p className="text-xs text-gray-600 mb-1">Toplam Yapılan İş</p>
-                    <p className="text-xl font-bold text-blue-600">
-                      {performansOzeti.toplamIslem.toLocaleString()}
-                    </p>
+                  {/* Finansal Özet */}
+                  <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 h-[260px] flex flex-col">
+                    <h2 className="text-base font-medium text-gray-800 mb-3">Finansal Özet</h2>
+                    
+                    <div className="grid grid-cols-2 gap-5 mb-4">
+                      <div>
+                        <p className="text-xs text-gray-600 mb-1">Toplam Maliyet</p>
+                        <p className="text-lg font-semibold text-red-600">
+                          {performansOzeti.toplamMaliyet.toLocaleString()} €
+                        </p>
+                      </div>
+                      
+                      <div>
+                        <p className="text-xs text-gray-600 mb-1">Toplam Gelir</p>
+                        <p className="text-lg font-semibold text-green-600">
+                          {performansOzeti.toplamGelir.toLocaleString()} €
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {enKarliIslem && (
+                      <div className="border-t border-gray-200 pt-3 mb-4">
+                        <p className="text-xs text-gray-600 mb-1">En Karlı İşçilik</p>
+                        <p className="text-lg font-semibold text-green-700">
+                          {enKarliIslem.islemTuru}: {enKarliIslem.toplamKar.toLocaleString()} €
+                        </p>
+                      </div>
+                    )}
+                    
+                    <div className="border-t border-gray-200 pt-3 mt-auto">
+                      <p className="text-xs text-gray-600 mb-1">Toplam Kar</p>
+                      <p className="text-xl font-bold text-blue-600">
+                        {performansOzeti.toplamKar.toLocaleString()} €
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
               
-              {/* Sağ Kolon - Kar/Zarar Grafiği ve Finansal Özet */}
-              <div className="space-y-6">
-                {/* Kar/Zarar Grafiği */}
-                <div className="col-span-1 md:col-span-2 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-lg font-semibold text-gray-700">Kar/Zarar Grafiği (₺)</h2>
-                    <GrafikTurSecici 
-                      seciliGrafikTuru={karZararGrafikTuru}
-                      onGrafikTuruDegistir={handleKarZararGrafikTuruDegistir}
-                    />
+              <div className="p-4 bg-blue-50 border border-blue-200 text-blue-700 rounded-md mb-8">
+                <p className="font-medium mb-1">Rapor Bilgisi</p>
+                <p className="text-sm">
+                  {formatDateTR(baslangicTarihi)} - {formatDateTR(bitisTarihi)} tarihleri arasındaki performans verilerini görüntülüyorsunuz.
+                </p>
+              </div>
+              
+              {/* Performans Raporları Tablosu */}
+              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-8">
+                <h2 className="text-lg font-medium text-gray-800 mb-4">Performans Raporları</h2>
+                
+                {raporlar.length === 0 ? (
+                  <div className="text-center py-6 text-gray-500">
+                    <p>Seçilen tarih aralığında rapor bulunmuyor.</p>
                   </div>
-                  
-                  {isLoading ? (
-                    <div className="flex justify-center items-center h-64">
-                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-                    </div>
-                  ) : (
-                    <KarZararGrafikleri
-                      raporlar={raporlar}
-                      maliyetFiyatlar={maliyetFiyatlar}
-                      grafikTuru={karZararGrafikTuru}
-                      baslangicTarihi={baslangicTarihi}
-                      bitisTarihi={bitisTarihi}
-                      gosterilecekVeriler={gosterilecekKarZararVerileri}
-                    />
-                  )}
-                  
-                  <div className="mt-4 flex flex-wrap gap-2 justify-center">
-                    {(Object.keys(gosterilecekKarZararVerileri) as Array<keyof typeof gosterilecekKarZararVerileri>).map((alan) => {
-                      const renkStili = gosterilecekKarZararVerileri[alan]
-                        ? veriRenkleri[alan] || veriRenkleri.varsayilan_secili
-                        : veriRenkleri.varsayilan_secili_degil;
-                      // Etiketleri belirle
-                      const etiket = 
-                        alan === 'dolum' ? 'Dolum Karı' :
-                        alan === 'etiketleme' ? 'Etiketleme Karı' :
-                        alan === 'kutulama' ? 'Kutulama Karı' :
-                        alan === 'selefon' ? 'Selefon Karı' :
-                        alan === 'toplam' ? 'Toplam Kar' : alan;
-                      return (
-                        <button
-                          key={alan}
-                          onClick={() => handleGosterilecekKarZararVerileriDegistir(alan)}
-                          className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${renkStili.bg} ${renkStili.text} ${renkStili.hoverBg}`}
-                        >
-                          {etiket}
-                        </button>
-                      )
-                    })}
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Tarih
+                          </th>
+                          <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Dolum
+                          </th>
+                          <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Etiketleme
+                          </th>
+                          <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Kutulama
+                          </th>
+                          <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Selefon
+                          </th>
+                          <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Toplam İş
+                          </th>
+                          <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Maliyet (€)
+                          </th>
+                          <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Gelir (€)
+                          </th>
+                          <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Kar (€)
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {raporlar.map((rapor, index) => {
+                          const maliyet = hesaplaRaporToplamMaliyet(rapor, maliyetFiyatlar);
+                          const gelir = hesaplaRaporToplamGelir(rapor, maliyetFiyatlar);
+                          const kar = hesaplaRaporToplamKar(rapor, maliyetFiyatlar);
+                          const toplamIs = rapor.dolum + rapor.etiketleme + rapor.kutulama + rapor.selefon;
+                          
+                          return (
+                            <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                              <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                                {formatDateTR(rapor.tarih)}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500">
+                                {rapor.dolum.toLocaleString()}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500">
+                                {rapor.etiketleme.toLocaleString()}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500">
+                                {rapor.kutulama.toLocaleString()}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500">
+                                {rapor.selefon.toLocaleString()}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-sm text-center font-medium">
+                                {toplamIs.toLocaleString()}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-red-600">
+                                {maliyet.toLocaleString()}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-green-600">
+                                {gelir.toLocaleString()}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-medium">
+                                <span className={kar >= 0 ? 'text-blue-600' : 'text-red-600'}>
+                                  {kar.toLocaleString()}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
+                )}
+              </div>
+              
+              {/* Maliyet ve Fiyat Ayarları */}
+              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-8">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-lg font-medium text-gray-800">İşlem Türü Maliyet ve Fiyat Bilgileri (EUR)</h2>
+                  <button
+                    type="button"
+                    onClick={toggleDuzenlemeModu}
+                    className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-sm font-medium"
+                  >
+                    {duzenlemeModu ? 'İptal Et' : 'Düzenle'}
+                  </button>
                 </div>
                 
-                {/* Finansal Özet */}
-                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 h-[260px] flex flex-col">
-                  <h2 className="text-base font-medium text-gray-800 mb-3">Finansal Özet</h2>
-                  
-                  <div className="grid grid-cols-2 gap-5 mb-4">
-                    <div>
-                      <p className="text-xs text-gray-600 mb-1">Toplam Maliyet</p>
-                      <p className="text-lg font-semibold text-red-600">
-                        {performansOzeti.toplamMaliyet.toLocaleString()} €
-                      </p>
-                    </div>
-                    
-                    <div>
-                      <p className="text-xs text-gray-600 mb-1">Toplam Gelir</p>
-                      <p className="text-lg font-semibold text-green-600">
-                        {performansOzeti.toplamGelir.toLocaleString()} €
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {enKarliIslem && (
-                    <div className="border-t border-gray-200 pt-3 mb-4">
-                      <p className="text-xs text-gray-600 mb-1">En Karlı İşçilik</p>
-                      <p className="text-lg font-semibold text-green-700">
-                        {enKarliIslem.islemTuru}: {enKarliIslem.toplamKar.toLocaleString()} €
-                      </p>
-                    </div>
-                  )}
-                  
-                  <div className="border-t border-gray-200 pt-3 mt-auto">
-                    <p className="text-xs text-gray-600 mb-1">Toplam Kar</p>
-                    <p className="text-xl font-bold text-blue-600">
-                      {performansOzeti.toplamKar.toLocaleString()} €
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="p-4 bg-blue-50 border border-blue-200 text-blue-700 rounded-md mb-8">
-              <p className="font-medium mb-1">Rapor Bilgisi</p>
-              <p className="text-sm">
-                {formatDateTR(baslangicTarihi)} - {formatDateTR(bitisTarihi)} tarihleri arasındaki performans verilerini görüntülüyorsunuz.
-              </p>
-            </div>
-            
-            {/* Performans Raporları Tablosu */}
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-8">
-              <h2 className="text-lg font-medium text-gray-800 mb-4">Performans Raporları</h2>
-              
-              {raporlar.length === 0 ? (
-                <div className="text-center py-6 text-gray-500">
-                  <p>Seçilen tarih aralığında rapor bulunmuyor.</p>
-                </div>
-              ) : (
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Tarih
+                  <table className="min-w-full bg-white">
+                    <thead>
+                      <tr className="bg-gray-50 border-b">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          İşlem Türü
                         </th>
-                        <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Dolum
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Birim Maliyet (€)
                         </th>
-                        <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Etiketleme
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Birim Fiyat (€)
                         </th>
-                        <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Kutulama
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Birim Kar (€)
                         </th>
-                        <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Selefon
-                        </th>
-                        <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Toplam İş
-                        </th>
-                        <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Maliyet (€)
-                        </th>
-                        <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Gelir (€)
-                        </th>
-                        <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Kar (€)
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Son Güncelleme
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {raporlar.map((rapor, index) => {
-                        const maliyet = hesaplaRaporToplamMaliyet(rapor, maliyetFiyatlar);
-                        const gelir = hesaplaRaporToplamGelir(rapor, maliyetFiyatlar);
-                        const kar = hesaplaRaporToplamKar(rapor, maliyetFiyatlar);
-                        const toplamIs = rapor.dolum + rapor.etiketleme + rapor.kutulama + rapor.selefon;
-                        
-                        return (
-                          <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                              {formatDateTR(rapor.tarih)}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500">
-                              {rapor.dolum.toLocaleString()}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500">
-                              {rapor.etiketleme.toLocaleString()}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500">
-                              {rapor.kutulama.toLocaleString()}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500">
-                              {rapor.selefon.toLocaleString()}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-center font-medium">
-                              {toplamIs.toLocaleString()}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-red-600">
-                              {maliyet.toLocaleString()}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-green-600">
-                              {gelir.toLocaleString()}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-medium">
-                              <span className={kar >= 0 ? 'text-blue-600' : 'text-red-600'}>
-                                {kar.toLocaleString()}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
+                    <tbody className="divide-y divide-gray-200">
+                      {(duzenlemeModu ? guncelMaliyetFiyatlar : maliyetFiyatlar).map((item) => (
+                        <tr key={item.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {item.islem_turu.charAt(0).toUpperCase() + item.islem_turu.slice(1)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {duzenlemeModu ? (
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={item.birim_maliyet}
+                                onChange={(e) => handleMaliyetFiyatDegistir(item.id, 'birim_maliyet', parseFloat(e.target.value))}
+                                className="border border-gray-300 rounded-md px-2 py-1 w-24 text-right"
+                              />
+                            ) : (
+                              item.birim_maliyet.toFixed(2)
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {duzenlemeModu ? (
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={item.birim_fiyat}
+                                onChange={(e) => handleMaliyetFiyatDegistir(item.id, 'birim_fiyat', parseFloat(e.target.value))}
+                                className="border border-gray-300 rounded-md px-2 py-1 w-24 text-right"
+                              />
+                            ) : (
+                              item.birim_fiyat.toFixed(2)
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <span className={item.birim_fiyat - item.birim_maliyet > 0 ? 'text-green-600' : 'text-red-600'}>
+                              {(item.birim_fiyat - item.birim_maliyet).toFixed(2)}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {new Date(item.gecerlilik_tarih).toLocaleDateString('tr-TR')}
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
-              )}
-            </div>
-            
-            {/* Maliyet ve Fiyat Ayarları */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-8">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-medium text-gray-800">İşlem Türü Maliyet ve Fiyat Bilgileri (EUR)</h2>
-                <button
-                  type="button"
-                  onClick={toggleDuzenlemeModu}
-                  className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-sm font-medium"
-                >
-                  {duzenlemeModu ? 'İptal Et' : 'Düzenle'}
-                </button>
+                
+                {duzenlemeModu && (
+                  <div className="mt-6 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleMaliyetFiyatGuncelle}
+                      className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium"
+                    >
+                      Değişiklikleri Kaydet
+                    </button>
+                  </div>
+                )}
               </div>
-              
-              <div className="overflow-x-auto">
-                <table className="min-w-full bg-white">
-                  <thead>
-                    <tr className="bg-gray-50 border-b">
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        İşlem Türü
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Birim Maliyet (€)
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Birim Fiyat (€)
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Birim Kar (€)
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Son Güncelleme
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {(duzenlemeModu ? guncelMaliyetFiyatlar : maliyetFiyatlar).map((item) => (
-                      <tr key={item.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {item.islem_turu.charAt(0).toUpperCase() + item.islem_turu.slice(1)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {duzenlemeModu ? (
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={item.birim_maliyet}
-                              onChange={(e) => handleMaliyetFiyatDegistir(item.id, 'birim_maliyet', parseFloat(e.target.value))}
-                              className="border border-gray-300 rounded-md px-2 py-1 w-24 text-right"
-                            />
-                          ) : (
-                            item.birim_maliyet.toFixed(2)
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {duzenlemeModu ? (
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={item.birim_fiyat}
-                              onChange={(e) => handleMaliyetFiyatDegistir(item.id, 'birim_fiyat', parseFloat(e.target.value))}
-                              className="border border-gray-300 rounded-md px-2 py-1 w-24 text-right"
-                            />
-                          ) : (
-                            item.birim_fiyat.toFixed(2)
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <span className={item.birim_fiyat - item.birim_maliyet > 0 ? 'text-green-600' : 'text-red-600'}>
-                            {(item.birim_fiyat - item.birim_maliyet).toFixed(2)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(item.gecerlilik_tarih).toLocaleDateString('tr-TR')}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              
-              {duzenlemeModu && (
-                <div className="mt-6 flex justify-end">
-                  <button
-                    type="button"
-                    onClick={handleMaliyetFiyatGuncelle}
-                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium"
-                  >
-                    Değişiklikleri Kaydet
-                  </button>
-                </div>
-              )}
-            </div>
-          </>
-        )}
-      </div>
-    </DashboardLayout>
+            </>
+          )}
+        </div>
+      </DashboardLayout>
+    </PageGuard>
   );
 } 

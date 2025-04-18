@@ -48,7 +48,7 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSidebarOpen, onVisibilityChange }) => {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, sayfaYetkileri, fetchSayfaYetkileri } = useAuth();
   
   // Aktif sayfa durumuna göre menülerin açık/kapalı durumunu belirleme
   const isFormsPage = pathname.startsWith('/formlar');
@@ -62,8 +62,55 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
   const sidebarRef = useRef<HTMLDivElement>(null);
   const [sidebarMode, setSidebarMode] = useState<'auto' | 'collapsed'>('auto');
   const [isDesktopSidebarVisible, setIsDesktopSidebarVisible] = useState(true);
-  const [isHovered, setIsHovered] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Erişilebilir sayfalar durumu
+  const [yetkiliSayfalar, setYetkiliSayfalar] = useState<string[]>([]);
+  const [yetkiYukleniyor, setYetkiYukleniyor] = useState(true);
+  const [patronRolId, setPatronRolId] = useState<string | null>(null);
+
+  // Kullanıcının erişebileceği sayfaları getir
+  useEffect(() => {
+    const fetchErisimliSayfalar = async () => {
+      if (user && user.rol_id) {
+        try {
+          setYetkiYukleniyor(true);
+          
+          // Patron rol ID'yi kontrol et sadece bir kez
+          if (!patronRolId) {
+            try {
+              const patronResponse = await fetch('/api/roller?rol_ad=Patron');
+              const patronData = await patronResponse.json();
+              
+              if (patronData.success && patronData.data.length > 0) {
+                setPatronRolId(patronData.data[0].id);
+              }
+            } catch (patronError) {
+              console.error('Patron rol ID alımında hata:', patronError);
+            }
+          }
+          
+          // Context'te saklanan sayfa yetkilerini kullan
+          if (sayfaYetkileri && sayfaYetkileri.length > 0) {
+            setYetkiliSayfalar(sayfaYetkileri);
+          } else {
+            // Eğer sayfaYetkileri boşsa, yetkilerini yeniden çek
+            await fetchSayfaYetkileri();
+            // fetchSayfaYetkileri fonksiyonu çağrıldığında sayfaYetkileri state'i güncellenecek
+            // ve bu useEffect yeniden çalışacak, böylece yukarıdaki if bloğu çalışacak
+          }
+        } catch (error) {
+          console.error('Erişim sayfaları yüklenirken genel hata:', error);
+          // Genel hata durumunda da ana sayfayı göster
+          setYetkiliSayfalar(['/']);
+        } finally {
+          setYetkiYukleniyor(false);
+        }
+      }
+    };
+    
+    fetchErisimliSayfalar();
+  }, [user, sayfaYetkileri, fetchSayfaYetkileri, patronRolId]);
 
   // URL değiştiğinde açılır menü durumlarını güncelle
   useEffect(() => {
@@ -99,10 +146,21 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
     }
   };
 
+  // Sayfa erişim kontrolü fonksiyonu
+  const sayfayaErisimVarMi = (sayfaYolu: string) => {
+    // Eğer sayfalar henüz yüklenmiyorsa veya kullanıcı patron rolündeyse
+    if (yetkiYukleniyor || (patronRolId && user?.rol_id === patronRolId)) {
+      return true; // Varsayılan olarak göster
+    }
+    
+    // Sayfa yolu listede var mı kontrol et
+    return yetkiliSayfalar.includes(sayfaYolu);
+  };
+
   // Tüm kullanıcıların erişebileceği sayfalar
   const adminMenuItems = [
     { 
-      name: 'Ana Sayfa', 
+      name: 'ANA PANEL', 
       path: '/', 
       icon: <Home size={18} />
     },
@@ -130,7 +188,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
   // Personel sayfaları - tüm kullanıcıların erişebileceği
   const personalItems = [
     { 
-      name: 'ANA SAYFA-P', 
+      name: 'ANA PANEL-P', 
       path: '/anasayfa-p', 
       icon: <Home size={18} />
     },
@@ -157,6 +215,21 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
       name: 'Reçete Kaydı',
       path: '/formlar/recete-kaydi',
       icon: <FileText size={18} />
+    },
+    {
+      name: 'Kullanıcı Kaydı',
+      path: '/formlar/kullanici-kaydi',
+      icon: <Users size={18} />
+    },
+    {
+      name: 'Kullanıcı Listesi',
+      path: '/formlar/kullanici-listesi',
+      icon: <ClipboardList size={18} />
+    },
+    {
+      name: 'Rol Listesi',
+      path: '/formlar/rol-listesi',
+      icon: <ClipboardList size={18} />
     }
   ];
 
@@ -175,15 +248,40 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
     { name: 'Bitmiş Ürün Stoğu', icon: <Archive size={18} /> },
   ];
 
-  // Filtreleme işlemlerini kaldırdık, herkes her şeyi görsün
-  const filteredAdminMenuItems = adminMenuItems;
-  const filteredReportItems = reportItems;
-  const filteredPersonalItems = personalItems;
-  const filteredFormItems = formItems;
-  const filteredTableOrder = tableOrder;
+  // Erişim yetkisi olan sayfaları filtrele
+  const filteredAdminMenuItems = yetkiYukleniyor 
+    ? adminMenuItems 
+    : adminMenuItems.filter(item => sayfayaErisimVarMi(item.path));
+    
+  const filteredReportItems = yetkiYukleniyor
+    ? reportItems
+    : reportItems.filter(item => sayfayaErisimVarMi(item.path));
+    
+  const filteredPersonalItems = yetkiYukleniyor
+    ? personalItems
+    : personalItems.filter(item => sayfayaErisimVarMi(item.path));
+    
+  const filteredFormItems = yetkiYukleniyor
+    ? formItems
+    : formItems.filter(item => sayfayaErisimVarMi(item.path));
+    
+  // Tablolar için erişim kontrolü
+  const tableWithAccess = (tableName: string) => {
+    const path = `/tablo/${tableName}`;
+    return sayfayaErisimVarMi(path);
+  };
+  
+  // Erişim yetkisi olan tabloları filtrele
+  const filteredTableItems = yetkiYukleniyor
+    ? tableOrder
+    : tableOrder.filter(item => {
+        if (item.type === 'divider') return true; // Divider'lar direk kalıyor
+        // Tablonun originalName veya name'ini kullanarak erişim kontrolü
+        return tableWithAccess(item.originalName ?? item.name);
+      });
 
   // Divider'ları temizle (ardışık divider'lar veya başta/sonda divider varsa)
-  const cleanedTableOrder = filteredTableOrder.filter((item, index, arr) => {
+  const cleanedTableOrder = filteredTableItems.filter((item, index, arr) => {
     // Eğer divider ise, önceki öğe de divider değilse ve son öğe değilse göster
     if (item.type === 'divider') {
       // İlk öğe divider ise gösterme
@@ -244,35 +342,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
     }
   };
 
-  const handleMouseEnter = () => {
-    if (sidebarMode === 'collapsed') {
-      setIsHovered(true);
-      setIsDesktopSidebarVisible(true);
-      
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
-      
-      if (onVisibilityChange) {
-        onVisibilityChange(false);
-      }
-    }
-  };
-  
-  const handleMouseLeave = () => {
-    if (sidebarMode === 'collapsed' && isHovered) {
-      timerRef.current = setTimeout(() => {
-        setIsHovered(false);
-        setIsDesktopSidebarVisible(false);
-        
-        if (onVisibilityChange) {
-          onVisibilityChange(false);
-        }
-      }, 3000);
-    }
-  };
-  
   useEffect(() => {
     return () => {
       if (timerRef.current) {
@@ -290,20 +359,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
         />
       )}
 
-      {sidebarMode === 'collapsed' && !isDesktopSidebarVisible && !isHovered && (
-        <div 
-          className="hidden md:block fixed top-0 left-0 w-2 h-full z-30"
-          onMouseEnter={handleMouseEnter}
-        />
+      {sidebarMode === 'collapsed' && !isDesktopSidebarVisible && (
+        <div className="hidden md:block fixed top-0 left-0 w-2 h-full z-30" />
       )}
 
       <aside
         ref={sidebarRef}
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-gray-800 text-white transform transition-transform duration-300 ease-in-out ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-gray-800 text-white transform transition-transform duration-300 ease-in-out h-screen ${
           isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } ${(sidebarMode === 'auto' && isDesktopSidebarVisible) || (sidebarMode === 'collapsed' && isHovered) ? 'md:translate-x-0' : 'md:-translate-x-full'} md:static md:z-0 flex flex-col overflow-y-auto`}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
+        } ${(sidebarMode === 'auto' && isDesktopSidebarVisible) || sidebarMode === 'collapsed' && isDesktopSidebarVisible ? 'md:translate-x-0' : 'md:-translate-x-full'} md:static md:z-0 flex flex-col overflow-y-auto`}
+        style={{ minHeight: '100vh', width: '16rem', minWidth: '16rem', flexShrink: 0 }}
       >
         <div className="flex items-center justify-center px-4 py-4 border-b border-gray-700">
           <div className="text-xl font-bold leading-tight text-center tracking-wide">
@@ -525,7 +590,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
               
               <div 
                 className="flex items-center cursor-pointer hover:bg-gray-700 px-2 py-1 rounded"
-                onClick={() => changeSidebarMode('collapsed')}
+                onClick={() => {
+                  console.log('Sidebar mode changed to collapsed');
+                  changeSidebarMode('collapsed');
+                }}
               >
                 <div className="w-4 h-4 flex items-center justify-center mr-2">
                   {sidebarMode === 'collapsed' && (
@@ -535,7 +603,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
                 <span className={sidebarMode === 'collapsed' ? 'text-white' : ''}>Kenara Küçült</span>
               </div>
             </div>
-            <p className="mt-4">© 2023 Üretim Yönetim Sistemi</p>
           </div>
         </div>
         
@@ -544,7 +611,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
         </div>
       </aside>
       
-      {sidebarMode === 'collapsed' && !isDesktopSidebarVisible && !isHovered && (
+      {sidebarMode === 'collapsed' && !isDesktopSidebarVisible && (
         <button 
           className="hidden md:flex fixed top-4 left-4 z-30 p-2 rounded-md bg-gray-800 text-white hover:bg-gray-700 transition-all"
           onClick={handleOpenSidebar}

@@ -6,10 +6,10 @@ import { supabase } from './supabase';
 
 // Kullanıcı tipi
 interface User {
-  id: number;
+  id: string;
   kullanici_adi: string;
   ad_soyad: string;
-  rol?: string;
+  rol_id: string;
 }
 
 // Auth context için tip tanımı
@@ -19,6 +19,8 @@ interface AuthContextType {
   isLoading: boolean;
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
+  sayfaYetkileri: string[]; // Erişilebilir sayfa yollarını sakla
+  fetchSayfaYetkileri: () => Promise<string[]>; // Sayfa yetkilerini çekme fonksiyonu
 }
 
 // Context oluşturma
@@ -28,7 +30,36 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [sayfaYetkileri, setSayfaYetkileri] = useState<string[]>([]);
   const router = useRouter();
+
+  // Sayfa yetkilerini çekme fonksiyonu
+  const fetchSayfaYetkileri = async (): Promise<string[]> => {
+    // Eğer sayfaYetkileri zaten dolu ise API çağrısı yapmadan mevcut değeri döndür
+    if (sayfaYetkileri.length > 0) {
+      return sayfaYetkileri;
+    }
+
+    if (!user || !user.rol_id) return [];
+    
+    try {
+      const response = await fetch(`/api/rol-erisim-sayfalari?rol_id=${user.rol_id}`);
+      const data = await response.json();
+      
+      if (data.success && data.data.length > 0) {
+        const yetkiliSayfalar = data.data.map((sayfa: any) => sayfa.sayfa_yolu);
+        // Context state'ini güncelle
+        setSayfaYetkileri(yetkiliSayfalar);
+        // Ayrıca localStorage'a da kaydet
+        localStorage.setItem('sayfaYetkileri', JSON.stringify(yetkiliSayfalar));
+        return yetkiliSayfalar;
+      }
+      return [];
+    } catch (error) {
+      console.error('Sayfa yetkileri alınırken hata:', error);
+      return [];
+    }
+  };
 
   // Sayfa yüklendiğinde kullanıcı durumunu kontrol et
   useEffect(() => {
@@ -37,19 +68,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(true);
       const isLoggedIn = localStorage.getItem('isLoggedIn');
       const userDataString = localStorage.getItem('user');
+      const sayfaYetkileriString = localStorage.getItem('sayfaYetkileri');
 
       if (isLoggedIn === 'true' && userDataString) {
         try {
           const userData = JSON.parse(userDataString);
           setUser(userData);
+          
+          // Sayfa yetkilerini localStorage'dan al (varsa)
+          if (sayfaYetkileriString) {
+            try {
+              const yetkiliSayfalar = JSON.parse(sayfaYetkileriString);
+              setSayfaYetkileri(yetkiliSayfalar);
+            } catch (e) {
+              console.error('Sayfa yetkileri ayrıştırılamadı:', e);
+            }
+          }
         } catch (error) {
           console.error('Kullanıcı verisi ayrıştırılamadı:', error);
           setUser(null);
           localStorage.removeItem('isLoggedIn');
           localStorage.removeItem('user');
+          localStorage.removeItem('sayfaYetkileri');
         }
       } else {
         setUser(null);
+        setSayfaYetkileri([]);
       }
       setIsLoading(false);
     };
@@ -58,7 +102,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // Storage olaylarını dinleme
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'isLoggedIn' || e.key === 'user') {
+      if (e.key === 'isLoggedIn' || e.key === 'user' || e.key === 'sayfaYetkileri') {
         checkAuth();
       }
     };
@@ -93,7 +137,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           id: data.id,
           kullanici_adi: data.kullanici_adi,
           ad_soyad: data.ad_soyad,
-          rol: data.rol || 'kullanici'
+          rol_id: data.rol_id
         };
         
         localStorage.setItem('isLoggedIn', 'true');
@@ -103,7 +147,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // 7 günlük bir cookie olarak ayarla
         document.cookie = `userData=${encodeURIComponent(JSON.stringify(userData))}; path=/; max-age=${60*60*24*7}; SameSite=Lax`;
         
+        // Önce kullanıcı state'ini güncelle
         setUser(userData);
+        
+        // Kullanıcının erişebileceği sayfaları çek ve sakla
+        // Burada await kullanarak yetki kontrolünün tamamlanmasını garantiliyoruz
+        const yetkiliSayfalar = await fetch(`/api/rol-erisim-sayfalari?rol_id=${userData.rol_id}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.success && data.data.length > 0) {
+              const sayfaYollari = data.data.map((sayfa: any) => sayfa.sayfa_yolu);
+              setSayfaYetkileri(sayfaYollari);
+              localStorage.setItem('sayfaYetkileri', JSON.stringify(sayfaYollari));
+              return sayfaYollari;
+            }
+            return [];
+          })
+          .catch(err => {
+            console.error('Sayfa yetkileri alınırken hata:', err);
+            return [];
+          });
+        
         setIsLoading(false);
         return true;
       }
@@ -121,11 +185,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const logout = () => {
     localStorage.removeItem('isLoggedIn');
     localStorage.removeItem('user');
+    localStorage.removeItem('sayfaYetkileri');
     
     // Cookie'yi de temizle
     document.cookie = 'userData=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
     
     setUser(null);
+    setSayfaYetkileri([]);
     router.push('/login');
   };
 
@@ -135,7 +201,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     isAuthenticated: !!user,
     isLoading,
     login,
-    logout
+    logout,
+    sayfaYetkileri,
+    fetchSayfaYetkileri
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,13 +1,23 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/app/components/DashboardLayout';
 import { toast } from 'react-hot-toast';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/app/lib/AuthContext';
+import { supabase } from '@/app/lib/supabase';
+
+interface Rol {
+  id: string;
+  rol_ad: string;
+  created_at: string;
+}
 
 const KullaniciKaydiPage = () => {
   const { user } = useAuth();
+  
+  // Rolleri tutacak state
+  const [roller, setRoller] = useState<Rol[]>([]);
   
   // Form durumu
   const [formData, setFormData] = useState<{
@@ -15,13 +25,13 @@ const KullaniciKaydiPage = () => {
     kullanici_adi: string;
     sifre: string;
     sifreTekrar: string;
-    rol: "patron" | "yonetici" | "personel";
+    rol_id: string;
   }>({
     ad_soyad: "",
     kullanici_adi: "",
     sifre: "",
     sifreTekrar: "",
-    rol: "personel",
+    rol_id: "",
   });
   
   // Şifre görünürlük durumları
@@ -32,6 +42,34 @@ const KullaniciKaydiPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [hata, setHata] = useState('');
   const [basarili, setBasarili] = useState(false);
+  
+  // Roller verisini çek
+  useEffect(() => {
+    const rolleriGetir = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('roller')
+          .select('*')
+          .order('rol_ad');
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          setRoller(data);
+          // İlk rolü varsayılan olarak seç
+          setFormData(prev => ({
+            ...prev,
+            rol_id: data[0].id
+          }));
+        }
+      } catch (error) {
+        console.error('Roller verileri çekilirken hata oluştu:', error);
+        toast.error('Roller verileri alınamadı');
+      }
+    };
+    
+    rolleriGetir();
+  }, []);
   
   // Form değişikliği
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -51,7 +89,8 @@ const KullaniciKaydiPage = () => {
       !formData.ad_soyad ||
       !formData.kullanici_adi ||
       !formData.sifre ||
-      !formData.sifreTekrar
+      !formData.sifreTekrar ||
+      !formData.rol_id
     ) {
       toast.error("Lütfen tüm zorunlu alanları doldurun.");
       return;
@@ -64,29 +103,40 @@ const KullaniciKaydiPage = () => {
     }
 
     setIsLoading(true);
+    setHata('');
+    setBasarili(false);
 
     try {
-      const response = await fetch('/api/personel', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      // Kullanıcı adı kontrolü
+      const { data: existingUser, error: checkError } = await supabase
+        .from('personel')
+        .select('id')
+        .eq('kullanici_adi', formData.kullanici_adi)
+        .maybeSingle();
+        
+      if (checkError) throw checkError;
+      
+      if (existingUser) {
+        throw new Error('Bu kullanıcı adı zaten kullanılıyor.');
+      }
+      
+      // Yeni personel ekle
+      const { data, error } = await supabase
+        .from('personel')
+        .insert({
           ad_soyad: formData.ad_soyad,
           kullanici_adi: formData.kullanici_adi,
           sifre: formData.sifre,
-          rol: formData.rol,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Bir hata oluştu');
-      }
-
-      const data = await response.json();
+          rol_id: formData.rol_id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select();
+      
+      if (error) throw error;
       
       toast.success("Kullanıcı başarıyla eklendi.");
+      setBasarili(true);
       
       // Reset form after successful submission
       setFormData({
@@ -94,11 +144,12 @@ const KullaniciKaydiPage = () => {
         kullanici_adi: "",
         sifre: "",
         sifreTekrar: "",
-        rol: "personel",
+        rol_id: roller.length > 0 ? roller[0].id : "",
       });
       
     } catch (error: any) {
-      console.error('Error adding personnel:', error);
+      console.error('Personel eklenirken hata:', error);
+      setHata(error.message || 'Kullanıcı eklenirken bir hata oluştu');
       toast.error(error.message || 'Bir hata oluştu');
     } finally {
       setIsLoading(false);
@@ -217,21 +268,27 @@ const KullaniciKaydiPage = () => {
 
               <div>
                 <label
-                  htmlFor="rol"
+                  htmlFor="rol_id"
                   className="block text-sm font-medium text-gray-700"
                 >
                   Rol <span className="text-red-600">*</span>
                 </label>
                 <select
-                  id="rol"
-                  name="rol"
+                  id="rol_id"
+                  name="rol_id"
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                  value={formData.rol}
+                  value={formData.rol_id}
                   onChange={handleChange}
                 >
-                  <option value="patron">Patron</option>
-                  <option value="yonetici">Yönetici</option>
-                  <option value="personel">Personel</option>
+                  {roller.length === 0 ? (
+                    <option value="">Roller yükleniyor...</option>
+                  ) : (
+                    roller.map(rol => (
+                      <option key={rol.id} value={rol.id}>
+                        {rol.rol_ad}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
             </div>
@@ -239,7 +296,7 @@ const KullaniciKaydiPage = () => {
             <div className="mt-6 flex justify-end">
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || roller.length === 0}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 w-full sm:w-auto"
               >
                 {isLoading ? "Kaydediliyor..." : "Kaydet"}

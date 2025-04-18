@@ -4,15 +4,32 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/app/components/DashboardLayout';
-import { Personel, Rol } from '@/app/lib/types/index';
-import { Trash2, Edit, Plus, Search, UserPlus, AlertTriangle, X, Save, Eye, EyeOff } from 'lucide-react';
+import { Trash2, Edit, Search, UserPlus, AlertTriangle, X, Save, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { supabase } from '@/app/lib/supabase';
+
+interface Personel {
+  id: string;
+  ad_soyad: string;
+  kullanici_adi: string;
+  rol_id: string;
+  created_at: string;
+  updated_at: string;
+  sifre?: string;
+}
+
+interface Rol {
+  id: string;
+  rol_ad: string;
+  created_at: string;
+}
 
 const KullaniciListesiPage = () => {
   const router = useRouter();
   
   // Durum değişkenleri
-  const [personeller, setPersoneller] = useState<Personel[]>([]);
+  const [personeller, setPersoneller] = useState<(Personel & { rol_ad: string })[]>([]);
+  const [roller, setRoller] = useState<Rol[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hata, setHata] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -22,59 +39,75 @@ const KullaniciListesiPage = () => {
   const [silmeOnayModalAcik, setSilmeOnayModalAcik] = useState(false);
   
   // Düzenleme işlemi için
-  const [duzenlenecekPersonel, setDuzenlenecekPersonel] = useState<Personel | null>(null);
+  const [duzenlenecekPersonel, setDuzenlenecekPersonel] = useState<(Personel & { rol_ad: string }) | null>(null);
   const [duzenleModalAcik, setDuzenleModalAcik] = useState(false);
   const [duzenleForm, setDuzenleForm] = useState({
     ad_soyad: '',
     kullanici_adi: '',
-    rol: 'personel' as 'patron' | 'yonetici' | 'personel',
+    rol_id: '',
     sifre: ''
   });
   const [sifreGuncelle, setSifreGuncelle] = useState(false);
   const [sifreGoster, setSifreGoster] = useState(false);
   const [guncellemeHata, setGuncellemeHata] = useState('');
   
-  // Personelleri getir
-  const personelleriGetir = async () => {
+  // Rolleri ve personelleri getir
+  const verileriGetir = async () => {
     setIsLoading(true);
     setHata('');
     
     try {
-      const response = await fetch('/api/personel');
+      // Rolleri getir
+      const { data: rolData, error: rolError } = await supabase
+        .from('roller')
+        .select('*')
+        .order('rol_ad');
       
-      if (!response.ok) {
-        throw new Error('Personel verileri alınamadı');
-      }
+      if (rolError) throw rolError;
+      setRoller(rolData || []);
       
-      const data = await response.json();
+      // Personelleri rol bilgileriyle birlikte getir
+      const { data: personelData, error: personelError } = await supabase
+        .from('personel')
+        .select(`
+          *,
+          rollers:rol_id (
+            rol_ad
+          )
+        `)
+        .order('ad_soyad');
       
-      if (data.success) {
-        setPersoneller(data.data);
-      } else {
-        throw new Error(data.error || 'Veriler alınamadı');
-      }
+      if (personelError) throw personelError;
+      
+      // Verileri düzenle
+      const duzenliPersoneller = personelData?.map(p => ({
+        ...p,
+        rol_ad: p.rollers?.rol_ad || ''
+      })) || [];
+      
+      setPersoneller(duzenliPersoneller);
     } catch (error: any) {
-      console.error('Personel verileri alınırken hata:', error);
-      setHata(error.message || 'Personel verileri alınırken bir hata oluştu');
+      console.error('Veriler alınırken hata:', error);
+      setHata(error.message || 'Veriler alınırken bir hata oluştu');
     } finally {
       setIsLoading(false);
     }
   };
   
-  // Sayfa yüklendiğinde personelleri getir
+  // Sayfa yüklendiğinde verileri getir
   useEffect(() => {
-    personelleriGetir();
+    verileriGetir();
   }, []);
   
   // Arama filtrelemesi
   const filtreliPersoneller = personeller.filter(personel => 
     personel.ad_soyad.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    personel.kullanici_adi.toLowerCase().includes(searchQuery.toLowerCase())
+    personel.kullanici_adi.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    personel.rol_ad.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
   // Silme onayı modal'ı
   const silmeOnayiGoster = (personelId: string) => {
-    console.log("Silinecek personel ID:", personelId);
     setSilinecekPersonel(personelId);
     setSilmeOnayModalAcik(true);
   };
@@ -87,36 +120,31 @@ const KullaniciListesiPage = () => {
       // Silme işlemi başlamadan önce yükleme durumunu ayarla
       setIsLoading(true);
       
-      const response = await fetch(`/api/personel?id=${silinecekPersonel}`, {
-        method: 'DELETE',
-      });
+      const { error } = await supabase
+        .from('personel')
+        .delete()
+        .eq('id', silinecekPersonel);
       
-      const data = await response.json();
-      
-      if (!response.ok) {
+      if (error) {
         // Eğer ilişkisel veritabanı hatası varsa daha anlaşılır bir mesaj göster
-        if (data.error && data.error.includes("violates foreign key constraint")) {
+        if (error.message && error.message.includes("violates foreign key constraint")) {
           throw new Error(
-            "Bu kullanıcı performans raporlarıyla ilişkili olduğu için silinemiyor. " +
+            "Bu kullanıcı diğer tablolarla ilişkili olduğu için silinemiyor. " +
             "Veritabanı yöneticinizle iletişime geçin."
           );
         } else {
-          throw new Error(data.error || 'Silme işlemi başarısız oldu');
+          throw new Error(error.message || 'Silme işlemi başarısız oldu');
         }
       }
       
-      if (data.success) {
-        // Listeyi güncelle
-        setPersoneller(prev => prev.filter(p => p.id !== silinecekPersonel));
-        setSilmeOnayModalAcik(false);
-        setSilinecekPersonel(null);
-        
-        // Başarı mesajı göster
-        setHata('');
-        toast.success('Kullanıcı başarıyla silindi');
-      } else {
-        throw new Error(data.error || 'Silme işlemi başarısız oldu');
-      }
+      // Listeyi güncelle
+      setPersoneller(prev => prev.filter(p => p.id !== silinecekPersonel));
+      setSilmeOnayModalAcik(false);
+      setSilinecekPersonel(null);
+      
+      // Başarı mesajı göster
+      setHata('');
+      toast.success('Kullanıcı başarıyla silindi');
     } catch (error: any) {
       console.error('Personel silinirken hata:', error);
       setHata(error.message);
@@ -126,35 +154,26 @@ const KullaniciListesiPage = () => {
     }
   };
   
-  // Rol adını formatla
-  const formatRol = (rol: 'patron' | 'yonetici' | 'personel') => {
-    if (rol === Rol.Patron) return 'Patron';
-    if (rol === Rol.Yonetici) return 'Yönetici';
-    return 'Personel';
-  };
-  
   // Düzenleme modalını aç
-  const duzenleModalAc = (personel: Personel) => {
+  const duzenleModalAc = (personel: (Personel & { rol_ad: string })) => {
     setDuzenlenecekPersonel(personel);
     setDuzenleForm({
       ad_soyad: personel.ad_soyad,
       kullanici_adi: personel.kullanici_adi,
-      rol: personel.rol,
+      rol_id: personel.rol_id,
       sifre: ''
     });
     setSifreGuncelle(false);
     setDuzenleModalAcik(true);
+    setGuncellemeHata('');
   };
-
-  // Form değişikliklerini izle
+  
+  // Form değişikliklerini işle
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setDuzenleForm({
-      ...duzenleForm,
-      [name]: value
-    });
+    setDuzenleForm(prev => ({ ...prev, [name]: value }));
   };
-
+  
   // Personel güncelleme
   const personelGuncelle = async () => {
     if (!duzenlenecekPersonel) return;
@@ -163,98 +182,84 @@ const KullaniciListesiPage = () => {
       setIsLoading(true);
       setGuncellemeHata('');
       
-      // Form doğrulama
-      if (!duzenleForm.ad_soyad || !duzenleForm.kullanici_adi) {
-        throw new Error('Ad Soyad ve Kullanıcı Adı alanları zorunludur');
-      }
-      
-      if (sifreGuncelle && !duzenleForm.sifre) {
-        throw new Error('Şifre güncellemek istiyorsanız, yeni şifre girmelisiniz');
-      }
-      
-      const guncellenecekVeri: any = {
-        id: duzenlenecekPersonel.id,
+      const updates: any = {
         ad_soyad: duzenleForm.ad_soyad,
         kullanici_adi: duzenleForm.kullanici_adi,
-        rol: duzenleForm.rol
+        rol_id: duzenleForm.rol_id,
+        updated_at: new Date().toISOString()
       };
       
-      // Şifre güncellenmek isteniyorsa ekle
+      // Şifre güncellenecekse ekle
       if (sifreGuncelle && duzenleForm.sifre) {
-        guncellenecekVeri.sifre = duzenleForm.sifre;
+        updates.sifre = duzenleForm.sifre;
       }
       
-      console.log('Güncellenecek veri:', guncellenecekVeri);
+      // Kullanıcı adı benzersizliğini kontrol et
+      const { data: existingUser, error: checkError } = await supabase
+        .from('personel')
+        .select('id')
+        .eq('kullanici_adi', duzenleForm.kullanici_adi)
+        .neq('id', duzenlenecekPersonel.id)
+        .maybeSingle();
       
-      const response = await fetch('/api/personel', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(guncellenecekVeri),
-      });
+      if (checkError) throw checkError;
       
-      const data = await response.json();
-      console.log('API yanıtı:', data);
-      
-      if (!response.ok) {
-        let errorMessage = 'Güncelleme işlemi başarısız oldu';
-        
-        // API yanıtında error alanı varsa kullan
-        if (data.error) {
-          // Rol değeri hatası kontrolü
-          if (data.error.includes('check constraint')) {
-            errorMessage = 'Geçersiz rol değeri. Lütfen geçerli bir rol seçin.';
-          } 
-          // Kullanıcı adı çakışması kontrolü
-          else if (data.error.includes('kullanıcı adı zaten kullanılıyor')) {
-            errorMessage = `"${duzenleForm.kullanici_adi}" kullanıcı adı zaten kullanımda. Lütfen farklı bir kullanıcı adı seçin.`;
-          } else {
-            errorMessage = data.error;
-          }
-        }
-        
-        throw new Error(errorMessage);
+      if (existingUser) {
+        throw new Error('Bu kullanıcı adı zaten kullanılıyor');
       }
       
-      if (data.success) {
-        // Başarılı ise personel listesini güncelle
-        setPersoneller(prev => prev.map(p => 
-          p.id === duzenlenecekPersonel.id ? { 
-            ...p, 
-            ad_soyad: guncellenecekVeri.ad_soyad,
-            kullanici_adi: guncellenecekVeri.kullanici_adi,
-            rol: guncellenecekVeri.rol
-          } : p
-        ));
-        
-        setDuzenleModalAcik(false);
-        setDuzenlenecekPersonel(null);
-        setDuzenleForm({
-          ad_soyad: '',
-          kullanici_adi: '',
-          rol: 'personel',
-          sifre: ''
-        });
-        
-        toast.success('Kullanıcı bilgileri başarıyla güncellendi');
-      } else {
-        throw new Error(data.error || 'Güncelleme işlemi başarısız oldu');
-      }
+      // Güncelleme yap
+      const { data, error } = await supabase
+        .from('personel')
+        .update(updates)
+        .eq('id', duzenlenecekPersonel.id)
+        .select(`
+          *,
+          rollers:rol_id (
+            rol_ad
+          )
+        `)
+        .single();
+      
+      if (error) throw error;
+      
+      // Personel listesini güncelle
+      const guncellenenPersonel = {
+        ...data,
+        rol_ad: data.rollers?.rol_ad || ''
+      };
+      
+      setPersoneller(prev => 
+        prev.map(p => p.id === duzenlenecekPersonel.id ? guncellenenPersonel : p)
+      );
+      
+      setDuzenleModalAcik(false);
+      toast.success('Kullanıcı başarıyla güncellendi');
     } catch (error: any) {
       console.error('Personel güncellenirken hata:', error);
-      // Modalda hatayı göster
       setGuncellemeHata(error.message);
-      // Toast notification ile hatayı göster
-      toast.error(error.message);
     } finally {
       setIsLoading(false);
     }
   };
   
-  // Şifre göster/gizle
-  const sifreGosterGizle = () => {
-    setSifreGoster(!sifreGoster);
+  // Rol rengini belirle
+  const getRolRengi = (rolAd: string) => {
+    if (rolAd.toLowerCase() === 'patron') {
+      return 'bg-red-100 text-red-800';
+    }
+    
+    // Diğer roller için rastgele renkler (sabit kalması için rol adını hash olarak kullan)
+    const hash = rolAd.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+    const renk = hash % 4;
+    
+    switch (renk) {
+      case 0: return 'bg-blue-100 text-blue-800';
+      case 1: return 'bg-green-100 text-green-800';
+      case 2: return 'bg-purple-100 text-purple-800';
+      case 3: return 'bg-yellow-100 text-yellow-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
   };
   
   return (
@@ -329,14 +334,8 @@ const KullaniciListesiPage = () => {
                         <div className="text-sm text-gray-500">{personel.kullanici_adi}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          personel.rol === Rol.Patron 
-                            ? 'bg-red-100 text-red-800'
-                            : personel.rol === Rol.Yonetici 
-                              ? 'bg-purple-100 text-purple-800' 
-                              : 'bg-green-100 text-green-800'
-                        }`}>
-                          {formatRol(personel.rol)}
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getRolRengi(personel.rol_ad)}`}>
+                          {personel.rol_ad}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -388,25 +387,30 @@ const KullaniciListesiPage = () => {
             <p className="text-gray-500 mb-5">
               Bu kullanıcıyı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
             </p>
+            
             <div className="flex justify-end space-x-3">
               <button
-                type="button"
-                disabled={isLoading}
                 onClick={() => {
                   setSilmeOnayModalAcik(false);
                   setSilinecekPersonel(null);
                 }}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md transition-colors"
               >
                 İptal
               </button>
               <button
-                type="button"
-                disabled={isLoading}
                 onClick={personelSil}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors flex items-center"
+                disabled={isLoading}
               >
-                {isLoading ? "Siliniyor..." : "Sil"}
+                {isLoading ? (
+                  <>
+                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                    <span>İşleniyor...</span>
+                  </>
+                ) : (
+                  <span>Evet, Sil</span>
+                )}
               </button>
             </div>
           </div>
@@ -427,19 +431,9 @@ const KullaniciListesiPage = () => {
               </button>
             </div>
             
-            {/* Modal içinde daha belirgin hata mesajı */}
             {guncellemeHata && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
-                <div className="flex items-start">
-                  <AlertTriangle className="mr-2 h-5 w-5 flex-shrink-0 text-red-500" />
-                  <div>
-                    <p className="font-medium">Hata:</p>
-                    <p>{guncellemeHata}</p>
-                    <p className="mt-1 text-xs text-red-600">
-                      Aynı kullanıcı adı başka bir kullanıcıda olabilir veya veritabanı bir kısıtlama nedeniyle güncellemeyi reddediyor olabilir.
-                    </p>
-                  </div>
-                </div>
+                {guncellemeHata}
               </div>
             )}
             
@@ -455,7 +449,6 @@ const KullaniciListesiPage = () => {
                   value={duzenleForm.ad_soyad}
                   onChange={handleFormChange}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  required
                 />
               </div>
               
@@ -470,24 +463,25 @@ const KullaniciListesiPage = () => {
                   value={duzenleForm.kullanici_adi}
                   onChange={handleFormChange}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  required
                 />
               </div>
               
               <div>
-                <label htmlFor="rol" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="rol_id" className="block text-sm font-medium text-gray-700">
                   Rol
                 </label>
                 <select
-                  id="rol"
-                  name="rol"
-                  value={duzenleForm.rol}
+                  id="rol_id"
+                  name="rol_id"
+                  value={duzenleForm.rol_id}
                   onChange={handleFormChange}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 >
-                  <option value="personel">Personel</option>
-                  <option value="yonetici">Yönetici</option>
-                  <option value="patron">Patron</option>
+                  {roller.map(rol => (
+                    <option key={rol.id} value={rol.id}>
+                      {rol.rol_ad}
+                    </option>
+                  ))}
                 </select>
               </div>
               
@@ -507,26 +501,25 @@ const KullaniciListesiPage = () => {
                 </div>
                 
                 {sifreGuncelle && (
-                  <div>
+                  <div className="mt-2">
                     <label htmlFor="sifre" className="block text-sm font-medium text-gray-700">
                       Yeni Şifre
                     </label>
-                    <div className="mt-1 relative">
+                    <div className="mt-1 relative rounded-md shadow-sm">
                       <input
                         type={sifreGoster ? "text" : "password"}
                         id="sifre"
                         name="sifre"
                         value={duzenleForm.sifre}
                         onChange={handleFormChange}
-                        className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 pr-10 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                        required={sifreGuncelle}
+                        className="block w-full pr-10 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                       />
                       <button
                         type="button"
-                        onClick={sifreGosterGizle}
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700"
+                        onClick={() => setSifreGoster(!sifreGoster)}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
                       >
-                        {sifreGoster ? <EyeOff size={18} /> : <Eye size={18} />}
+                        {sifreGoster ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
                   </div>
@@ -536,27 +529,25 @@ const KullaniciListesiPage = () => {
             
             <div className="mt-6 flex justify-end space-x-3">
               <button
-                type="button"
                 onClick={() => setDuzenleModalAcik(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md transition-colors"
               >
                 İptal
               </button>
               <button
-                type="button"
-                disabled={isLoading}
                 onClick={personelGuncelle}
-                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50 inline-flex items-center"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors flex items-center"
+                disabled={isLoading}
               >
                 {isLoading ? (
                   <>
-                    <div className="animate-spin mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                    Güncelleniyor...
+                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                    <span>İşleniyor...</span>
                   </>
                 ) : (
                   <>
-                    <Save size={16} className="mr-2" />
-                    Kaydet
+                    <Save size={16} className="mr-1" />
+                    <span>Kaydet</span>
                   </>
                 )}
               </button>
