@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import DashboardLayout from '../components/DashboardLayout';
+import PageGuard from '@/app/components/PageGuard';
 import '@n8n/chat/style.css';
 import { createChat } from '@n8n/chat';
 
@@ -44,41 +45,43 @@ export default function StokUretimMuduruBeyniPage() {
   }, []);
 
   return (
-    <DashboardLayout>
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-gray-900">Stok ve Üretim Müdürü</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          AlpLeo yapay zekası ile stok ve üretim konularında sohbet edin.
-        </p>
-      </div>
+    <PageGuard sayfaYolu="/stok-uretim-muduru-beyni">
+      <DashboardLayout>
+        <div className="mb-8">
+          <h1 className="text-2xl font-semibold text-gray-900">Stok ve Üretim Müdürü</h1>
+          <p className="mt-1 text-sm text-gray-600">
+            AlpLeo yapay zekası ile stok ve üretim konularında sohbet edin.
+          </p>
+        </div>
 
-      <div className="w-full flex justify-center">
-        <div className="w-full max-w-2xl h-[calc(100vh-250px)]" id="n8n-chat-container" ref={chatContainerRef}></div>
-      </div>
-      
-      {/* Özel CSS Değişkenleri */}
-      <style jsx global>{`
-        :root {
-          --chat--color-primary: #3b82f6;
-          --chat--color-primary-shade-50: #2563eb;
-          --chat--color-primary-shade-100: #1d4ed8;
-          --chat--color-secondary: #10b981;
-          --chat--message--user--background: #3b82f6;
-          --chat--window--width: 600px;
-          --chat--window--height: 500px;
-          
-          /* Font boyutlarını küçültme */
-          --chat--message--font-size: 0.75rem;
-          --chat--heading--font-size: 1.1em;
-          --chat--subtitle--font-size: 0.75em;
-          --chat--message-line-height: 1.4;
-          
-          /* Mesaj aralıklarını daraltma */
-          --chat--spacing: 0.7rem;
-          --chat--message--padding: 0.7rem;
-          --chat--header--padding: 0.7rem;
-        }
-      `}</style>
-    </DashboardLayout>
+        <div className="w-full flex justify-center">
+          <div className="w-full max-w-2xl h-[calc(100vh-250px)]" id="n8n-chat-container" ref={chatContainerRef}></div>
+        </div>
+        
+        {/* Özel CSS Değişkenleri */}
+        <style jsx global>{`
+          :root {
+            --chat--color-primary: #3b82f6;
+            --chat--color-primary-shade-50: #2563eb;
+            --chat--color-primary-shade-100: #1d4ed8;
+            --chat--color-secondary: #10b981;
+            --chat--message--user--background: #3b82f6;
+            --chat--window--width: 600px;
+            --chat--window--height: 500px;
+            
+            /* Font boyutlarını küçültme */
+            --chat--message--font-size: 0.75rem;
+            --chat--heading--font-size: 1.1em;
+            --chat--subtitle--font-size: 0.75em;
+            --chat--message-line-height: 1.4;
+            
+            /* Mesaj aralıklarını daraltma */
+            --chat--spacing: 0.7rem;
+            --chat--message--padding: 0.7rem;
+            --chat--header--padding: 0.7rem;
+          }
+        `}</style>
+      </DashboardLayout>
+    </PageGuard>
   );
 } 

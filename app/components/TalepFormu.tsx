@@ -38,6 +38,11 @@ const TalepFormu: React.FC<TalepFormuProps> = ({ maxTalepler = 5 }) => {
   const [seciliDurumFiltresi, setSeciliDurumFiltresi] = useState<string>('beklemede');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [showSearchModal, setShowSearchModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState<Talep[]>([]);
+  const [searchPerformed, setSearchPerformed] = useState(false);
+  const [seciliAciliyetFiltresi, setSeciliAciliyetFiltresi] = useState<string | null>(null);
 
   // Talepleri yükle
   useEffect(() => {
@@ -111,9 +116,19 @@ const TalepFormu: React.FC<TalepFormuProps> = ({ maxTalepler = 5 }) => {
 
   // Filtrelenmiş talepleri getir
   const getFiltrelenmisVeSayfaninTalepleri = () => {
-    const filtrelenmis = seciliDurumFiltresi === 'tümü' 
+    let filtrelenmis = seciliDurumFiltresi === 'tümü' 
       ? tumTalepler 
       : tumTalepler.filter(talep => talep.durum === seciliDurumFiltresi);
+    
+    // Aciliyet filtrelemesi uygula
+    if (seciliAciliyetFiltresi) {
+      filtrelenmis = filtrelenmis.filter(talep => {
+        if (seciliAciliyetFiltresi === 'acil') return talep.aciliyet === 'yüksek';
+        if (seciliAciliyetFiltresi === 'normal') return talep.aciliyet === 'orta';
+        if (seciliAciliyetFiltresi === 'düşük') return talep.aciliyet === 'düşük';
+        return true; // 'tümü' durumunda
+      });
+    }
     
     // Sayfalama için başlangıç ve bitiş indeksleri
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -258,24 +273,57 @@ const TalepFormu: React.FC<TalepFormuProps> = ({ maxTalepler = 5 }) => {
     }).format(tarih);
   };
 
+  // Not ara
+  const searchTalepler = async () => {
+    if (!searchTerm.trim()) return;
+    
+    try {
+      setLoading(true);
+      setSearchPerformed(true);
+      
+      // Supabase'de metin araması yap
+      const { data, error } = await supabase
+        .from('personel_talepler')
+        .select('*')
+        .or(`baslik.ilike.%${searchTerm}%,aciklama.ilike.%${searchTerm}%`)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      setSearchResults(data || []);
+    } catch (error) {
+      console.error('Talepler aranırken hata:', error);
+      setSearchResults([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="w-full bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-full">
       {/* Başlık alanı - Notlar bileşeniyle benzer tasarım */}
       <div className="bg-white border-b border-gray-200">
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center">
-            <h3 className="text-lg font-bold text-gray-800 uppercase">TALEPLER</h3>
+            <h3 className="text-xl font-semibold text-gray-800">TALEPLER</h3>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex space-x-2">
             <button 
               onClick={() => setShowAddTalepModal(true)}
-              className="inline-flex items-center px-3 py-1.5 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+              className="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
             >
               <Plus size={16} className="mr-1" />
-              <span className="text-sm font-medium">YENİ TALEP</span>
+              YENİ TALEP
             </button>
-            <button className="p-1.5 text-gray-500 hover:text-gray-700 rounded-md hover:bg-gray-100">
-              <Search size={18} />
+            <button
+              onClick={() => setShowSearchModal(true)} 
+              className="px-3 py-1 text-blue-600 border border-blue-600 hover:bg-blue-50 rounded-md flex items-center"
+              title="Taleplerde ara"
+            >
+              <Search size={16} className="mr-1" />
+              ARAMA
             </button>
           </div>
         </div>
@@ -361,6 +409,7 @@ const TalepFormu: React.FC<TalepFormuProps> = ({ maxTalepler = 5 }) => {
           onClick={() => {
             setShowTumTaleplerModal(true);
             setSeciliDurumFiltresi('beklemede');
+            setSeciliAciliyetFiltresi('acil');
             setCurrentPage(1);
           }}
           className="flex items-center text-blue-600 hover:text-blue-800 transition-colors"
@@ -599,7 +648,8 @@ const TalepFormu: React.FC<TalepFormuProps> = ({ maxTalepler = 5 }) => {
 
             {/* Filtreleme Seçenekleri */}
             <div className="p-4 border-b border-gray-100 bg-gray-50">
-              <div className="flex items-center">
+              {/* Durum Filtreleri */}
+              <div className="flex items-center mb-3">
                 <Filter className="w-4 h-4 mr-2 text-gray-500" />
                 <span className="text-sm font-medium mr-3">Durum:</span>
                 <div className="flex space-x-2">
@@ -671,6 +721,66 @@ const TalepFormu: React.FC<TalepFormuProps> = ({ maxTalepler = 5 }) => {
                   >
                     <XCircle className="w-3 h-3 mr-1" />
                     İptal
+                  </button>
+                </div>
+              </div>
+              
+              {/* Aciliyet Filtreleri */}
+              <div className="flex items-center">
+                <Filter className="w-4 h-4 mr-2 text-gray-500" />
+                <span className="text-sm font-medium mr-3">Aciliyet:</span>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => {
+                      setSeciliAciliyetFiltresi(null);
+                      setCurrentPage(1);
+                    }}
+                    className={`px-3 py-1 text-sm rounded-md border ${
+                      seciliAciliyetFiltresi === null 
+                        ? 'bg-gray-200 border-gray-400 text-gray-800' 
+                        : 'border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    Tümü
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSeciliAciliyetFiltresi('acil');
+                      setCurrentPage(1);
+                    }}
+                    className={`px-3 py-1 text-sm rounded-md border ${
+                      seciliAciliyetFiltresi === 'acil' 
+                        ? 'bg-red-100 border-red-500 text-red-700' 
+                        : 'border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    Acil
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSeciliAciliyetFiltresi('normal');
+                      setCurrentPage(1);
+                    }}
+                    className={`px-3 py-1 text-sm rounded-md border ${
+                      seciliAciliyetFiltresi === 'normal' 
+                        ? 'bg-amber-100 border-amber-500 text-amber-700' 
+                        : 'border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    Normal
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSeciliAciliyetFiltresi('düşük');
+                      setCurrentPage(1);
+                    }}
+                    className={`px-3 py-1 text-sm rounded-md border ${
+                      seciliAciliyetFiltresi === 'düşük' 
+                        ? 'bg-green-100 border-green-500 text-green-700' 
+                        : 'border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    Düşük
                   </button>
                 </div>
               </div>
@@ -785,6 +895,110 @@ const TalepFormu: React.FC<TalepFormuProps> = ({ maxTalepler = 5 }) => {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Arama modalı */}
+      {showSearchModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div className="p-4 border-b border-gray-200">
+              <h3 className="text-lg font-medium">Taleplerde Ara</h3>
+            </div>
+            
+            <div className="p-4">
+              <div className="flex mb-4">
+                <input
+                  type="text"
+                  placeholder="Anahtar kelime..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setSearchPerformed(false); // Arama terimi değiştiyse, arama durumunu sıfırla
+                  }}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  onClick={searchTalepler}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  Ara
+                </button>
+              </div>
+              
+              <div className="max-h-80 overflow-y-auto">
+                {loading && searchPerformed ? (
+                  <div className="text-center py-4">Aranıyor...</div>
+                ) : searchResults.length > 0 ? (
+                  <ul className="space-y-2">
+                    {searchResults.map((talep) => (
+                      <li 
+                        key={talep.id} 
+                        className="p-3 bg-white rounded border border-gray-200 shadow-sm relative group cursor-pointer"
+                        onClick={() => {
+                          setShowSearchModal(false);
+                          setDetayTalep(talep);
+                        }}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`inline-block w-2 h-2 rounded-full ${ 
+                            talep.aciliyet === 'yüksek' ? 'bg-red-500' : 
+                            talep.aciliyet === 'orta' ? 'bg-amber-500' : 'bg-green-500'
+                          }`}></span>
+                          <p className="text-sm font-medium text-gray-800">{talep.baslik}</p>
+                          <span className={`text-xs px-2 py-0.5 rounded-full border whitespace-nowrap ${getAciliyetRenk(talep.aciliyet)}`}>
+                            {talep.aciliyet === 'yüksek' ? 'Acil' : talep.aciliyet === 'orta' ? 'Normal' : 'Düşük'}
+                          </span>
+                        </div>
+                        {talep.aciklama && (
+                          <p className="text-sm text-gray-500 mb-1 pl-4">{talep.aciklama}</p>
+                        )}
+                        <div className="flex justify-between items-center mt-2">
+                          <span className={`text-xs px-2 py-0.5 rounded-full border flex items-center whitespace-nowrap ${getDurumDetay(talep.durum).renk}`}>
+                            {getDurumDetay(talep.durum).icon}
+                            <span className="ml-1">
+                              {talep.durum === 'beklemede' ? 'Beklemede' : 
+                               talep.durum === 'işlemde' ? 'İşlemde' : 
+                               talep.durum === 'tamamlandı' ? 'Tamamlandı' : 'İptal'}
+                            </span>
+                          </span>
+                          <p className="text-xs text-gray-500">
+                            {new Date(talep.created_at).toLocaleDateString('tr-TR', {
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric'
+                            })}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : searchPerformed ? (
+                  <div className="text-center py-4 text-gray-500">
+                    Arama sonucu bulunamadı.
+                  </div>
+                ) : (
+                  <div className="text-center py-4 text-gray-500">
+                    {searchTerm ? "Aramak için 'Ara' butonuna tıklayın." : "Arama yapmak için bir anahtar kelime girin."}
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex justify-end mt-4">
+                <button
+                  onClick={() => {
+                    setShowSearchModal(false);
+                    setSearchTerm('');
+                    setSearchResults([]);
+                    setSearchPerformed(false);
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                >
+                  Kapat
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

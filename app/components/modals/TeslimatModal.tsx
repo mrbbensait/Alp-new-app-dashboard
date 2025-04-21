@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 interface TeslimatModalProps {
   isOpen: boolean;
   urunAdi: string;
-  onConfirm: (teslimatMiktari: number, teslimEden: string) => void;
+  onConfirm: (teslimatMiktari: number, teslimEden: string, teslimatSekli: string) => void;
   onCancel: () => void;
   isUpdating: boolean;
   kullaniciAdSoyad?: string; // Mevcut kullanıcının adı
@@ -21,6 +21,7 @@ const TeslimatModal: React.FC<TeslimatModalProps> = ({
 }) => {
   const [teslimatMiktari, setTeslimatMiktari] = useState<string>('');
   const [teslimEden, setTeslimEden] = useState<string>(kullaniciAdSoyad);
+  const [teslimatSekli, setTeslimatSekli] = useState<string>('Elden');
   const [hataVar, setHataVar] = useState<boolean>(false);
   
   if (!isOpen) return null;
@@ -36,6 +37,10 @@ const TeslimatModal: React.FC<TeslimatModalProps> = ({
   const handleTeslimEdenChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTeslimEden(e.target.value);
   };
+
+  const handleTeslimatSekliChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setTeslimatSekli(e.target.value);
+  };
   
   const handleSubmit = () => {
     const miktar = Number(teslimatMiktari);
@@ -45,13 +50,14 @@ const TeslimatModal: React.FC<TeslimatModalProps> = ({
       return;
     }
     
-    onConfirm(miktar, teslimEden);
+    onConfirm(miktar, teslimEden, teslimatSekli);
     setTeslimatMiktari('');
   };
   
   const handleCancel = () => {
     setTeslimatMiktari('');
     setTeslimEden(kullaniciAdSoyad);
+    setTeslimatSekli('Elden');
     setHataVar(false);
     onCancel();
   };
@@ -110,6 +116,54 @@ const TeslimatModal: React.FC<TeslimatModalProps> = ({
                 onChange={handleTeslimEdenChange}
                 disabled={isUpdating}
               />
+            </div>
+          </div>
+          
+          <div className="mt-4">
+            <label className="block text-left text-sm font-medium text-gray-700 mb-2">Teslimat Şekli</label>
+            <div className="flex justify-between space-x-2">
+              <div className="flex-1 bg-gray-50 p-3 rounded-md border border-gray-200">
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="radio"
+                    name="teslimatSekli"
+                    value="Elden"
+                    checked={teslimatSekli === 'Elden'}
+                    onChange={handleTeslimatSekliChange}
+                    disabled={isUpdating}
+                    className="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">Elden</span>
+                </label>
+              </div>
+              <div className="flex-1 bg-gray-50 p-3 rounded-md border border-gray-200">
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="radio"
+                    name="teslimatSekli"
+                    value="Kargo"
+                    checked={teslimatSekli === 'Kargo'}
+                    onChange={handleTeslimatSekliChange}
+                    disabled={isUpdating}
+                    className="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">Kargo</span>
+                </label>
+              </div>
+              <div className="flex-1 bg-gray-50 p-3 rounded-md border border-gray-200">
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="radio"
+                    name="teslimatSekli"
+                    value="Ambar"
+                    checked={teslimatSekli === 'Ambar'}
+                    onChange={handleTeslimatSekliChange}
+                    disabled={isUpdating}
+                    className="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">Ambar</span>
+                </label>
+              </div>
             </div>
           </div>
           

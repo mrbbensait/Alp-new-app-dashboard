@@ -54,9 +54,9 @@ const Notes: React.FC<NotesProps> = ({ maxNotes = 3 }) => {
     const targetMonday = new Date(currentMonday);
     targetMonday.setDate(currentMonday.getDate() + (weekOffset * 7));
     
-    // Pazartesi-Cuma günlerinin tarihlerini oluştur
+    // Pazartesi-Pazar günlerinin tarihlerini oluştur (tüm hafta)
     const weekDays = [];
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 7; i++) {
       const day = new Date(targetMonday);
       day.setDate(targetMonday.getDate() + i);
       weekDays.push(day);
@@ -95,7 +95,7 @@ const Notes: React.FC<NotesProps> = ({ maxNotes = 3 }) => {
       
       // Haftanın başlangıç ve bitiş tarihlerini hesapla
       const weekStart = formatDateForQuery(weekDays[0]);
-      const weekEnd = formatDateForQuery(weekDays[4]);
+      const weekEnd = formatDateForQuery(weekDays[6]);
       
       // Bu haftanın notlarını getir
       const { data, error } = await supabase
@@ -339,7 +339,7 @@ const Notes: React.FC<NotesProps> = ({ maxNotes = 3 }) => {
           
           <div className="text-center">
             <h3 className="text-sm font-medium text-gray-500">
-              {formatDateForDisplay(weekDays[0])} - {formatDateForDisplay(weekDays[4])}
+              {formatDateForDisplay(weekDays[0])} - {formatDateForDisplay(weekDays[6])}
             </h3>
             {!isCurrentWeek && (
               <button 
@@ -361,7 +361,7 @@ const Notes: React.FC<NotesProps> = ({ maxNotes = 3 }) => {
         </div>
         
         {/* Günlük notlar kartları */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
           {weekDays.map((day, index) => {
             const dayNotes = getNotesForDay(day);
             const displayNotes = dayNotes.slice(0, maxNotes);

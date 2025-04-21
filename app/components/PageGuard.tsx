@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/app/lib/AuthContext';
 import { useRouter } from 'next/navigation';
+import { isPageRefresh } from '@/app/lib/utils';
 
 interface PageGuardProps {
   children: React.ReactNode;
@@ -14,6 +15,7 @@ const PageGuard: React.FC<PageGuardProps> = ({ children, sayfaYolu }) => {
   const router = useRouter();
   const [erisimVar, setErisimVar] = useState(false);
   const [yukleniyor, setYukleniyor] = useState(true);
+  const [ilkYukleme, setIlkYukleme] = useState(true);
 
   useEffect(() => {
     // Erişim kontrolü fonksiyonu
@@ -22,7 +24,11 @@ const PageGuard: React.FC<PageGuardProps> = ({ children, sayfaYolu }) => {
       if (!user || !user.rol_id) {
         setErisimVar(false);
         setYukleniyor(false);
-        router.push('/login');
+        
+        // Sayfa yenilemede yönlendirme yapma
+        if (!isPageRefresh()) {
+          router.push('/login');
+        }
         return;
       }
 
@@ -43,6 +49,8 @@ const PageGuard: React.FC<PageGuardProps> = ({ children, sayfaYolu }) => {
         setErisimVar(false);
       } finally {
         setYukleniyor(false);
+        // İlk yüklemeyi tamamladık
+        setIlkYukleme(false);
       }
     };
 
@@ -51,7 +59,14 @@ const PageGuard: React.FC<PageGuardProps> = ({ children, sayfaYolu }) => {
 
   // Eğer erişim yoksa ve yükleme tamamlandıysa, yönlendirme yap
   useEffect(() => {
-    if (!yukleniyor && !erisimVar && user) {
+    // Sayfa yenilemede yönlendirme yapmayı atla
+    if (isPageRefresh()) {
+      console.log("Sayfa yenilendi, yönlendirme yapılmıyor.");
+      return;
+    }
+
+    // Normal durumda (sayfa geçişi, ilk defa giriş) erişim kontrolü yap ve yönlendir
+    if (!yukleniyor && !erisimVar && user && !ilkYukleme) {
       // Yetkisiz erişim - kullanıcının erişebileceği bir ana sayfaya yönlendir
       const yonlendir = () => {
         // Ana sayfa var mı kontrol et
@@ -73,7 +88,7 @@ const PageGuard: React.FC<PageGuardProps> = ({ children, sayfaYolu }) => {
       const timer = setTimeout(yonlendir, 1500);
       return () => clearTimeout(timer);
     }
-  }, [erisimVar, yukleniyor, user, sayfaYetkileri, router]);
+  }, [erisimVar, yukleniyor, user, sayfaYetkileri, router, ilkYukleme]);
 
   if (yukleniyor) {
     return (

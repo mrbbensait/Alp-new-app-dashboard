@@ -24,6 +24,7 @@ interface TeslimatGecmisi {
   teslim_tarihi?: string;
   kullanici?: string;
   created_at: string;
+  teslimat_sekli?: string;
 }
 
 const TeslimatGecmisiModal: React.FC<TeslimatGecmisiModalProps> = ({
@@ -286,36 +287,51 @@ const TeslimatGecmisiModal: React.FC<TeslimatGecmisiModalProps> = ({
                 </div>
                 
                 <div ref={pdfContentRef}>
-                  <table className="min-w-full border border-gray-300">
+                  <table className="min-w-full divide-y divide-gray-200 border border-gray-200">
                     <thead>
-                      <tr className="bg-gray-100">
-                        <th className="border border-gray-300 px-4 py-2 text-left">Tarih</th>
-                        <th className="border border-gray-300 px-4 py-2 text-right">Miktar</th>
-                        <th className="border border-gray-300 px-4 py-2 text-left">Personel</th>
+                      <tr>
+                        <th className="px-6 py-3 bg-gray-50 text-left text-sm font-medium text-gray-700 uppercase tracking-wider border border-gray-200">
+                          Tarih
+                        </th>
+                        <th className="px-6 py-3 bg-gray-50 text-right text-sm font-medium text-gray-700 uppercase tracking-wider border border-gray-200">
+                          Miktar
+                        </th>
+                        <th className="px-6 py-3 bg-gray-50 text-left text-sm font-medium text-gray-700 uppercase tracking-wider border border-gray-200">
+                          Personel
+                        </th>
+                        <th className="px-6 py-3 bg-gray-50 text-left text-sm font-medium text-gray-700 uppercase tracking-wider border border-gray-200">
+                          Teslimat Şekli
+                        </th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="bg-white divide-y divide-gray-200">
                       {gecmisData.map((teslimat) => (
                         <tr key={teslimat.id}>
-                          <td className="border border-gray-300 px-4 py-2">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 border border-gray-200">
                             {formatDate(teslimat.teslim_tarihi || teslimat.created_at)}
                           </td>
-                          <td className="border border-gray-300 px-4 py-2 text-right">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right border border-gray-200">
                             {(teslimat.miktar || teslimat.teslimat_miktari || 0).toLocaleString('tr-TR')}
                           </td>
-                          <td className="border border-gray-300 px-4 py-2">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 border border-gray-200">
                             {teslimat.kullanici || 'Bilinmiyor'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 border border-gray-200">
+                            {teslimat.teslimat_sekli || 'Belirtilmemiş'}
                           </td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot>
-                      <tr className="bg-gray-100">
-                        <td className="border border-gray-300 px-4 py-2 font-bold">TOPLAM</td>
-                        <td className="border border-gray-300 px-4 py-2 text-right font-bold">
+                      <tr className="bg-gray-50">
+                        <td className="px-6 py-3 text-left text-sm font-medium text-gray-700 uppercase tracking-wider border border-gray-200">
+                          TOPLAM
+                        </td>
+                        <td className="px-6 py-3 text-right text-sm font-medium text-gray-900 uppercase tracking-wider border border-gray-200">
                           {gecmisData.reduce((sum, item) => sum + (item.miktar || item.teslimat_miktari || 0), 0).toLocaleString('tr-TR')}
                         </td>
-                        <td className="border border-gray-300 px-4 py-2"></td>
+                        <td className="border border-gray-200"></td>
+                        <td className="border border-gray-200"></td>
                       </tr>
                     </tfoot>
                   </table>
@@ -341,7 +357,7 @@ const TeslimatGecmisiModal: React.FC<TeslimatGecmisiModalProps> = ({
         </div>
 
         {/* Ana Modal */}
-        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full">
           {/* Header */}
           <div className="bg-gray-50 px-4 py-3 sm:px-6 flex justify-between items-center">
             <h3 className="text-lg leading-6 font-medium text-gray-900">
@@ -376,8 +392,8 @@ const TeslimatGecmisiModal: React.FC<TeslimatGecmisiModalProps> = ({
           {/* Reçete Bilgileri */}
           <div className="bg-white px-4 pt-5 pb-0">
             <div className="mb-4 border border-gray-200 p-3 bg-gray-50 rounded-md">
-              <h4 className="text-sm font-medium mb-2">Reçete Bilgileri:</h4>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+              <h4 className="text-base font-semibold mb-2">Reçete Bilgileri:</h4>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                 <div><span className="font-medium">Reçete Adı:</span> {urunAdi}</div>
                 <div><span className="font-medium">Müşteri:</span> {musteri}</div>
                 <div><span className="font-medium">Ambalaj:</span> {ambalaj}</div>
@@ -410,40 +426,47 @@ const TeslimatGecmisiModal: React.FC<TeslimatGecmisiModalProps> = ({
                 <table className="min-w-full divide-y divide-gray-200 border border-gray-200">
                   <thead>
                     <tr>
-                      <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border border-gray-200">
+                      <th className="px-6 py-3 bg-gray-50 text-left text-sm font-medium text-gray-700 uppercase tracking-wider border border-gray-200">
                         Tarih
                       </th>
-                      <th className="px-6 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border border-gray-200">
+                      <th className="px-6 py-3 bg-gray-50 text-right text-sm font-medium text-gray-700 uppercase tracking-wider border border-gray-200">
                         Miktar
                       </th>
-                      <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border border-gray-200">
+                      <th className="px-6 py-3 bg-gray-50 text-left text-sm font-medium text-gray-700 uppercase tracking-wider border border-gray-200">
                         Personel
+                      </th>
+                      <th className="px-6 py-3 bg-gray-50 text-left text-sm font-medium text-gray-700 uppercase tracking-wider border border-gray-200">
+                        Teslimat Şekli
                       </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {gecmisData.map((teslimat) => (
                       <tr key={teslimat.id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 border border-gray-200">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 border border-gray-200">
                           {formatDate(teslimat.teslim_tarihi || teslimat.created_at)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right border border-gray-200">
                           {(teslimat.miktar || teslimat.teslimat_miktari || 0).toLocaleString('tr-TR')}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 border border-gray-200">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 border border-gray-200">
                           {teslimat.kullanici || 'Bilinmiyor'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 border border-gray-200">
+                          {teslimat.teslimat_sekli || 'Belirtilmemiş'}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot>
                     <tr className="bg-gray-50">
-                      <td className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border border-gray-200">
+                      <td className="px-6 py-3 text-left text-sm font-medium text-gray-700 uppercase tracking-wider border border-gray-200">
                         TOPLAM
                       </td>
-                      <td className="px-6 py-3 text-right text-xs font-medium text-gray-900 uppercase tracking-wider border border-gray-200">
+                      <td className="px-6 py-3 text-right text-sm font-medium text-gray-900 uppercase tracking-wider border border-gray-200">
                         {gecmisData.reduce((sum, item) => sum + (item.miktar || item.teslimat_miktari || 0), 0).toLocaleString('tr-TR')}
                       </td>
+                      <td className="border border-gray-200"></td>
                       <td className="border border-gray-200"></td>
                     </tr>
                   </tfoot>

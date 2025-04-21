@@ -6,6 +6,14 @@ import path from 'path';
 // Sayfaları depolamak için dizi
 const sayfaYollari: { yol: string, ad: string }[] = [];
 
+// Filtrelenecek sayfalar listesi
+const filtrelenecekSayfalar = [
+  '/login',         // Login sayfası herkes tarafından erişilebilir olmalı
+  '/formlar',       // Formlar kategori başlığıdır, sayfa değil
+  '/tablo',         // Şirket Veritabanı kategori başlığıdır, sayfa değil
+  '/raporlar'       // Yönetim kategori başlığıdır, sayfa değil
+];
+
 // app klasörünü tarama fonksiyonu
 function taraAppDosyalari(dizin: string, baseDir: string) {
   const dosyalar = fs.readdirSync(dizin);
@@ -31,6 +39,11 @@ function taraAppDosyalari(dizin: string, baseDir: string) {
       } else {
         // /app/ kısmını çıkar
         sayfaYolu = sayfaYolu.replace('/app', '');
+      }
+      
+      // Filtrelenecek sayfalar listesini kontrol et
+      if (filtrelenecekSayfalar.includes(sayfaYolu)) {
+        continue; // Bu sayfayı atla
       }
       
       // Sayfa adını oluştur
@@ -65,9 +78,8 @@ export async function POST() {
     
     // Sabit sayfaları ekle (manuel olarak tanımlanan sayfalar)
     const sabitSayfalar = [
-      { yol: '/tablo', ad: 'Şirket Veritabanı' },
-      { yol: '/formlar', ad: 'Formlar' },
-      { yol: '/raporlar', ad: 'Yönetim' },
+      { yol: '/raporlar/genel-raporlar', ad: 'Genel Raporlar' },
+      { yol: '/raporlar/personel-performans', ad: 'Personel Performans' },
       { yol: '/tablo/Müşteriler', ad: 'Müşteriler' },
       { yol: '/tablo/suppliers', ad: 'Tedarikçiler' },
       { yol: '/tablo/Reçeteler', ad: 'Reçeteler' },
@@ -87,11 +99,26 @@ export async function POST() {
       yolListesi.indexOf(sayfa.yol) === index
     );
     
-    // Eklenecek sayfa sayısı
+    // Mevcut tüm sayfaları al
+    const { data: mevcutSayfalar, error: mevcutError } = await supabase
+      .from('sayfalar')
+      .select('id, sayfa_yolu');
+      
+    if (mevcutError) {
+      throw mevcutError;
+    }
+    
+    // Eklenecek ve silinecek sayfa sayısı
     let eklenecekSayfaSayisi = 0;
+    let silinecekSayfaSayisi = 0;
     
     // Her sayfa için veritabanına ekle veya güncelle
     for (const sayfa of uniqueSayfalar) {
+      // Filtrelenecek sayfalar listesini kontrol et
+      if (filtrelenecekSayfalar.includes(sayfa.yol)) {
+        continue; // Bu sayfayı atla
+      }
+      
       // Önce sayfanın veritabanında olup olmadığını kontrol et
       const { data: mevcutSayfa, error: kontrolError } = await supabase
         .from('sayfalar')
@@ -117,6 +144,27 @@ export async function POST() {
           console.error(`Sayfa eklenirken hata: ${sayfa.yol}`, eklemeError);
         } else {
           eklenecekSayfaSayisi++;
+        }
+      }
+    }
+    
+    // Silinen sayfaları bul ve kaldır
+    const taranmisYollar = uniqueSayfalar.map(s => s.yol);
+    for (const mevcutSayfa of mevcutSayfalar || []) {
+      // Filtrelenecek sayfaları da sil
+      if (!taranmisYollar.includes(mevcutSayfa.sayfa_yolu) || 
+          filtrelenecekSayfalar.includes(mevcutSayfa.sayfa_yolu)) {
+        
+        // Sayfayı sil
+        const { error: silmeError } = await supabase
+          .from('sayfalar')
+          .delete()
+          .eq('id', mevcutSayfa.id);
+          
+        if (silmeError) {
+          console.error(`Sayfa silinirken hata: ${mevcutSayfa.sayfa_yolu}`, silmeError);
+        } else {
+          silinecekSayfaSayisi++;
         }
       }
     }
@@ -163,9 +211,10 @@ export async function POST() {
     
     return NextResponse.json({ 
       success: true, 
-      message: `${eklenecekSayfaSayisi} yeni sayfa başarıyla eklendi.`,
+      message: `${eklenecekSayfaSayisi} yeni sayfa eklendi, ${silinecekSayfaSayisi} sayfa kaldırıldı.`,
       total: uniqueSayfalar.length,
-      added: eklenecekSayfaSayisi
+      added: eklenecekSayfaSayisi,
+      removed: silinecekSayfaSayisi
     });
   } catch (error) {
     console.error('Sayfalar taranırken bir hata oluştu:', error);

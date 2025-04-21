@@ -42,19 +42,6 @@ export default function AyarlarPage() {
                 <p className="text-gray-600">Sistem kullanıcılarını yönetin</p>
               </div>
             </Link>
-            
-            <Link 
-              href="#" 
-              className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow flex items-start opacity-50 cursor-not-allowed"
-            >
-              <div className="mr-4 bg-gray-100 rounded-lg p-3">
-                <Settings size={30} className="text-gray-600" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">Genel Ayarlar</h2>
-                <p className="text-gray-600">Yakında Eklenecek</p>
-              </div>
-            </Link>
           </div>
         </div>
       </DashboardLayout>

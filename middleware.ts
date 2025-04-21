@@ -33,7 +33,9 @@ export function middleware(request: NextRequest) {
   try {
     // Cookie'den kullanıcı bilgisini al
     JSON.parse(decodeURIComponent(userDataCookie.value));
-    // Kullanıcı giriş yapmış, tüm sayfalara erişebilir
+    
+    // Kullanıcı giriş yapmış, MEVCUT SAYFADA KALIYOR
+    // Sayfa yetkisi kontrolü client-side'da PageGuard tarafından yapılacak
     return NextResponse.next();
   } catch (error) {
     // JSON parse hatası veya başka bir sorun varsa login sayfasına yönlendir

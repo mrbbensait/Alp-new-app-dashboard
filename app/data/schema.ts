@@ -436,11 +436,86 @@ export const tableNames = Array.from(new Set(rawTableData.map(item => item.table
 // Tablolar ve sütunlarını organize edelim
 export const tables: TableSchema[] = tableNames.map(tableName => {
   const tableColumns = rawTableData.filter(item => item.table_name === tableName);
+  
+  // Her tablo için gizlenmesi gereken sütunları tanımla
+  const hiddenColumns: { [key: string]: string[] } = {
+    'Müşteriler': ['Notlar', 'Müşteri ID', 'id'],
+    'suppliers': ['Tedarikçi ID', 'Notlar', 'createdTime'],
+    'Reçeteler': ['Notlar', 'id'],
+    'SatınAlma siparişleri': ['ID', 'Hammadde ID', 'Tedarikçi ID', 'id'],
+    'Stok': ['Hammadde ID', 'Notlar', 'CreatedTime', 'ID'],
+    'Üretim Kuyruğu': ['Reçete ID', 'id'],
+    'Bitmiş Ürün Stoğu': ['Teslimat Tarihi', 'ID', 'Reçete ID', 'Paketlendiği Tarih', 'id'],
+  };
+  
+  // Bu tablonun gizlenmesi gereken sütunlarını al
+  const columnsToHide = hiddenColumns[tableName] || [];
+  
+  // Filtrelenmiş sütunları oluştur
+  let filteredColumns = tableColumns
+    .filter(column => !columnsToHide.includes(column.column_name))
+    .map(column => {
+      // Ambalajlama 2 sütununu 2. Ambalajlama olarak değiştir
+      if (tableName === 'Üretim Kuyruğu' && column.column_name === 'Ambalajlama 2') {
+        return {
+          name: '2. Ambalajlama',
+          type: column.data_type
+        };
+      }
+      return {
+        name: column.column_name,
+        type: column.data_type
+      };
+    });
+  
+  // Üretim Kuyruğu tablosu için özel sıralama
+  if (tableName === 'Üretim Kuyruğu') {
+    const columnOrder = [
+      'Reçete Adı',
+      'Marka',
+      'Bulk Üretim Emri(Kg)',
+      'Ambalaj Emri (ml)',
+      'Üretim Durumu',
+      'Kalan Bulk (Kg)',
+      'Beklenen Adet',
+      'Gerçekleşen Adet',
+      'Üretim Yapıldı mı?',
+      'Ambalajlanan Adet',     // 1. Ambalajlama
+      '2. Ambalajlama',        // Eski adı Ambalajlama 2
+      'Müşteri',
+      'Üretim Emir Tarihi',
+      'Fire Adet',
+      'Fire%',
+      'Üretildiği Tarih',
+      'Son Güncelleme Tarihi'
+    ];
+    
+    // Verilen sıraya göre sütunları yeniden düzenle
+    const orderedColumns: {name: string, type: string}[] = [];
+    
+    // Önce sıralama dizisindeki sütunları ekle
+    columnOrder.forEach(colName => {
+      const column = filteredColumns.find(col => 
+        col.name === colName || 
+        (colName === '2. Ambalajlama' && col.name === 'Ambalajlama 2')
+      );
+      if (column) {
+        orderedColumns.push(column);
+      }
+    });
+    
+    // Sıralama dizisinde olmayan diğer sütunları da ekle
+    filteredColumns.forEach(col => {
+      if (!orderedColumns.some(orderedCol => orderedCol.name === col.name)) {
+        orderedColumns.push(col);
+      }
+    });
+    
+    filteredColumns = orderedColumns;
+  }
+  
   return {
     name: tableName,
-    columns: tableColumns.map(column => ({
-      name: column.column_name,
-      type: column.data_type
-    }))
+    columns: filteredColumns
   };
 }); 

@@ -9,10 +9,14 @@ import {
   fetchAllFromTable, 
   fetchFilteredData, 
   subscribeToTable, 
-  unsubscribeFromChannel 
+  unsubscribeFromChannel,
+  updateData,
+  createTeslimatGecmisi
 } from '../../lib/supabase';
 import TeslimatGecmisiModal from '../../components/modals/TeslimatGecmisiModal';
+import TeslimatModal from '../../components/modals/TeslimatModal';
 import PageGuard from '../../components/PageGuard';
+import { useAuth } from '../../lib/AuthContext';
 
 export default function TablePage() {
   const { tableName } = useParams<{ tableName: string }>();
@@ -27,6 +31,10 @@ export default function TablePage() {
   const [autoRefreshTimer, setAutoRefreshTimer] = useState<NodeJS.Timeout | null>(null);
   const [teslimatModalOpen, setTeslimatModalOpen] = useState(false);
   const [selectedUrun, setSelectedUrun] = useState<{id: number, name: string, musteri: string, ambalaj: string, stok: number, kalanAdet: number} | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<{id: number, recipeName: string} | null>(null);
+  const [updating, setUpdating] = useState(false);
+  const { user } = useAuth();
   
   // Tablo şeması bulma
   const tableSchema = tables.find(table => table.name === decodedTableName);
@@ -169,6 +177,60 @@ export default function TablePage() {
     }
   };
   
+  // Teslimat Gir butonuna tıklanınca
+  const handleTeslimatClick = (rowId: number, recipeName: string) => {
+    setSelectedItem({ id: rowId, recipeName });
+    setIsModalOpen(true);
+  };
+  
+  // Teslimat modalında onay
+  const handleTeslimatConfirm = async (teslimatMiktari: number, teslimEden: string, teslimatSekli: string) => {
+    if (!selectedItem) return;
+    
+    setUpdating(true);
+    try {
+      // Seçilen ürünü bul
+      const urun = tableData.find(row => row.id === selectedItem.id);
+      if (!urun) throw new Error('Ürün bulunamadı');
+      
+      // Mevcut teslim edilen miktarı al
+      const mevcutTeslimat = urun['Teslim Edilen'] || 0;
+      
+      // Yeni teslim edilen miktarı hesapla
+      const yeniTeslimat = Number(mevcutTeslimat) + Number(teslimatMiktari);
+      
+      // Ürünü güncelle
+      await updateData(decodedTableName, selectedItem.id, {
+        'Teslim Edilen': yeniTeslimat
+      });
+      
+      // TeslimatGecmisi tablosuna kayıt ekle
+      await createTeslimatGecmisi(
+        selectedItem.id,
+        teslimatMiktari,
+        teslimEden,
+        teslimatSekli
+      );
+      
+      // Modalı kapat ve veriyi yenile
+      setIsModalOpen(false);
+      setSelectedItem(null);
+      scheduleAutoRefresh();
+      
+    } catch (error) {
+      console.error('Teslimat kaydedilirken hata oluştu:', error);
+      alert('Teslimat kaydedilirken bir hata oluştu. Lütfen tekrar deneyin.');
+    } finally {
+      setUpdating(false);
+    }
+  };
+  
+  // Teslimat modalında iptal
+  const handleTeslimatCancel = () => {
+    setIsModalOpen(false);
+    setSelectedItem(null);
+  };
+  
   // Component unmount olduğunda zamanlayıcıları temizle
   useEffect(() => {
     return () => {
@@ -290,25 +352,40 @@ export default function TablePage() {
           </div>
         ) : (
           <DataTable
-            columns={tableSchema.columns}
+            columns={tableSchema.columns.filter(column => 
+              decodedTableName !== 'Bitmiş Ürün Stoğu' || column.name !== 'Üretim Kuyruğu Referans'
+            )}
             data={filteredData.length > 0 ? filteredData : tableData}
             tableName={decodedTableName}
             onReceteClick={handleReceteClick}
+            onTeslimatClick={decodedTableName === 'Bitmiş Ürün Stoğu' ? handleTeslimatClick : undefined}
           />
         )}
 
         {/* Teslimat Geçmişi Modalı */}
         {decodedTableName === 'Bitmiş Ürün Stoğu' && (
-          <TeslimatGecmisiModal
-            isOpen={teslimatModalOpen}
-            urunId={selectedUrun?.id || 0}
-            urunAdi={selectedUrun?.name || ''}
-            onClose={() => setTeslimatModalOpen(false)}
-            musteri={selectedUrun?.musteri}
-            ambalaj={selectedUrun?.ambalaj}
-            stok={selectedUrun?.stok}
-            kalanAdet={selectedUrun?.kalanAdet}
-          />
+          <>
+            <TeslimatGecmisiModal
+              isOpen={teslimatModalOpen}
+              urunId={selectedUrun?.id || 0}
+              urunAdi={selectedUrun?.name || ''}
+              onClose={() => setTeslimatModalOpen(false)}
+              musteri={selectedUrun?.musteri}
+              ambalaj={selectedUrun?.ambalaj}
+              stok={selectedUrun?.stok}
+              kalanAdet={selectedUrun?.kalanAdet}
+            />
+            
+            {/* Teslimat Modal */}
+            <TeslimatModal
+              isOpen={isModalOpen}
+              urunAdi={selectedItem?.recipeName || ''}
+              onConfirm={handleTeslimatConfirm}
+              onCancel={handleTeslimatCancel}
+              isUpdating={updating}
+              kullaniciAdSoyad={user?.ad_soyad || ''}
+            />
+          </>
         )}
       </DashboardLayout>
     </PageGuard>

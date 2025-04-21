@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/app/components/DashboardLayout';
+import PageGuard from '@/app/components/PageGuard';
 import { Trash2, Edit, Search, UserPlus, AlertTriangle, X, Save, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { supabase } from '@/app/lib/supabase';
@@ -263,299 +264,310 @@ const KullaniciListesiPage = () => {
   };
   
   return (
-    <DashboardLayout>
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">Kullanıcı Listesi</h1>
+    <PageGuard sayfaYolu="/formlar/kullanici-listesi">
+      <DashboardLayout 
+        pageTitle="Kullanıcı Listesi" 
+        pageSubtitle="Sistem kullanıcılarını yönet"
+      >
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold text-gray-800">Kullanıcı Listesi</h1>
+            <Link href="/ayarlar" className="flex items-center text-indigo-600 hover:text-indigo-800">
+              <span>Ayarlar sayfasına Git</span>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </Link>
+            
+            <Link 
+              href="/formlar/kullanici-kaydi"
+              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            >
+              <UserPlus size={18} className="mr-2" />
+              Yeni Kullanıcı Ekle
+            </Link>
+          </div>
           
-          <Link 
-            href="/formlar/kullanici-kaydi"
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-          >
-            <UserPlus size={18} className="mr-2" />
-            Yeni Kullanıcı Ekle
-          </Link>
+          {hata && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-md">
+              {hata}
+            </div>
+          )}
+          
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <div className="flex items-center mb-4 relative">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Ad, soyad veya kullanıcı adı ile ara..."
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <Search size={18} className="absolute left-3 top-2.5 text-gray-400" />
+              </div>
+            </div>
+            
+            {isLoading ? (
+              <div className="flex justify-center items-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+              </div>
+            ) : filtreliPersoneller.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                {searchQuery ? 'Arama kriterlerine uygun kullanıcı bulunamadı.' : 'Henüz kayıtlı kullanıcı bulunmuyor.'}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Ad Soyad
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Kullanıcı Adı
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Rol
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        İşlemler
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filtreliPersoneller.map((personel) => (
+                      <tr key={personel.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{personel.ad_soyad}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-500">{personel.kullanici_adi}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getRolRengi(personel.rol_ad)}`}>
+                            {personel.rol_ad}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <button
+                            onClick={() => duzenleModalAc(personel)}
+                            className="text-indigo-600 hover:text-indigo-900 mr-3"
+                          >
+                            <Edit size={16} />
+                          </button>
+                          <button
+                            onClick={() => silmeOnayiGoster(personel.id)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
         
-        {hata && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-md">
-            {hata}
+        {/* Silme Onay Modalı */}
+        {silmeOnayModalAcik && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+              <div className="flex items-center mb-4">
+                <div className="mr-4 bg-red-100 rounded-full p-2">
+                  <AlertTriangle size={32} className="text-red-600" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900">Kullanıcıyı Sil</h3>
+              </div>
+              
+              {silinecekPersonel && (
+                <div className="mb-4 p-3 bg-gray-50 rounded-md">
+                  <p className="text-sm text-gray-500 mb-1">Silinecek kullanıcı:</p>
+                  <p className="text-sm font-medium">
+                    {personeller.find(p => p.id === silinecekPersonel)?.ad_soyad || "Kullanıcı bulunamadı"}
+                  </p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    ID: <span className="font-mono text-xs">{silinecekPersonel}</span>
+                  </p>
+                </div>
+              )}
+              
+              <p className="text-gray-500 mb-5">
+                Bu kullanıcıyı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
+              </p>
+              
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => {
+                    setSilmeOnayModalAcik(false);
+                    setSilinecekPersonel(null);
+                  }}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md transition-colors"
+                >
+                  İptal
+                </button>
+                <button
+                  onClick={personelSil}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors flex items-center"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                      <span>İşleniyor...</span>
+                    </>
+                  ) : (
+                    <span>Evet, Sil</span>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         )}
         
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <div className="flex items-center mb-4 relative">
-            <div className="relative flex-1">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Ad, soyad veya kullanıcı adı ile ara..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-              <Search size={18} className="absolute left-3 top-2.5 text-gray-400" />
-            </div>
-          </div>
-          
-          {isLoading ? (
-            <div className="flex justify-center items-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-            </div>
-          ) : filtreliPersoneller.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              {searchQuery ? 'Arama kriterlerine uygun kullanıcı bulunamadı.' : 'Henüz kayıtlı kullanıcı bulunmuyor.'}
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Ad Soyad
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Kullanıcı Adı
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Rol
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      İşlemler
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filtreliPersoneller.map((personel) => (
-                    <tr key={personel.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{personel.ad_soyad}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">{personel.kullanici_adi}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getRolRengi(personel.rol_ad)}`}>
-                          {personel.rol_ad}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          onClick={() => duzenleModalAc(personel)}
-                          className="text-indigo-600 hover:text-indigo-900 mr-3"
-                        >
-                          <Edit size={16} />
-                        </button>
-                        <button
-                          onClick={() => silmeOnayiGoster(personel.id)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
-      
-      {/* Silme Onay Modalı */}
-      {silmeOnayModalAcik && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
-            <div className="flex items-center mb-4">
-              <div className="mr-4 bg-red-100 rounded-full p-2">
-                <AlertTriangle size={32} className="text-red-600" />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900">Kullanıcıyı Sil</h3>
-            </div>
-            
-            {silinecekPersonel && (
-              <div className="mb-4 p-3 bg-gray-50 rounded-md">
-                <p className="text-sm text-gray-500 mb-1">Silinecek kullanıcı:</p>
-                <p className="text-sm font-medium">
-                  {personeller.find(p => p.id === silinecekPersonel)?.ad_soyad || "Kullanıcı bulunamadı"}
-                </p>
-                <p className="text-sm text-gray-500 mt-1">
-                  ID: <span className="font-mono text-xs">{silinecekPersonel}</span>
-                </p>
-              </div>
-            )}
-            
-            <p className="text-gray-500 mb-5">
-              Bu kullanıcıyı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
-            </p>
-            
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => {
-                  setSilmeOnayModalAcik(false);
-                  setSilinecekPersonel(null);
-                }}
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md transition-colors"
-              >
-                İptal
-              </button>
-              <button
-                onClick={personelSil}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors flex items-center"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                    <span>İşleniyor...</span>
-                  </>
-                ) : (
-                  <span>Evet, Sil</span>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Düzenleme Modalı */}
-      {duzenleModalAcik && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Kullanıcı Düzenle</h3>
-              <button 
-                onClick={() => setDuzenleModalAcik(false)}
-                className="text-gray-400 hover:text-gray-500"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            
-            {guncellemeHata && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
-                {guncellemeHata}
-              </div>
-            )}
-            
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="ad_soyad" className="block text-sm font-medium text-gray-700">
-                  Ad Soyad
-                </label>
-                <input
-                  type="text"
-                  id="ad_soyad"
-                  name="ad_soyad"
-                  value={duzenleForm.ad_soyad}
-                  onChange={handleFormChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="kullanici_adi" className="block text-sm font-medium text-gray-700">
-                  Kullanıcı Adı
-                </label>
-                <input
-                  type="text"
-                  id="kullanici_adi"
-                  name="kullanici_adi"
-                  value={duzenleForm.kullanici_adi}
-                  onChange={handleFormChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="rol_id" className="block text-sm font-medium text-gray-700">
-                  Rol
-                </label>
-                <select
-                  id="rol_id"
-                  name="rol_id"
-                  value={duzenleForm.rol_id}
-                  onChange={handleFormChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+        {/* Düzenleme Modalı */}
+        {duzenleModalAcik && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-gray-900">Kullanıcı Düzenle</h3>
+                <button 
+                  onClick={() => setDuzenleModalAcik(false)}
+                  className="text-gray-400 hover:text-gray-500"
                 >
-                  {roller.map(rol => (
-                    <option key={rol.id} value={rol.id}>
-                      {rol.rol_ad}
-                    </option>
-                  ))}
-                </select>
+                  <X size={20} />
+                </button>
               </div>
               
-              <div className="pt-2">
-                <div className="flex items-center mb-2">
-                  <input
-                    id="sifreGuncelle"
-                    name="sifreGuncelle"
-                    type="checkbox"
-                    checked={sifreGuncelle}
-                    onChange={() => setSifreGuncelle(!sifreGuncelle)}
-                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                  />
-                  <label htmlFor="sifreGuncelle" className="ml-2 block text-sm text-gray-700">
-                    Şifreyi güncelle
+              {guncellemeHata && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
+                  {guncellemeHata}
+                </div>
+              )}
+              
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="ad_soyad" className="block text-sm font-medium text-gray-700">
+                    Ad Soyad
                   </label>
+                  <input
+                    type="text"
+                    id="ad_soyad"
+                    name="ad_soyad"
+                    value={duzenleForm.ad_soyad}
+                    onChange={handleFormChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  />
                 </div>
                 
-                {sifreGuncelle && (
-                  <div className="mt-2">
-                    <label htmlFor="sifre" className="block text-sm font-medium text-gray-700">
-                      Yeni Şifre
+                <div>
+                  <label htmlFor="kullanici_adi" className="block text-sm font-medium text-gray-700">
+                    Kullanıcı Adı
+                  </label>
+                  <input
+                    type="text"
+                    id="kullanici_adi"
+                    name="kullanici_adi"
+                    value={duzenleForm.kullanici_adi}
+                    onChange={handleFormChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="rol_id" className="block text-sm font-medium text-gray-700">
+                    Rol
+                  </label>
+                  <select
+                    id="rol_id"
+                    name="rol_id"
+                    value={duzenleForm.rol_id}
+                    onChange={handleFormChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  >
+                    {roller.map(rol => (
+                      <option key={rol.id} value={rol.id}>
+                        {rol.rol_ad}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="pt-2">
+                  <div className="flex items-center mb-2">
+                    <input
+                      id="sifreGuncelle"
+                      name="sifreGuncelle"
+                      type="checkbox"
+                      checked={sifreGuncelle}
+                      onChange={() => setSifreGuncelle(!sifreGuncelle)}
+                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="sifreGuncelle" className="ml-2 block text-sm text-gray-700">
+                      Şifreyi güncelle
                     </label>
-                    <div className="mt-1 relative rounded-md shadow-sm">
-                      <input
-                        type={sifreGoster ? "text" : "password"}
-                        id="sifre"
-                        name="sifre"
-                        value={duzenleForm.sifre}
-                        onChange={handleFormChange}
-                        className="block w-full pr-10 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setSifreGoster(!sifreGoster)}
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-                      >
-                        {sifreGoster ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
-                    </div>
                   </div>
-                )}
+                  
+                  {sifreGuncelle && (
+                    <div className="mt-2">
+                      <label htmlFor="sifre" className="block text-sm font-medium text-gray-700">
+                        Yeni Şifre
+                      </label>
+                      <div className="mt-1 relative rounded-md shadow-sm">
+                        <input
+                          type={sifreGoster ? "text" : "password"}
+                          id="sifre"
+                          name="sifre"
+                          value={duzenleForm.sifre}
+                          onChange={handleFormChange}
+                          className="block w-full pr-10 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setSifreGoster(!sifreGoster)}
+                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                        >
+                          {sifreGoster ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="mt-6 flex justify-end space-x-3">
+                <button
+                  onClick={() => setDuzenleModalAcik(false)}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md transition-colors"
+                >
+                  İptal
+                </button>
+                <button
+                  onClick={personelGuncelle}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors flex items-center"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                      <span>İşleniyor...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save size={16} className="mr-1" />
+                      <span>Kaydet</span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
-            
-            <div className="mt-6 flex justify-end space-x-3">
-              <button
-                onClick={() => setDuzenleModalAcik(false)}
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md transition-colors"
-              >
-                İptal
-              </button>
-              <button
-                onClick={personelGuncelle}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors flex items-center"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                    <span>İşleniyor...</span>
-                  </>
-                ) : (
-                  <>
-                    <Save size={16} className="mr-1" />
-                    <span>Kaydet</span>
-                  </>
-                )}
-              </button>
-            </div>
           </div>
-        </div>
-      )}
-    </DashboardLayout>
+        )}
+      </DashboardLayout>
+    </PageGuard>
   );
 };
 

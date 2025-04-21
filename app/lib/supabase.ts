@@ -222,12 +222,14 @@ export function unsubscribeFromChannel(subscription: any) {
  * @param urunId Teslimat yapılan ürünün id'si
  * @param teslimatMiktari Teslim edilen miktar
  * @param kullanici Teslimatı yapan kullanıcı
+ * @param teslimatSekli Teslimat şekli (Elden, Kargo, Ambar)
  * @returns Eklenen kayıt
  */
 export const createTeslimatGecmisi = async (
   urunId: number,
   teslimatMiktari: number,
-  kullanici: string
+  kullanici: string,
+  teslimatSekli: string = 'Elden'
 ) => {
   try {
     const { data, error } = await supabase
@@ -236,7 +238,8 @@ export const createTeslimatGecmisi = async (
         {
           urun_id: urunId,
           teslimat_miktari: teslimatMiktari,
-          kullanici: kullanici
+          kullanici: kullanici,
+          teslimat_sekli: teslimatSekli
         }
       ])
       .select();

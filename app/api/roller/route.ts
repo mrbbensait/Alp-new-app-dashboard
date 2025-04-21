@@ -110,4 +110,157 @@ export async function DELETE(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// Yeni rol ekle
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    
+    if (!body.rol_ad) {
+      return NextResponse.json(
+        { success: false, error: 'Rol adı gereklidir' },
+        { status: 400 }
+      );
+    }
+    
+    // Aynı rol adı ile kayıt var mı kontrol et
+    const { data: existingRole, error: checkError } = await supabase
+      .from('roller')
+      .select('id')
+      .ilike('rol_ad', body.rol_ad)
+      .maybeSingle();
+    
+    if (checkError) {
+      throw checkError;
+    }
+    
+    if (existingRole) {
+      return NextResponse.json(
+        { success: false, error: 'Bu rol adı zaten kullanılıyor' },
+        { status: 400 }
+      );
+    }
+    
+    // Rolü ekle
+    const { data, error } = await supabase
+      .from('roller')
+      .insert({
+        rol_ad: body.rol_ad,
+        created_at: new Date().toISOString()
+      })
+      .select();
+    
+    if (error) {
+      throw error;
+    }
+    
+    // Yeni rol için tüm sayfalara yetki ataması yap (varsayılan olarak erişim yok)
+    const { data: sayfalar, error: sayfalarError } = await supabase
+      .from('sayfalar')
+      .select('id');
+    
+    if (sayfalarError) {
+      throw sayfalarError;
+    }
+    
+    if (sayfalar && sayfalar.length > 0) {
+      const yetkiler = sayfalar.map(sayfa => ({
+        rol_id: data[0].id,
+        sayfa_id: sayfa.id,
+        erisim_var: false // Varsayılan olarak erişim yok
+      }));
+      
+      const { error: yetkiError } = await supabase
+        .from('rol_sayfa_yetkileri')
+        .insert(yetkiler);
+      
+      if (yetkiError) {
+        console.error('Rol yetkileri eklenirken hata:', yetkiError);
+        // Rol eklenmiş olduğu için bu hatayı sadece logla, işlemi iptal etme
+      }
+    }
+    
+    return NextResponse.json({ 
+      success: true, 
+      data: data[0],
+      message: `${body.rol_ad} rolü başarıyla eklendi`
+    });
+  } catch (error: any) {
+    console.error('Rol eklenirken hata:', error);
+    return NextResponse.json(
+      { success: false, error: error.message || 'Rol eklenirken bir hata oluştu' },
+      { status: 500 }
+    );
+  }
+}
+
+// Rol güncelleme endpoint'i
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json();
+    
+    if (!body.id) {
+      return NextResponse.json(
+        { success: false, error: 'Rol ID\'si gereklidir' },
+        { status: 400 }
+      );
+    }
+    
+    // Güncellenecek alanları hazırla
+    const updateFields: any = {};
+    
+    // Rol adı değiştirilmişse güncelle
+    if (body.rol_ad !== undefined) {
+      updateFields.rol_ad = body.rol_ad;
+    }
+    
+    // Reçete görüntüleme yetkisi değiştirilmişse güncelle
+    if (body.recete_goruntulebilir !== undefined) {
+      updateFields.recete_goruntulebilir = body.recete_goruntulebilir;
+    }
+    
+    // Not alanı değiştirilmişse güncelle
+    if (body.Not !== undefined) {
+      updateFields.Not = body.Not;
+    }
+    
+    // Boş bir güncelleme isteği kontrolü
+    if (Object.keys(updateFields).length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Güncellenecek veri bulunamadı' },
+        { status: 400 }
+      );
+    }
+    
+    // Rolü güncelle
+    const { data, error } = await supabase
+      .from('roller')
+      .update(updateFields)
+      .eq('id', body.id)
+      .select();
+    
+    if (error) {
+      throw error;
+    }
+    
+    if (!data || data.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Güncelleme yapıldı ancak güncel veri alınamadı' },
+        { status: 500 }
+      );
+    }
+    
+    return NextResponse.json({ 
+      success: true, 
+      data: data[0],
+      message: `${data[0].rol_ad} rolü başarıyla güncellendi`
+    });
+  } catch (error: any) {
+    console.error('Rol güncellenirken hata:', error);
+    return NextResponse.json(
+      { success: false, error: error.message || 'Rol güncellenirken bir hata oluştu' },
+      { status: 500 }
+    );
+  }
 } 

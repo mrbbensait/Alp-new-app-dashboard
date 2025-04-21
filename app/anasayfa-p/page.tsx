@@ -67,7 +67,7 @@ export default function PersonelHomePage() {
                   {/* SAĞ KOLON BUTONLARI */}
                   <div className="flex flex-col space-y-4">
                     <Link 
-                      href="/bitmis-urun-stogu-personel"
+                      href="/tablo/Bitmiş Ürün Stoğu"
                       className="flex items-center justify-between bg-teal-50 hover:bg-teal-100 rounded-lg p-5 transition duration-300 h-32"
                     >
                       <div className="flex items-center">

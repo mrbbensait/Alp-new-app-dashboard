@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from './supabase';
+import { isPageRefresh } from './utils';
 
 // Kullanıcı tipi
 interface User {
@@ -90,10 +91,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           localStorage.removeItem('isLoggedIn');
           localStorage.removeItem('user');
           localStorage.removeItem('sayfaYetkileri');
+          
+          // Sayfa yenileme durumunda Login sayfasına yönlendirmeyi engelle
+          if (!isPageRefresh()) {
+            router.push('/login');
+          }
         }
       } else {
         setUser(null);
         setSayfaYetkileri([]);
+        
+        // Sayfa yenileme durumunda Login sayfasına yönlendirmeyi engelle
+        if (!isPageRefresh()) {
+          router.push('/login');
+        }
       }
       setIsLoading(false);
     };

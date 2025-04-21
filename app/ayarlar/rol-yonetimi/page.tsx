@@ -6,6 +6,8 @@ import { Plus, Edit, Trash2, Check, X, ChevronDown, ChevronUp, ArrowLeft, AlertT
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 import PageGuard from '../../components/PageGuard';
+import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 interface Permission {
   id: string;
@@ -33,7 +35,9 @@ interface Role {
   created_at: string;
   permissions?: string[];
   description?: string;
+  Not?: string;
   sayfaYetkileri?: SayfaYetki[];
+  recete_goruntulebilir?: boolean;
 }
 
 export default function RolYonetimiPage() {
@@ -44,6 +48,7 @@ export default function RolYonetimiPage() {
   const [yetkiYukleniyor, setYetkiYukleniyor] = useState(false);
   const [sayfaYukleniyor, setSayfaYukleniyor] = useState(false);
   const [otomatikTaramaYapiliyor, setOtomatikTaramaYapiliyor] = useState(false);
+  const [notDuzenleme, setNotDuzenleme] = useState<{[key: string]: string}>({});
 
   const [expandedRole, setExpandedRole] = useState<string | null>(null);
   const [isAddingRole, setIsAddingRole] = useState(false);
@@ -72,7 +77,13 @@ export default function RolYonetimiPage() {
         const data = await response.json();
         
         if (data.success) {
-          setRoles(data.data);
+          // "Not" alanını "description" alanına mapleme
+          const rolesWithDescription = data.data.map((role: any) => ({
+            ...role,
+            description: role.Not || role.description || null 
+          }));
+          
+          setRoles(rolesWithDescription);
           setError(null);
         } else {
           throw new Error(data.error || 'Roller alınamadı');
@@ -220,19 +231,46 @@ export default function RolYonetimiPage() {
     setNewRole({ rol_ad: '', description: '', permissions: [] });
   };
 
-  const handleSaveNewRole = () => {
-    // API'ye yeni rol eklemek için POST isteği gönderilecek
-    // Şu an için sadece arayüzü göstermek için kullanılıyor
-    const newRoleCopy = { ...newRole };
-    setRoles([...roles, { 
-      id: `temp_${Date.now()}`, 
-      rol_ad: newRoleCopy.rol_ad, 
-      created_at: new Date().toISOString(),
-      permissions: newRoleCopy.permissions,
-      description: newRoleCopy.description
-    }]);
-    setIsAddingRole(false);
-    setNewRole({ rol_ad: '', description: '', permissions: [] });
+  const handleSaveNewRole = async () => {
+    if (!newRole.rol_ad.trim()) {
+      toast.error("Rol adı boş olamaz");
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      
+      // API'ye yeni rol eklemek için POST isteği gönder
+      const response = await fetch('/api/roller', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          rol_ad: newRole.rol_ad,
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Rol eklenirken bir hata oluştu');
+      }
+      
+      // Başarılı ise rol listesini güncelle
+      setRoles([...roles, data.data]);
+      toast.success(data.message || 'Rol başarıyla eklendi');
+      
+      // Formu temizle ve kapat
+      setIsAddingRole(false);
+      setNewRole({ rol_ad: '', description: '', permissions: [] });
+      
+    } catch (error: any) {
+      console.error('Rol eklenirken hata:', error);
+      toast.error(error.message || 'Rol eklenirken bir hata oluştu');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleTogglePermission = (permissionId: string) => {
@@ -407,28 +445,108 @@ export default function RolYonetimiPage() {
     }
   };
 
+  // Rol özelliklerini güncelleme işlevi
+  const handleUpdateRolOzellik = async (rolId: string, ozellik: string, deger: any) => {
+    try {
+      const role = roles.find(r => r.id === rolId);
+      if (!role) return;
+      
+      const response = await fetch('/api/roller', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          id: rolId,
+          [ozellik]: deger
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        toast.success(`${role.rol_ad} rol özelliği güncellendi`);
+        
+        // API'den gelen güncel veriyi kullan
+        if (data.data) {
+          // Tüm rolleri güncelle, güncellenmiş rol için Not -> description mapleme yap
+          setRoles(prev => prev.map(r => 
+            r.id === rolId 
+              ? { 
+                  ...data.data,
+                  description: data.data.Not || data.data.description || null
+                } 
+              : r
+          ));
+        } else {
+          // API güncel veri dönmezse sadece yerel state'i güncelle
+          setRoles(prev => prev.map(r => 
+            r.id === rolId 
+              ? { 
+                  ...r, 
+                  [ozellik === 'Not' ? 'description' : ozellik]: deger,
+                  Not: ozellik === 'Not' ? deger : r.Not
+                } 
+              : r
+          ));
+        }
+      } else {
+        throw new Error(data.error || 'Rol özelliği güncellenemedi');
+      }
+    } catch (error: any) {
+      console.error('Rol özelliği güncellenirken hata:', error);
+      toast.error('Rol özelliği güncellenirken bir hata oluştu');
+    }
+  };
+
+  // Not değişikliklerini yönet
+  const handleNotChange = (rolId: string, value: string) => {
+    setNotDuzenleme(prev => ({
+      ...prev,
+      [rolId]: value
+    }));
+  };
+  
+  // Kullanıcı input alanından çıktığında notu kaydet
+  const handleNotSave = (rolId: string) => {
+    const role = roles.find(r => r.id === rolId);
+    const notDegeri = notDuzenleme[rolId];
+    
+    // Eğer değer aynıysa güncelleme yapma
+    if (role && notDegeri !== undefined && notDegeri !== role.description) {
+      handleUpdateRolOzellik(rolId, 'Not', notDegeri || null);
+    }
+  };
+
   return (
     <PageGuard sayfaYolu="/ayarlar/rol-yonetimi">
       <DashboardLayout>
-        <div className="container mx-auto p-4 max-w-5xl">
+        <div className="container mx-auto p-6">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-xl font-bold text-gray-900">Rol Yönetimi</h1>
-            <div className="flex space-x-3">
-              <button
-                onClick={handleSayfalarTara}
+            <div className="flex items-center">
+              <Link href="/ayarlar" className="text-indigo-600 hover:text-indigo-800 mr-4">
+                <ArrowLeft size={20} />
+              </Link>
+              <h1 className="text-2xl font-bold text-gray-800">Rol Yönetimi</h1>
+            </div>
+            <div className="flex space-x-2">
+              <Link href="/ayarlar" className="flex items-center text-indigo-600 hover:text-indigo-800">
+                <span>Ayarlar sayfasına Git</span>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </Link>
+              <button 
+                onClick={handleSayfalarTara} 
+                className={`flex items-center px-3 py-2 text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 transition-colors ${otomatikTaramaYapiliyor ? 'opacity-75 cursor-not-allowed' : ''}`}
                 disabled={otomatikTaramaYapiliyor}
-                className="flex items-center px-3 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
               >
-                {otomatikTaramaYapiliyor ? (
-                  <RefreshCw size={16} className="mr-2 animate-spin" />
-                ) : (
-                  <RefreshCw size={16} className="mr-2" />
-                )}
-                Sayfaları Tara
+                <RefreshCw size={16} className={`mr-2 ${otomatikTaramaYapiliyor ? 'animate-spin' : ''}`} />
+                Sayfaları Otomatik Tara
               </button>
-              <button
-                onClick={handleAddNewRole}
-                className="flex items-center px-3 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              <button 
+                onClick={handleAddNewRole} 
+                className="flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
               >
                 <Plus size={16} className="mr-2" />
                 Yeni Rol Ekle
@@ -450,35 +568,80 @@ export default function RolYonetimiPage() {
               <ul className="divide-y divide-gray-200">
                 {roles.map((role) => (
                   <li key={role.id} className="hover:bg-gray-50">
-                    <div className="px-4 py-4 sm:px-6">
+                    <div 
+                      className="px-4 py-4 sm:px-6 cursor-pointer"
+                      onClick={() => handleToggleRole(role.id)}
+                    >
                       <div className="flex items-center justify-between">
-                        <div className="flex flex-col">
+                        <div className="flex flex-col w-full">
                           <h3 className="text-lg font-medium text-gray-900">{role.rol_ad}</h3>
-                          <p className="mt-1 text-sm text-gray-500">{role.description || 'Açıklama bulunmuyor'}</p>
+                          
+                          {expandedRole === role.id ? (
+                            <div className="mt-1 flex items-center">
+                              <input
+                                type="text"
+                                value={notDuzenleme[role.id] !== undefined ? notDuzenleme[role.id] : role.description || ''}
+                                onChange={(e) => handleNotChange(role.id, e.target.value)}
+                                onBlur={() => handleNotSave(role.id)}
+                                placeholder="Not ekle..."
+                                className="text-sm text-gray-700 p-1 border border-gray-300 rounded w-full max-w-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </div>
+                          ) : (
+                            <p className="mt-1 text-sm text-gray-500">{role.description || 'Açıklama bulunmuyor'}</p>
+                          )}
                         </div>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2 ml-4">
                           <button 
-                            onClick={() => openDeleteModal(role)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openDeleteModal(role);
+                            }}
                             className="p-1 rounded-full hover:bg-gray-200 transition-colors"
                           >
                             <Trash2 size={18} className="text-red-500" />
                           </button>
-                          <button 
-                            onClick={() => handleToggleRole(role.id)}
-                            className="p-1 rounded-full hover:bg-gray-200 transition-colors"
-                          >
+                          <div className="p-1 rounded-full hover:bg-gray-200 transition-colors">
                             {expandedRole === role.id ? (
                               <ChevronUp size={18} className="text-gray-600" />
                             ) : (
                               <ChevronDown size={18} className="text-gray-600" />
                             )}
-                          </button>
+                          </div>
                         </div>
                       </div>
                       
                       {/* Sayfa yetkilerini düzenleme bölümü */}
                       {expandedRole === role.id && (
-                        <div className="mt-3 bg-white rounded-lg shadow p-4 animate-fadeIn">
+                        <div className="mt-3 bg-white rounded-lg shadow p-4 animate-fadeIn" onClick={(e) => e.stopPropagation()}>
+                          {/* Özel İzinler Bölümü */}
+                          <div className="mb-6 border-b pb-4">
+                            <h3 className="text-md font-medium text-gray-700 mb-3">Özel İzinler</h3>
+                            
+                            <div className="space-y-3">
+                              {/* Reçete Görüntüleme İzni */}
+                              <div className="flex items-center justify-between p-3 rounded border border-gray-200 bg-gray-50">
+                                <div>
+                                  <h4 className="text-sm font-medium text-gray-800">Reçete Detayları Görüntüleme</h4>
+                                  <p className="text-xs text-gray-500 mt-1">Üretim Kuyruğu sayfasında reçete adına tıklayarak detayları görüntüleyebilir</p>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                  <input 
+                                    type="checkbox" 
+                                    className="sr-only peer"
+                                    checked={role.recete_goruntulebilir || false}
+                                    onChange={(e) => handleUpdateRolOzellik(role.id, 'recete_goruntulebilir', e.target.checked)}
+                                  />
+                                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                              </div>
+                              
+                              {/* İleride eklenecek diğer özel izinler buraya eklenebilir */}
+                            </div>
+                          </div>
+                          
+                          {/* Mevcut Sayfa Yetkileri Bölümü */}
                           <div className="flex justify-between items-center mb-3">
                             <h3 className="text-md font-medium text-gray-700">Sayfa Yetkileri</h3>
                             
@@ -558,6 +721,65 @@ export default function RolYonetimiPage() {
               </ul>
             )}
           </div>
+
+          {/* Yeni Rol Ekleme Formu */}
+          {isAddingRole && (
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg shadow-xl p-6 m-4 max-w-lg w-full mx-auto">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-medium text-gray-900">Yeni Rol Ekle</h3>
+                  <button 
+                    onClick={handleCancelAddRole}
+                    className="text-gray-400 hover:text-gray-500 focus:outline-none"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="rol_ad" className="block text-sm font-medium text-gray-700">
+                      Rol Adı <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="rol_ad"
+                      value={newRole.rol_ad}
+                      onChange={(e) => setNewRole({...newRole, rol_ad: e.target.value})}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      placeholder="Örn: Müdür, Yönetici, Operatör"
+                    />
+                  </div>
+                  
+                  <div className="pt-4 flex justify-end space-x-3">
+                    <button
+                      onClick={handleCancelAddRole}
+                      className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md transition-colors"
+                    >
+                      İptal
+                    </button>
+                    <button
+                      onClick={handleSaveNewRole}
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors flex items-center"
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <>
+                          <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                          <span>İşleniyor...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Plus size={16} className="mr-2" />
+                          <span>Rol Ekle</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Silme onay modalı */}
           {showDeleteModal && (

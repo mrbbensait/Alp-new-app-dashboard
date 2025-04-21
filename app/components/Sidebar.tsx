@@ -193,16 +193,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
       icon: <Home size={18} />
     },
     { 
-      name: 'Üretim Kuyruğu Personel', 
-      path: '/uretim-kuyrugu-personel', 
-      icon: <Clock size={18} />
-    },
-    { 
-      name: 'Bitmiş Ürün Stoğu Personel', 
-      path: '/bitmis-urun-stogu-personel', 
-      icon: <Archive size={18} />
-    },
-    { 
       name: 'Personel Rapor', 
       path: '/personel-rapor', 
       icon: <Clipboard size={18} />
@@ -215,21 +205,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
       name: 'Reçete Kaydı',
       path: '/formlar/recete-kaydi',
       icon: <FileText size={18} />
-    },
-    {
-      name: 'Kullanıcı Kaydı',
-      path: '/formlar/kullanici-kaydi',
-      icon: <Users size={18} />
-    },
-    {
-      name: 'Kullanıcı Listesi',
-      path: '/formlar/kullanici-listesi',
-      icon: <ClipboardList size={18} />
-    },
-    {
-      name: 'Rol Listesi',
-      path: '/formlar/rol-listesi',
-      icon: <ClipboardList size={18} />
     }
   ];
 
