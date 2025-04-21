@@ -4,6 +4,7 @@ export interface Hammadde {
   'Hammadde Adı': string;
   'Oran(100Kg)': number;
   'Miktar'?: number;
+  'Stok Kategori'?: string;
 }
 
 /**
@@ -24,7 +25,8 @@ export async function getFormulasyonByReceteAdi(receteAdi: string, uretimMiktari
     const hammaddeler = formulasyonlar.map((item: any) => ({
       'Hammadde Adı': item['Hammadde Adı'],
       'Oran(100Kg)': item['Oran(100Kg)'],
-      'Miktar': calculateMiktar(item['Oran(100Kg)'], uretimMiktari)
+      'Miktar': calculateMiktar(item['Oran(100Kg)'], uretimMiktari),
+      'Stok Kategori': item['Stok Kategori'] || ''
     }));
     
     console.log('Formülasyon hazırlandı:', hammaddeler);

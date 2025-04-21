@@ -9,6 +9,7 @@ interface Hammadde {
   'Hammadde Adı': string;
   'Oran(100Kg)': number;
   'Miktar': number;
+  'Stok Kategori'?: string;
 }
 
 interface UretimEmriProps {
@@ -175,6 +176,7 @@ const UretimEmriPDF: React.FC<UretimEmriProps> = (props) => {
             <thead>
               <tr className="bg-gray-100">
                 <th className="border border-black p-1 font-semibold text-center">Hammadde Adı</th>
+                <th className="border border-black p-1 font-semibold text-center">Stok Kategori</th>
                 <th className="border border-black p-1 font-semibold text-center">% Miktar</th>
                 <th className="border border-black p-1 font-semibold text-center">Miktar</th>
                 <th className="border border-black p-1 font-semibold text-center">Lot No</th>
@@ -186,6 +188,7 @@ const UretimEmriPDF: React.FC<UretimEmriProps> = (props) => {
               {hammaddeler.map((hammadde, index) => (
                 <tr key={index}>
                   <td className="border border-black p-1 h-7">{hammadde['Hammadde Adı']}</td>
+                  <td className="border border-black p-1 h-7 text-center">{hammadde['Stok Kategori'] || '-'}</td>
                   <td className="border border-black p-1 h-7 text-right">{hammadde['Oran(100Kg)'].toFixed(2)}</td>
                   <td className="border border-black p-1 h-7 text-right">{hammadde['Miktar'].toFixed(2)}</td>
                   <td className="border border-black p-1 h-7"></td>
@@ -196,6 +199,7 @@ const UretimEmriPDF: React.FC<UretimEmriProps> = (props) => {
               {/* Boş satırları doldur - 20 yerine en fazla 10 satır göster */}
               {Array.from({ length: Math.max(0, Math.min(10, 10 - hammaddeler.length)) }).map((_, index) => (
                 <tr key={`empty-${index}`}>
+                  <td className="border border-black p-1 h-7"></td>
                   <td className="border border-black p-1 h-7"></td>
                   <td className="border border-black p-1 h-7"></td>
                   <td className="border border-black p-1 h-7"></td>

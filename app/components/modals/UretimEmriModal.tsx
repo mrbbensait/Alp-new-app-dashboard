@@ -13,6 +13,7 @@ interface Hammadde {
   'Hammadde Adı': string;
   'Oran(100Kg)': number;
   'Miktar': number;
+  'Stok Kategori'?: string;
 }
 
 interface UretimEmriModalProps {
@@ -59,7 +60,8 @@ const UretimEmriModal: React.FC<UretimEmriModalProps> = ({
       const formatlanmisVeriler: Hammadde[] = formulasyonVerileri.map(item => ({
         'Hammadde Adı': item['Hammadde Adı'],
         'Oran(100Kg)': item['Oran(100Kg)'],
-        'Miktar': item['Miktar'] || 0
+        'Miktar': item['Miktar'] || 0,
+        'Stok Kategori': item['Stok Kategori'] || ''
       }));
       setHammaddeler(formatlanmisVeriler);
     } catch (error) {
@@ -252,6 +254,7 @@ const UretimEmriModal: React.FC<UretimEmriModalProps> = ({
                   <thead>
                     <tr className="bg-gray-100">
                       <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Hammadde Adı</th>
+                      <th className="px-4 py-2 text-center text-sm font-medium text-gray-700">Stok Kategori</th>
                       <th className="px-4 py-2 text-right text-sm font-medium text-gray-700">Oran (100Kg)</th>
                       <th className="px-4 py-2 text-right text-sm font-medium text-gray-700">Miktar</th>
                     </tr>
@@ -260,6 +263,7 @@ const UretimEmriModal: React.FC<UretimEmriModalProps> = ({
                     {hammaddeler.map((hammadde, index) => (
                       <tr key={index} className="border-t border-gray-300">
                         <td className="px-4 py-2 text-sm">{hammadde['Hammadde Adı']}</td>
+                        <td className="px-4 py-2 text-sm text-center">{hammadde['Stok Kategori'] || '-'}</td>
                         <td className="px-4 py-2 text-sm text-right">{hammadde['Oran(100Kg)'].toFixed(2)}</td>
                         <td className="px-4 py-2 text-sm text-right">{hammadde['Miktar'].toFixed(2)}</td>
                       </tr>
