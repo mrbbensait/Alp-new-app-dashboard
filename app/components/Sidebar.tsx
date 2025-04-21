@@ -33,11 +33,13 @@ type TableItem = {
   originalName?: string;
   icon: React.ReactNode;
   type?: never;
+  customPath?: string;
 } | {
   type: 'divider';
   name?: never;
   originalName?: never;
   icon?: never;
+  customPath?: never;
 };
 
 interface SidebarProps {
@@ -221,6 +223,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
     { type: 'divider' },
     { name: 'Üretim Kuyruğu', icon: <Clock size={18} /> },
     { name: 'Bitmiş Ürün Stoğu', icon: <Archive size={18} /> },
+    { name: 'Teslimat Geçmişi', icon: <FileText size={18} />, customPath: '/teslimat-gecmisi' },
   ];
 
   // Erişim yetkisi olan sayfaları filtrele
@@ -472,7 +475,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
                       }
                       
                       // Link URL'ini güvenli bir şekilde oluşturuyoruz
-                      const linkHref = `/tablo/${encodeURIComponent(tableItem.originalName ?? tableItem.name)}`;
+                      const linkHref = tableItem.customPath || `/tablo/${encodeURIComponent(tableItem.originalName ?? tableItem.name)}`;
                       
                       // Aktif link kontrolü için path
                       const isActive = pathname === linkHref;
