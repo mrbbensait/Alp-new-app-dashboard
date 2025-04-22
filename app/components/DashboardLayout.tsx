@@ -14,6 +14,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, pageTitle, 
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [sidebarMode, setSidebarMode] = useState<'auto' | 'collapsed'>('auto');
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
+  const [windowWidth, setWindowWidth] = useState(0);
   const router = useRouter();
   const { user, isAuthenticated, isLoading, logout } = useAuth();
   const [userRolAd, setUserRolAd] = useState('Kullanıcı');
@@ -86,6 +87,23 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, pageTitle, 
     };
   }, []);
 
+  // Ekran genişliği değişimini takip et
+  useEffect(() => {
+    // İlk yükleme için ekran genişliğini ayarla
+    setWindowWidth(window.innerWidth);
+    
+    // Ekran boyutu değiştiğinde güncelle
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
+  // Mobil ekran kontrolü
+  const isMobile = windowWidth > 0 && windowWidth < 768;
+
   // Sidebar görünürlüğünü güncellemek için
   const updateSidebarVisibility = (isVisible: boolean) => {
     console.log('Sidebar visibility changed:', isVisible);
@@ -131,9 +149,17 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, pageTitle, 
       <div 
         className="flex flex-col overflow-hidden transition-all duration-300"
         style={{
-          width: isSidebarVisible && !isMobileSidebarOpen ? 'calc(100% - 16rem)' : '100%',
+          width: isMobileSidebarOpen || isMobile
+            ? '100%' // Mobil sidebar açıkken içerik tam genişlikte olacak
+            : (isSidebarVisible && !isMobile) // Masaüstünde normal davranış
+              ? 'calc(100% - 16rem)' 
+              : '100%',
           position: 'absolute',
-          left: isSidebarVisible && !isMobileSidebarOpen ? '16rem' : '0',
+          left: isMobileSidebarOpen || isMobile
+            ? '0' // Mobil sidebar açıkken içerik solda kalacak
+            : (isSidebarVisible && !isMobile) // Masaüstünde normal davranış
+              ? '16rem' 
+              : '0',
           top: 0,
           right: 0,
           bottom: 0,

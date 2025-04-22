@@ -345,7 +345,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
         ref={sidebarRef}
         className={`fixed inset-y-0 left-0 z-50 w-64 bg-gray-800 text-white transform transition-transform duration-300 ease-in-out ${
           isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } ${(sidebarMode === 'auto' && isDesktopSidebarVisible) || sidebarMode === 'collapsed' && isDesktopSidebarVisible ? 'md:translate-x-0' : 'md:-translate-x-full'} md:static md:z-0 flex flex-col`}
+        } ${(sidebarMode === 'auto' && isDesktopSidebarVisible) || sidebarMode === 'collapsed' && isDesktopSidebarVisible ? 'md:translate-x-0' : 'md:-translate-x-full'} md:relative md:z-0 flex flex-col`}
         style={{ 
           minHeight: '100vh', 
           width: '16rem', 
@@ -358,7 +358,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
           maxHeight: '100vh', // Mobilde ekranı aşma sorununu çözmek için
           height: '100%',
           display: 'flex',
-          flexDirection: 'column'
+          flexDirection: 'column',
+          boxShadow: isMobileSidebarOpen ? '0 0 10px rgba(0,0,0,0.5)' : 'none'
         }}
       >
         <div className="flex-shrink-0 flex items-center justify-center px-4 py-3 border-b border-gray-700">
