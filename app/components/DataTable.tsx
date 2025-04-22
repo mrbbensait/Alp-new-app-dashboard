@@ -163,6 +163,9 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
   const [isUretimEmriModalOpen, setIsUretimEmriModalOpen] = useState(false);
   const [selectedUretimEmri, setSelectedUretimEmri] = useState<{receteAdi: string, uretimMiktari: number, uretimTarihi?: string} | null>(null);
 
+  // Stok Hareket modalı için state
+  const [isStokHareketModalOpen, setIsStokHareketModalOpen] = useState(false);
+
   // Tamamlanmış ürünleri gösterme durumu (0 adeti kalanlar)
   const [showCompletedItems, setShowCompletedItems] = useState(false);
   
@@ -754,7 +757,7 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
   };
 
   // Tablo hücreleri için temel stil sınıfları
-  const cell_base_classes = "px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500";
+  const cell_base_classes = "px-2 sm:px-3 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-gray-500";
 
   // Silme işlemi için onay
   const handleDeleteClick = (rowId: number, firmaAdi: string) => {
@@ -852,7 +855,7 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
                 <th
                   key={column.name}
                   scope="col"
-                  className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  className="px-2 sm:px-3 py-1 sm:py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort(column.name)}
                 >
                   <div className="flex items-center space-x-1">
@@ -870,7 +873,7 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
               {tableName === 'Bitmiş Ürün Stoğu' && onTeslimatClick && (
                 <th
                   scope="col"
-                  className="px-3 sm:px-6 py-2 sm:py-3 text-center text-xs font-medium uppercase tracking-wider bg-indigo-100 text-indigo-700 font-bold"
+                  className="px-2 sm:px-3 py-1 sm:py-2 text-center text-xs font-medium uppercase tracking-wider bg-indigo-100 text-indigo-700 font-bold"
                 >
                   <div className="flex justify-center items-center">
                     <span className="animate-pulse">Teslimat Gir</span>
@@ -934,7 +937,7 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
                       if (isAmbalajlamaColumn) {
                         if (column.name === 'Ambalajlanan Adet') {
                           return (
-                            <td key={column.name} className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                            <td key={column.name} className="px-2 sm:px-3 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                               {renderAmbalajlamaCell(row)}
                             </td>
                           );
@@ -1144,7 +1147,7 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
                       if (isAmbalajlamaColumn) {
                         if (column.name === 'Ambalajlanan Adet') {
                           return (
-                            <td key={column.name} className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                            <td key={column.name} className="px-2 sm:px-3 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                               {renderAmbalajlamaCell(row)}
                             </td>
                           );

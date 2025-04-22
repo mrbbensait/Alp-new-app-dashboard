@@ -289,6 +289,16 @@ export const rawTableData: TableColumn[] = [
     "data_type": "bigint"
   },
   {
+    "table_name": "Stok",
+    "column_name": "kategori_detay",
+    "data_type": "text"
+  },
+  {
+    "table_name": "Stok",
+    "column_name": "kg_fiyat",
+    "data_type": "bigint"
+  },
+  {
     "table_name": "suppliers",
     "column_name": "Tedarikçi Adı",
     "data_type": "text"
@@ -459,6 +469,13 @@ export const tables: TableSchema[] = tableNames.map(tableName => {
       if (tableName === 'Üretim Kuyruğu' && column.column_name === 'Ambalajlama 2') {
         return {
           name: '2. Ambalajlama',
+          type: column.data_type
+        };
+      }
+      // kg_fiyat sütununu Kg Fiyat (€) olarak değiştir
+      if (tableName === 'Stok' && column.column_name === 'kg_fiyat') {
+        return {
+          name: 'Kg Fiyat (€)',
           type: column.data_type
         };
       }

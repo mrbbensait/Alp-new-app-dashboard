@@ -135,20 +135,30 @@ export async function insertData(tableName: string, data: any) {
 // Bir tablodaki veriyi günceller
 export async function updateData(tableName: string, id: number, data: any) {
   try {
+    // Stok tablosu için ID sütununu, diğerleri için id sütununu kullan
+    const idColumn = tableName === 'Stok' ? 'ID' : 'id'; 
+    
+    console.log(`Güncelleniyor: Tablo=${tableName}, ID Sütunu=${idColumn}, ID=${id}, Veri=`, data);
+    
     const { data: result, error } = await supabase
       .from(tableName)
       .update(data)
-      .eq('id', id)
+      .eq(idColumn, id) // Dinamik ID sütunu kullan
       .select();
     
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase güncelleme hatası:', error);
+      throw error;
+    }
     
     // Veri değiştiğinde önbelleği temizle
     invalidateTableCache(tableName);
     
+    console.log('Güncelleme başarılı:', result);
     return result;
   } catch (error) {
-    console.error(`Veri güncellenirken hata oluştu (${tableName}):`, error);
+    // Hatayı tekrar konsola yazdır, belki daha fazla detay verir
+    console.error(`Veri güncellenirken hata oluştu (${tableName}, ID: ${id}):`, error);
     throw error;
   }
 }
