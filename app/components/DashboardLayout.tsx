@@ -90,6 +90,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, pageTitle, 
   const updateSidebarVisibility = (isVisible: boolean) => {
     console.log('Sidebar visibility changed:', isVisible);
     setIsSidebarVisible(isVisible);
+    // Mobil menü açıkken sidebar görünürlüğü değişirse mobil menüyü kapat
+    if (isMobileSidebarOpen && !isVisible) {
+      setIsMobileSidebarOpen(false);
+    }
   };
 
   // Kullanıcı kimliği doğrulanmadıysa veya yükleme devam ediyorsa içeriği gösterme

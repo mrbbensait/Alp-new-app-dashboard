@@ -343,7 +343,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
 
       <aside
         ref={sidebarRef}
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-gray-800 text-white transform transition-transform duration-300 ease-in-out h-screen ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-gray-800 text-white transform transition-transform duration-300 ease-in-out ${
           isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } ${(sidebarMode === 'auto' && isDesktopSidebarVisible) || sidebarMode === 'collapsed' && isDesktopSidebarVisible ? 'md:translate-x-0' : 'md:-translate-x-full'} md:static md:z-0 flex flex-col`}
         style={{ 
@@ -355,10 +355,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
           overscrollBehavior: 'contain',
           scrollbarWidth: 'thin',
           scrollbarColor: '#4B5563 #1F2937',
-          maxHeight: '100vh' // Mobilde ekranı aşma sorununu çözmek için
+          maxHeight: '100vh', // Mobilde ekranı aşma sorununu çözmek için
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column'
         }}
       >
-        <div className="flex items-center justify-center px-4 py-3 border-b border-gray-700">
+        <div className="flex-shrink-0 flex items-center justify-center px-4 py-3 border-b border-gray-700">
           <div className="text-lg font-bold leading-tight text-center tracking-wide">
             Alp Ai Dashboard
           </div>
@@ -373,7 +376,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
           </button>
         </div>
 
-        <div className="px-4 py-2 text-center font-medium text-gray-300 border-b border-gray-700">
+        <div className="flex-shrink-0 px-4 py-2 text-center font-medium text-gray-300 border-b border-gray-700">
           <div className="text-sm text-shadow-sm" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
             Tam Entegre Yapay Zeka
           </div>
@@ -382,7 +385,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
           </div>
         </div>
 
-        <nav className="mt-2 px-2 flex-grow overflow-y-auto scrollbar-thin">
+        <nav className="flex-grow overflow-y-auto mt-2 px-2">
           <div className="space-y-0.5">
             {/* Yönetici menü öğeleri */}
             {filteredAdminMenuItems.length > 0 && (
@@ -548,7 +551,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
           </div>
         </nav>
         
-        <div className="text-xs text-gray-400 border-t border-gray-700 mt-auto">
+        <div className="flex-shrink-0 text-xs text-gray-400 border-t border-gray-700 mt-auto">
           <div className="px-2 py-1.5">
             <div className="grid grid-cols-2 gap-1">
               <div>
