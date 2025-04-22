@@ -345,11 +345,20 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
         ref={sidebarRef}
         className={`fixed inset-y-0 left-0 z-50 w-64 bg-gray-800 text-white transform transition-transform duration-300 ease-in-out h-screen ${
           isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } ${(sidebarMode === 'auto' && isDesktopSidebarVisible) || sidebarMode === 'collapsed' && isDesktopSidebarVisible ? 'md:translate-x-0' : 'md:-translate-x-full'} md:static md:z-0 flex flex-col overflow-y-auto`}
-        style={{ minHeight: '100vh', width: '16rem', minWidth: '16rem', flexShrink: 0 }}
+        } ${(sidebarMode === 'auto' && isDesktopSidebarVisible) || sidebarMode === 'collapsed' && isDesktopSidebarVisible ? 'md:translate-x-0' : 'md:-translate-x-full'} md:static md:z-0 flex flex-col`}
+        style={{ 
+          minHeight: '100vh', 
+          width: '16rem', 
+          minWidth: '16rem', 
+          flexShrink: 0,
+          overflowY: 'auto',
+          overscrollBehavior: 'contain',
+          scrollbarWidth: 'thin',
+          scrollbarColor: '#4B5563 #1F2937'
+        }}
       >
-        <div className="flex items-center justify-center px-4 py-4 border-b border-gray-700">
-          <div className="text-xl font-bold leading-tight text-center tracking-wide">
+        <div className="flex items-center justify-center px-4 py-3 border-b border-gray-700">
+          <div className="text-lg font-bold leading-tight text-center tracking-wide">
             Alp Ai Dashboard
           </div>
           <button
@@ -363,7 +372,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
           </button>
         </div>
 
-        <div className="px-4 py-3 text-center font-medium text-gray-300 border-b border-gray-700">
+        <div className="px-4 py-2 text-center font-medium text-gray-300 border-b border-gray-700">
           <div className="text-sm text-shadow-sm" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
             Tam Entegre Yapay Zeka
           </div>
@@ -372,8 +381,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
           </div>
         </div>
 
-        <nav className="mt-5 px-2 flex-grow">
-          <div className="space-y-1">
+        <nav className="mt-2 px-2 flex-grow overflow-y-auto scrollbar-thin">
+          <div className="space-y-0.5">
             {/* Yönetici menü öğeleri */}
             {filteredAdminMenuItems.length > 0 && (
               <>
@@ -382,14 +391,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
                     <Link
                       href={item.path}
                       className={`
-                        flex items-center px-3 py-2 text-sm font-medium rounded-md
+                        flex items-center px-2.5 py-1.5 text-sm font-medium rounded-md
                         ${pathname === item.path ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}
                       `}
                     >
-                      <span className="mr-3 text-gray-400">{item.icon}</span>
+                      <span className="mr-2.5 text-gray-400">{item.icon}</span>
                       {item.name}
                     </Link>
-                    {index === filteredAdminMenuItems.length - 1 && <div className="border-b border-gray-700 my-2 mx-3 opacity-50"></div>}
+                    {index === filteredAdminMenuItems.length - 1 && <div className="border-b border-gray-700 my-1 mx-3 opacity-50"></div>}
                   </React.Fragment>
                 ))}
               </>
@@ -403,15 +412,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
                     key={item.path}
                     href={item.path}
                     className={`
-                      flex items-center px-3 py-2 text-sm font-medium rounded-md
+                      flex items-center px-2.5 py-1.5 text-sm font-medium rounded-md
                       ${pathname === item.path ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}
                     `}
                   >
-                    <span className="mr-3 text-gray-400">{item.icon}</span>
+                    <span className="mr-2.5 text-gray-400">{item.icon}</span>
                     {item.name}
                   </Link>
                 ))}
-                <div className="border-b border-gray-700 my-2 mx-3 opacity-50"></div>
+                <div className="border-b border-gray-700 my-1 mx-3 opacity-50"></div>
               </>
             )}
 
@@ -420,28 +429,28 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
               <div>
                 <button
                   type="button"
-                  className="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-gray-300 rounded-md hover:bg-gray-700 hover:text-white"
+                  className="flex items-center justify-between w-full px-2.5 py-1.5 text-sm font-medium text-gray-300 rounded-md hover:bg-gray-700 hover:text-white"
                   onClick={toggleReportsMenu}
                 >
                   <span className="flex items-center">
-                    <BarChart2 size={18} className="mr-3 text-gray-400" />
+                    <BarChart2 size={18} className="mr-2.5 text-gray-400" />
                     Yönetim
                   </span>
-                  {reportsOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                  {reportsOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </button>
 
                 {reportsOpen && (
-                  <div className="mt-1 pl-4 space-y-1">
+                  <div className="mt-0.5 pl-3 space-y-0.5">
                     {filteredReportItems.map((item) => (
                       <Link
                         key={item.path}
                         href={item.path}
                         className={`
-                          flex items-center px-3 py-2 text-sm font-medium rounded-md
+                          flex items-center px-2.5 py-1.5 text-sm font-medium rounded-md
                           ${pathname === item.path ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}
                         `}
                       >
-                        <span className="mr-3 text-gray-400">{item.icon}</span>
+                        <span className="mr-2.5 text-gray-400">{item.icon}</span>
                         {item.name}
                       </Link>
                     ))}
@@ -450,28 +459,28 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
               </div>
             )}
 
-            {filteredReportItems.length > 0 && <div className="border-b border-gray-700 my-2 mx-3 opacity-50"></div>}
+            {filteredReportItems.length > 0 && <div className="border-b border-gray-700 my-1 mx-3 opacity-50"></div>}
 
             {/* Tablolar menüsü - Sadece yöneticiler için */}
             {cleanedTableOrder.some(item => item.type !== 'divider') && (
               <div>
                 <button
                   type="button"
-                  className="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-gray-300 rounded-md hover:bg-gray-700 hover:text-white"
+                  className="flex items-center justify-between w-full px-2.5 py-1.5 text-sm font-medium text-gray-300 rounded-md hover:bg-gray-700 hover:text-white"
                   onClick={toggleTablesMenu}
                 >
                   <span className="flex items-center">
-                    <Database size={18} className="mr-3 text-gray-400" />
+                    <Database size={18} className="mr-2.5 text-gray-400" />
                     Şirket Veritabanı
                   </span>
-                  {tablesOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                  {tablesOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </button>
 
                 {tablesOpen && (
-                  <div className="mt-1 pl-4 space-y-1">
+                  <div className="mt-0.5 pl-3 space-y-0.5">
                     {cleanedTableOrder.map((tableItem, index) => {
                       if (tableItem.type === 'divider') {
-                        return <div key={`divider-${index}`} className="border-b border-gray-700 my-2 mx-2 opacity-50"></div>;
+                        return <div key={`divider-${index}`} className="border-b border-gray-700 my-1 mx-2 opacity-50"></div>;
                       }
                       
                       // Link URL'ini güvenli bir şekilde oluşturuyoruz
@@ -485,11 +494,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
                           key={tableItem.name}
                           href={linkHref}
                           className={`
-                            flex items-center px-3 py-2 text-sm font-medium rounded-md
+                            flex items-center px-2.5 py-1.5 text-sm font-medium rounded-md
                             ${isActive ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}
                           `}
                         >
-                          <span className="mr-3 text-gray-400">{tableItem.icon}</span>
+                          <span className="mr-2.5 text-gray-400">{tableItem.icon}</span>
                           {tableItem.name}
                         </Link>
                       );
@@ -499,35 +508,35 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
               </div>
             )}
 
-            {cleanedTableOrder.some(item => item.type !== 'divider') && <div className="border-b border-gray-700 my-2 mx-3 opacity-50"></div>}
+            {cleanedTableOrder.some(item => item.type !== 'divider') && <div className="border-b border-gray-700 my-1 mx-3 opacity-50"></div>}
 
             {/* Formlar menüsü - Sadece yöneticiler için */}
             {filteredFormItems.length > 0 && (
               <div>
                 <button
                   type="button"
-                  className="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-gray-300 rounded-md hover:bg-gray-700 hover:text-white"
+                  className="flex items-center justify-between w-full px-2.5 py-1.5 text-sm font-medium text-gray-300 rounded-md hover:bg-gray-700 hover:text-white"
                   onClick={toggleFormsMenu}
                 >
                   <span className="flex items-center">
-                    <ClipboardList size={18} className="mr-3 text-gray-400" />
+                    <ClipboardList size={18} className="mr-2.5 text-gray-400" />
                     Formlar
                   </span>
-                  {formsOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                  {formsOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </button>
 
                 {formsOpen && (
-                  <div className="mt-1 pl-4 space-y-1">
+                  <div className="mt-0.5 pl-3 space-y-0.5">
                     {filteredFormItems.map((item) => (
                       <Link
                         key={item.path}
                         href={item.path}
                         className={`
-                          flex items-center px-3 py-2 text-sm font-medium rounded-md
+                          flex items-center px-2.5 py-1.5 text-sm font-medium rounded-md
                           ${pathname === item.path ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}
                         `}
                       >
-                        <span className="mr-3 text-gray-400">{item.icon}</span>
+                        <span className="mr-2.5 text-gray-400">{item.icon}</span>
                         {item.name}
                       </Link>
                     ))}
@@ -538,54 +547,59 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
           </div>
         </nav>
         
-        <div className="text-xs text-gray-400 border-t border-gray-700">
-          <div className="px-4 py-2">
-            <div className="mt-auto">
-              <Link
-                href="/ayarlar"
-                className={`
-                  flex items-center px-3 py-2 mt-2 text-sm font-medium rounded-md mx-2
-                  ${pathname === "/ayarlar" ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}
-                `}
-              >
-                <span className="mr-3 text-gray-400"><Settings size={18} /></span>
-                Ayarlar
-              </Link>
-            </div>
-            <p className="mb-2 mt-4">Kenar çubuğu kontrolü</p>
-            <div className="space-y-1">
-              <div 
-                className="flex items-center cursor-pointer hover:bg-gray-700 px-2 py-1 rounded"
-                onClick={() => changeSidebarMode('auto')}
-              >
-                <div className="w-4 h-4 flex items-center justify-center mr-2">
-                  {sidebarMode === 'auto' && (
-                    <div className="w-2 h-2 bg-white rounded-full"></div>
-                  )}
-                </div>
-                <span className={sidebarMode === 'auto' ? 'text-white' : ''}>Sabit</span>
+        <div className="text-xs text-gray-400 border-t border-gray-700 mt-auto">
+          <div className="px-2 py-1.5">
+            <div className="grid grid-cols-2 gap-1">
+              <div>
+                <Link
+                  href="/ayarlar"
+                  className={`
+                    flex items-center px-2.5 py-1.5 text-sm font-medium rounded-md
+                    ${pathname === "/ayarlar" ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}
+                  `}
+                >
+                  <span className="mr-2 text-gray-400"><Settings size={16} /></span>
+                  <span className="text-xs">Ayarlar</span>
+                </Link>
               </div>
               
-              <div 
-                className="flex items-center cursor-pointer hover:bg-gray-700 px-2 py-1 rounded"
-                onClick={() => {
-                  console.log('Sidebar mode changed to collapsed');
-                  changeSidebarMode('collapsed');
-                }}
-              >
-                <div className="w-4 h-4 flex items-center justify-center mr-2">
-                  {sidebarMode === 'collapsed' && (
-                    <div className="w-2 h-2 bg-white rounded-full"></div>
-                  )}
+              <div>
+                <p className="mb-1 px-2 text-xs font-medium">Kenar Kontrolü</p>
+                <div className="flex flex-row gap-1 items-center">
+                  <div 
+                    className="flex-1 flex items-center cursor-pointer hover:bg-gray-700 px-1.5 py-1 rounded"
+                    onClick={() => changeSidebarMode('auto')}
+                  >
+                    <div className="w-3 h-3 flex items-center justify-center mr-1">
+                      {sidebarMode === 'auto' && (
+                        <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                      )}
+                    </div>
+                    <span className={`text-xs ${sidebarMode === 'auto' ? 'text-white' : ''}`}>Sabit</span>
+                  </div>
+                  
+                  <div 
+                    className="flex-1 flex items-center cursor-pointer hover:bg-gray-700 px-1.5 py-1 rounded"
+                    onClick={() => {
+                      console.log('Sidebar mode changed to collapsed');
+                      changeSidebarMode('collapsed');
+                    }}
+                  >
+                    <div className="w-3 h-3 flex items-center justify-center mr-1">
+                      {sidebarMode === 'collapsed' && (
+                        <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                      )}
+                    </div>
+                    <span className={`text-xs ${sidebarMode === 'collapsed' ? 'text-white' : ''}`}>Küçült</span>
+                  </div>
                 </div>
-                <span className={sidebarMode === 'collapsed' ? 'text-white' : ''}>Kenara Küçült</span>
               </div>
             </div>
           </div>
-        </div>
-        
-        <div className="mt-auto px-4 py-3 text-xs text-gray-400 border-t border-gray-700 text-center">
-          Versiyon 4.3.1
+          
+          <div className="px-4 py-1.5 text-xs text-gray-400 border-t border-gray-700 text-center">
+            Versiyon 4.3.1
+          </div>
         </div>
       </aside>
       
