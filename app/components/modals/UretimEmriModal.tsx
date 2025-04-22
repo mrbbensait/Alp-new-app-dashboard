@@ -21,15 +21,17 @@ interface UretimEmriModalProps {
   onClose: () => void;
   receteAdi: string;
   uretimMiktari: number;
+  uretimTarihi?: string;
 }
 
 const UretimEmriModal: React.FC<UretimEmriModalProps> = ({
   isOpen,
   onClose,
   receteAdi,
-  uretimMiktari
+  uretimMiktari,
+  uretimTarihi: gelenUretimTarihi
 }) => {
-  console.log('UretimEmriModal render:', { isOpen, receteAdi, uretimMiktari });
+  console.log('UretimEmriModal render:', { isOpen, receteAdi, uretimMiktari, gelenUretimTarihi });
 
   const [hammaddeler, setHammaddeler] = useState<Hammadde[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,9 +45,9 @@ const UretimEmriModal: React.FC<UretimEmriModalProps> = ({
       console.log('UretimEmriModal açıldı, veri yükleniyor');
       loadFormulasyon();
       setUretimNo(generateUretimNo());
-      setUretimTarihi(formatTarih());
+      setUretimTarihi(gelenUretimTarihi || formatTarih());
     }
-  }, [isOpen, receteAdi, uretimMiktari]);
+  }, [isOpen, receteAdi, uretimMiktari, gelenUretimTarihi]);
 
   const loadFormulasyon = async () => {
     setLoading(true);

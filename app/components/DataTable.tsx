@@ -144,7 +144,7 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
 
   // Üretim Emri modalı için state
   const [isUretimEmriModalOpen, setIsUretimEmriModalOpen] = useState(false);
-  const [selectedUretimEmri, setSelectedUretimEmri] = useState<{receteAdi: string, uretimMiktari: number} | null>(null);
+  const [selectedUretimEmri, setSelectedUretimEmri] = useState<{receteAdi: string, uretimMiktari: number, uretimTarihi?: string} | null>(null);
 
   // Tamamlanmış ürünleri gösterme durumu (0 adeti kalanlar)
   const [showCompletedItems, setShowCompletedItems] = useState(false);
@@ -459,18 +459,44 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
   }
 
   // Reçeteye tıklama işleyicisi
-  const handleRecipeClick = (recipeName: string, recipeId: string, brand: string) => {
+  const handleRecipeClick = (recipeName: string, recipeId: string, brand: string, row?: any) => {
     console.log('Reçete tıklandı:', recipeName, recipeId, brand);
     if (tableName === 'Reçeteler') {
       setSelectedRecipe({ name: recipeName, id: recipeId, brand });
       setIsFormulationModalOpen(true);
     } else if (tableName === 'Üretim Kuyruğu') {
-      // Üretim Kuyruğu tablosunda Reçete Adı'na tıklandığında Üretim Emri modalını aç
-      const row = localData.find(item => item['Reçete Adı'] === recipeName);
+      // row parametresi ile doğrudan tıklanan satır bilgisini alabiliriz
       if (row) {
+        // Bulk Üretim Emri(Kg) değeri 0 veya boş ise varsayılan olarak 100kg kullan
+        const bulkUretimMiktari = row['Bulk Üretim Emri(Kg)'];
+        const uretimMiktari = bulkUretimMiktari && bulkUretimMiktari > 0 ? bulkUretimMiktari : 100;
+        
+        // Üretim Emir Tarihi değerini al - formatlanmış string olarak
+        let uretimTarihi = row['Üretim Emir Tarihi'];
+        
+        // Eğer tarih bir Date objesi ise veya tarih string'i ise formatla
+        if (uretimTarihi) {
+          if (uretimTarihi instanceof Date) {
+            uretimTarihi = uretimTarihi.toLocaleDateString('tr-TR');
+          } else if (typeof uretimTarihi === 'string') {
+            try {
+              // Tarih string'i olabilir, Date objesine çevirip formatlayalım
+              const dateObj = new Date(uretimTarihi);
+              if (!isNaN(dateObj.getTime())) {
+                uretimTarihi = dateObj.toLocaleDateString('tr-TR');
+              }
+            } catch (e) {
+              console.error('Tarih formatlanırken hata:', e);
+            }
+          }
+        }
+        
+        console.log('Üretim Emri Tarihi:', uretimTarihi);
+        
         setSelectedUretimEmri({
           receteAdi: recipeName,
-          uretimMiktari: row['Bulk Üretim Emri(Kg)'] || 0
+          uretimMiktari: uretimMiktari,
+          uretimTarihi: uretimTarihi
         });
         setIsUretimEmriModalOpen(true);
       }
@@ -578,7 +604,7 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
         return (
           <span 
             className="cursor-pointer text-indigo-600 hover:text-indigo-900 hover:underline"
-            onClick={() => handleRecipeClick(value, row.id || '', '')}
+            onClick={() => handleRecipeClick(value, row.id || '', '', row)}
           >
             {value}
           </span>
@@ -764,6 +790,7 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
           }}
           receteAdi={selectedUretimEmri.receteAdi}
           uretimMiktari={selectedUretimEmri.uretimMiktari}
+          uretimTarihi={selectedUretimEmri.uretimTarihi}
         />
       )}
     
@@ -874,7 +901,7 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
                           key={column.name} 
                           className={`px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 ${isRecipeName ? 'cursor-pointer hover:text-indigo-600 hover:underline' : ''} ${isNotesColumn && isSatinAlmaTable ? 'cursor-pointer hover:bg-gray-100' : ''}`}
                           onClick={isRecipeName ? 
-                            () => handleRecipeClick(row[column.name], row['Reçete ID'] || '', row['Marka'] || '') : 
+                            () => handleRecipeClick(row[column.name], row['Reçete ID'] || '', row['Marka'] || '', row) : 
                             (isNotesColumn && isSatinAlmaTable && !isEditingThisCell) ? 
                               () => handleNotesClick(row.id, column.name, getDisplayValue(row, column.name) || "") : 
                               undefined
@@ -1060,7 +1087,7 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
                           key={column.name} 
                           className={`px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 ${isRecipeName ? 'cursor-pointer hover:text-indigo-600 hover:underline' : ''} ${isNotesColumn && isSatinAlmaTable ? 'cursor-pointer hover:bg-gray-100' : ''}`}
                           onClick={isRecipeName ? 
-                            () => handleRecipeClick(row[column.name], row['Reçete ID'] || '', row['Marka'] || '') : 
+                            () => handleRecipeClick(row[column.name], row['Reçete ID'] || '', row['Marka'] || '', row) : 
                             (isNotesColumn && isSatinAlmaTable && !isEditingThisCell) ? 
                               () => handleNotesClick(row.id, column.name, getDisplayValue(row, column.name) || "") : 
                               undefined
