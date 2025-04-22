@@ -56,8 +56,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
   const isFormsPage = pathname.startsWith('/formlar');
   const isTablesPage = pathname.startsWith('/tablo');
   const isReportsPage = pathname.startsWith('/raporlar');
+  const isTeslimatGecmisiPage = pathname === '/teslimat-gecmisi';
   
-  const [tablesOpen, setTablesOpen] = useState(isTablesPage);
+  const [tablesOpen, setTablesOpen] = useState(isTablesPage || isTeslimatGecmisiPage);
   const [formsOpen, setFormsOpen] = useState(isFormsPage);
   const [reportsOpen, setReportsOpen] = useState(isReportsPage);
   
@@ -117,9 +118,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
   // URL değiştiğinde açılır menü durumlarını güncelle
   useEffect(() => {
     setFormsOpen(isFormsPage);
-    setTablesOpen(isTablesPage);
+    setTablesOpen(isTablesPage || isTeslimatGecmisiPage);
     setReportsOpen(isReportsPage);
-  }, [pathname, isFormsPage, isTablesPage, isReportsPage]);
+  }, [pathname, isFormsPage, isTablesPage, isReportsPage, isTeslimatGecmisiPage]);
 
   const toggleTablesMenu = () => {
     setTablesOpen(!tablesOpen);

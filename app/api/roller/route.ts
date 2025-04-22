@@ -220,6 +220,21 @@ export async function PUT(request: NextRequest) {
       updateFields.recete_goruntulebilir = body.recete_goruntulebilir;
     }
     
+    // Yeni Üretim Gir yetkisi değiştirilmişse güncelle
+    if (body.yeni_uretim_girebilir !== undefined) {
+      updateFields.yeni_uretim_girebilir = body.yeni_uretim_girebilir;
+    }
+    
+    // Kalan Bulk Sıfırla yetkisi değiştirilmişse güncelle
+    if (body.kalan_bulk_sifirla !== undefined) {
+      updateFields.kalan_bulk_sifirla = body.kalan_bulk_sifirla;
+    }
+    
+    // Üretimi Sil yetkisi değiştirilmişse güncelle
+    if (body.uretimi_sil !== undefined) {
+      updateFields.uretimi_sil = body.uretimi_sil;
+    }
+    
     // Not alanı değiştirilmişse güncelle
     if (body.Not !== undefined) {
       updateFields.Not = body.Not;

@@ -15,6 +15,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, pageTitle, 
   const [sidebarMode, setSidebarMode] = useState<'auto' | 'collapsed'>('auto');
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
   const [windowWidth, setWindowWidth] = useState(0);
+  const [showWarning, setShowWarning] = useState(false);
   const router = useRouter();
   const { user, isAuthenticated, isLoading, logout } = useAuth();
   const [userRolAd, setUserRolAd] = useState('Kullanıcı');
@@ -167,13 +168,15 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, pageTitle, 
         }}
       >
         <header className="bg-white shadow-sm z-10 relative">
-          {/* Yanıp sönen uyarı mesajı */}
-          <div className="absolute left-1/2 transform -translate-x-1/2 top-0 w-full max-w-xl text-center z-20">
-            <div className="warning-pulse bg-red-50 border-2 border-red-500 rounded-lg px-4 py-2 shadow-lg mx-4 mt-2">
-              <p className="text-red-600 font-bold">BackEnd Kodlama Üzerinde Güncelleme Yapılıyor!</p>
-              <p className="text-red-500 text-sm">Lütfen bir kayıt girişi yapmayınız, sayfalar arasında dolaşabilirsiniz.</p>
+          {/* Yanıp sönen uyarı mesajı - showWarning true olduğunda görünür */}
+          {showWarning && (
+            <div className="absolute left-1/2 transform -translate-x-1/2 top-0 w-full max-w-xl text-center z-20">
+              <div className="warning-pulse bg-red-50 border-2 border-red-500 rounded-lg px-4 py-2 shadow-lg mx-4 mt-2">
+                <p className="text-red-600 font-bold">BackEnd Kodlama Üzerinde Güncelleme Yapılıyor!</p>
+                <p className="text-red-500 text-sm">Lütfen bir kayıt girişi yapmayınız, sayfalar arasında dolaşabilirsiniz.</p>
+              </div>
             </div>
-          </div>
+          )}
           
           <div className="px-4 py-3 sm:px-6 md:px-8 flex justify-between items-center">
             {/* Sayfa başlığı ve alt başlığı */}

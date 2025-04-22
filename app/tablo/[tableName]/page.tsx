@@ -24,6 +24,8 @@ import StokKartiEkleModal from '../../components/modals/StokKartiEkleModal';
 import StokHareketModal from '../../components/modals/StokHareketModal';
 import UretimGirModal from '../../components/modals/UretimGirModal';
 import BulkSifirlamaModal from '../../components/modals/BulkSifirlamaModal';
+import UretimSilModal from '../../components/modals/UretimSilModal';
+import { supabase } from '@/app/lib/supabase';
 
 export default function TablePage() {
   const { tableName } = useParams<{ tableName: string }>();
@@ -58,8 +60,12 @@ export default function TablePage() {
   const [stokHareketModalOpen, setStokHareketModalOpen] = useState(false);
   const [uretimGirModalOpen, setUretimGirModalOpen] = useState(false);
   const [bulkSifirlamaModalOpen, setBulkSifirlamaModalOpen] = useState(false);
+  const [uretimSilModalOpen, setUretimSilModalOpen] = useState(false);
   const [selectedUretimKuyrugu, setSelectedUretimKuyrugu] = useState<{id: number, receteAdi: string} | null>(null);
   const { user } = useAuth();
+  
+  // Kullanıcının rol bilgilerini tutacak state
+  const [userRolBilgileri, setUserRolBilgileri] = useState<any>(null);
   
   // Tablo şeması bulma
   const tableSchema = tables.find(table => table.name === decodedTableName);
@@ -265,6 +271,30 @@ export default function TablePage() {
     };
   }, [autoRefreshTimer]);
   
+  // Kullanıcının rol bilgilerini veritabanından çek
+  useEffect(() => {
+    const fetchRolBilgileri = async () => {
+      if (user?.rol_id) {
+        try {
+          const { data, error } = await supabase
+            .from('roller')
+            .select('*')
+            .eq('id', user.rol_id)
+            .single();
+            
+          if (!error && data) {
+            console.log('Kullanıcı rol bilgileri:', data);
+            setUserRolBilgileri(data);
+          }
+        } catch (err) {
+          console.error('Rol bilgileri alınırken hata:', err);
+        }
+      }
+    };
+    
+    fetchRolBilgileri();
+  }, [user]);
+  
   if (!tableSchema) {
     return (
       <PageGuard sayfaYolu={`/tablo/${decodedTableName}`}>
@@ -419,40 +449,57 @@ export default function TablePage() {
               {/* Üretim Kuyruğu için butonlar */}
               {decodedTableName === 'Üretim Kuyruğu' && (
                 <div className="flex space-x-2">
-                  {/* Yeni Üretim Gir Butonu */}
-                  <button
-                    onClick={() => setUretimGirModalOpen(true)}
-                    className="flex items-center justify-center px-4 h-10 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 w-full sm:w-auto"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
-                    </svg>
-                    Yeni Üretim Gir
-                  </button>
+                  {/* Yeni Üretim Gir Butonu - Sadece yetkisi olanlar görebilir */}
+                  {userRolBilgileri?.yeni_uretim_girebilir && (
+                    <button
+                      onClick={() => setUretimGirModalOpen(true)}
+                      className="flex items-center justify-center px-4 h-10 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 w-full sm:w-auto"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                      </svg>
+                      Yeni Üretim Gir
+                    </button>
+                  )}
                   
-                  {/* Kalan Bulk Sıfırla Butonu */}
-                  <button
-                    onClick={() => {
-                      // İlk kayıt seçiliyse modal açılır, yoksa uyarı gösterilir
-                      if (tableData.length > 0) {
-                        // Örnek olarak ilk kaydı seçiyoruz, gerçekte kullanıcının bir kayıt seçmesi gerekebilir
-                        const firstRow = tableData[0];
-                        setSelectedUretimKuyrugu({
-                          id: firstRow.id,
-                          receteAdi: firstRow['Reçete Adı'] || 'Seçili Kayıt'
-                        });
-                        setBulkSifirlamaModalOpen(true);
-                      } else {
-                        alert('Sıfırlanacak kayıt bulunamadı. Lütfen önce bir üretim kaydı ekleyin.');
-                      }
-                    }}
-                    className="flex items-center justify-center px-4 h-10 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 w-full sm:w-auto"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 010 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
-                    Kalan Bulk Sıfırla
-                  </button>
+                  {/* Kalan Bulk Sıfırla Butonu - Sadece yetkisi olanlar görebilir */}
+                  {userRolBilgileri?.kalan_bulk_sifirla && (
+                    <button
+                      onClick={() => {
+                        // İlk kayıt seçiliyse modal açılır, yoksa uyarı gösterilir
+                        if (tableData.length > 0) {
+                          // Örnek olarak ilk kaydı seçiyoruz, gerçekte kullanıcının bir kayıt seçmesi gerekebilir
+                          const firstRow = tableData[0];
+                          setSelectedUretimKuyrugu({
+                            id: firstRow.id,
+                            receteAdi: firstRow['Reçete Adı'] || 'Seçili Kayıt'
+                          });
+                          setBulkSifirlamaModalOpen(true);
+                        } else {
+                          alert('Sıfırlanacak kayıt bulunamadı. Lütfen önce bir üretim kaydı ekleyin.');
+                        }
+                      }}
+                      className="flex items-center justify-center px-4 h-10 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 w-full sm:w-auto"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 010 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
+                      Kalan Bulk Sıfırla
+                    </button>
+                  )}
+                  
+                  {/* Üretimi Sil Butonu - Sadece yetkisi olanlar görebilir */}
+                  {userRolBilgileri?.uretimi_sil && (
+                    <button
+                      onClick={() => setUretimSilModalOpen(true)}
+                      className="flex items-center justify-center px-4 h-10 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 w-full sm:w-auto"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      Üretimi Sil
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -614,6 +661,16 @@ export default function TablePage() {
                 setBulkSifirlamaModalOpen(false);
                 handleRefresh(); // Bulk sıfırlama sonrası tabloyu yenile
                 setSelectedUretimKuyrugu(null);
+              }}
+            />
+            
+            {/* Üretim Silme Modalı */}
+            <UretimSilModal
+              isOpen={uretimSilModalOpen}
+              onClose={() => setUretimSilModalOpen(false)}
+              onSuccess={() => {
+                setUretimSilModalOpen(false);
+                handleRefresh(); // Üretim silme sonrası tabloyu yenile
               }}
             />
           </>

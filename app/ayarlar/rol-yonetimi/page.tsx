@@ -38,6 +38,9 @@ interface Role {
   Not?: string;
   sayfaYetkileri?: SayfaYetki[];
   recete_goruntulebilir?: boolean;
+  yeni_uretim_girebilir?: boolean;
+  kalan_bulk_sifirla?: boolean;
+  uretimi_sil?: boolean;
 }
 
 export default function RolYonetimiPage() {
@@ -632,6 +635,57 @@ export default function RolYonetimiPage() {
                                     className="sr-only peer"
                                     checked={role.recete_goruntulebilir || false}
                                     onChange={(e) => handleUpdateRolOzellik(role.id, 'recete_goruntulebilir', e.target.checked)}
+                                  />
+                                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                              </div>
+                              
+                              {/* Yeni Üretim Girme İzni */}
+                              <div className="flex items-center justify-between p-3 rounded border border-gray-200 bg-gray-50">
+                                <div>
+                                  <h4 className="text-sm font-medium text-gray-800">Yeni Üretim Girme</h4>
+                                  <p className="text-xs text-gray-500 mt-1">Üretim Kuyruğu sayfasında yeni üretim emri girebilir</p>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                  <input 
+                                    type="checkbox" 
+                                    className="sr-only peer"
+                                    checked={role.yeni_uretim_girebilir || false}
+                                    onChange={(e) => handleUpdateRolOzellik(role.id, 'yeni_uretim_girebilir', e.target.checked)}
+                                  />
+                                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                              </div>
+                              
+                              {/* Kalan Bulk Sıfırlama İzni */}
+                              <div className="flex items-center justify-between p-3 rounded border border-gray-200 bg-gray-50">
+                                <div>
+                                  <h4 className="text-sm font-medium text-gray-800">Kalan Bulk Sıfırlama</h4>
+                                  <p className="text-xs text-gray-500 mt-1">Üretim Kuyruğu sayfasında kalan bulk değerini sıfırlayabilir</p>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                  <input 
+                                    type="checkbox" 
+                                    className="sr-only peer"
+                                    checked={role.kalan_bulk_sifirla || false}
+                                    onChange={(e) => handleUpdateRolOzellik(role.id, 'kalan_bulk_sifirla', e.target.checked)}
+                                  />
+                                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                              </div>
+                              
+                              {/* Üretimi Silme İzni */}
+                              <div className="flex items-center justify-between p-3 rounded border border-gray-200 bg-gray-50">
+                                <div>
+                                  <h4 className="text-sm font-medium text-gray-800">Üretimi Silme</h4>
+                                  <p className="text-xs text-gray-500 mt-1">Üretim Kuyruğu sayfasında üretim kayıtlarını silebilir</p>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                  <input 
+                                    type="checkbox" 
+                                    className="sr-only peer"
+                                    checked={role.uretimi_sil || false}
+                                    onChange={(e) => handleUpdateRolOzellik(role.id, 'uretimi_sil', e.target.checked)}
                                   />
                                   <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                                 </label>
