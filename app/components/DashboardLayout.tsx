@@ -51,23 +51,23 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, pageTitle, 
     fetchUserRol();
   }, [user]);
 
-  // localStorage'dan sidebar modunu almak için
+  // sessionStorage'dan sidebar modunu almak için
   useEffect(() => {
-    const savedMode = localStorage.getItem('sidebarMode') as 'auto' | 'collapsed' | null;
+    const savedMode = sessionStorage.getItem('sidebarMode') as 'auto' | 'collapsed' | null;
     if (savedMode) {
       setSidebarMode(savedMode);
       const isVisible = savedMode !== 'collapsed';
       setIsSidebarVisible(isVisible);
       console.log('Initial sidebar mode:', savedMode, 'isVisible:', isVisible);
-    } else if (localStorage.getItem('sidebarMode') === 'pinned') {
+    } else if (sessionStorage.getItem('sidebarMode') === 'pinned') {
       // Eski 'pinned' modu artık desteklenmiyor, 'auto'ya dönüştür
       setSidebarMode('auto');
-      localStorage.setItem('sidebarMode', 'auto');
+      sessionStorage.setItem('sidebarMode', 'auto');
       setIsSidebarVisible(true);
       console.log('Converting pinned mode to auto, isVisible: true');
     }
 
-    // localStorage'daki değişiklikleri dinlemek için event listener
+    // sessionStorage'daki değişiklikleri dinlemek için event listener
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'sidebarMode') {
         const newMode = e.newValue as 'auto' | 'collapsed' | null;
@@ -106,6 +106,18 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, pageTitle, 
 
   return (
     <div className="relative h-screen w-full bg-gray-50 overflow-hidden">
+      <style jsx>{`
+        @keyframes warningPulse {
+          0% { opacity: 1; }
+          50% { opacity: 0.6; }
+          100% { opacity: 1; }
+        }
+        .warning-pulse {
+          animation: warningPulse 2s ease-in-out infinite;
+          box-shadow: 0 0 15px rgba(220, 38, 38, 0.5);
+        }
+      `}</style>
+      
       <Sidebar 
         isMobileSidebarOpen={isMobileSidebarOpen}
         setIsMobileSidebarOpen={setIsMobileSidebarOpen}
@@ -124,7 +136,15 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, pageTitle, 
           transition: 'all 0.3s ease-in-out'
         }}
       >
-        <header className="bg-white shadow-sm z-10">
+        <header className="bg-white shadow-sm z-10 relative">
+          {/* Yanıp sönen uyarı mesajı */}
+          <div className="absolute left-1/2 transform -translate-x-1/2 top-0 w-full max-w-xl text-center z-20">
+            <div className="warning-pulse bg-red-50 border-2 border-red-500 rounded-lg px-4 py-2 shadow-lg mx-4 mt-2">
+              <p className="text-red-600 font-bold">BackEnd Kodlama Üzerinde Güncelleme Yapılıyor!</p>
+              <p className="text-red-500 text-sm">Lütfen bir kayıt girişi yapmayınız, sayfalar arasında dolaşabilirsiniz.</p>
+            </div>
+          </div>
+          
           <div className="px-4 py-3 sm:px-6 md:px-8 flex justify-between items-center">
             <button
               type="button"

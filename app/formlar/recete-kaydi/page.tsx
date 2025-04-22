@@ -10,7 +10,8 @@ import PageGuard from '@/app/components/PageGuard';
 interface StokItem {
   'Hammadde Adı': string;
   'Stok Kategori': string;
-  'Hammadde ID': string; 
+  'Hammadde ID': string;
+  'Birim': string;
   [key: string]: any;
 }
 
@@ -26,6 +27,7 @@ interface Bilesen {
   kategori: string;
   oran: string;
   hammaddeId?: string;
+  birim?: string;
 }
 
 export default function ReceteKaydiPage() {
@@ -111,7 +113,8 @@ export default function ReceteKaydiPage() {
       ...newBilesenler[index], 
       adi: stokItem['Hammadde Adı'], 
       kategori: stokItem['Stok Kategori'],
-      hammaddeId: stokItem['Hammadde ID']
+      hammaddeId: stokItem['Hammadde ID'],
+      birim: stokItem['Birim']
     };
     setBilesenler(newBilesenler);
     setActiveDropdownIndex(null);
@@ -230,7 +233,8 @@ export default function ReceteKaydiPage() {
         adi: b.adi,
         kategori: b.kategori,
         oran: b.oran,
-        hammaddeId: b.hammaddeId
+        hammaddeId: b.hammaddeId,
+        birim: b.birim || 'Kg'
       })),
       kayitTarihi: new Date().toISOString()
     };
@@ -494,7 +498,9 @@ export default function ReceteKaydiPage() {
                                     onClick={() => selectBilesen(index, item)}
                                   >
                                     <div className="font-medium">{item['Hammadde Adı']}</div>
-                                    <div className="text-xs text-gray-500">{item['Stok Kategori']}</div>
+                                    <div className="text-xs text-gray-500">
+                                      {item['Stok Kategori']} • {item['Birim'] || 'Belirtilmemiş'}
+                                    </div>
                                   </div>
                                 ))
                               ) : (
@@ -508,12 +514,22 @@ export default function ReceteKaydiPage() {
                       </div>
                       
                       {/* Kategori Gösterimi */}
-                      <div className="w-full md:w-1/4">
+                      <div className="w-full md:w-1/5">
                         <label className="block text-xs font-medium text-gray-500 mb-1">
                           Kategori
                         </label>
                         <div className="px-3 py-2 bg-gray-100 border border-gray-200 rounded-md text-sm">
                           {bilesen.kategori || "Kategori"}
+                        </div>
+                      </div>
+                      
+                      {/* Birim Gösterimi */}
+                      <div className="w-full md:w-1/6">
+                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                          Birim
+                        </label>
+                        <div className="px-3 py-2 bg-gray-100 border border-gray-200 rounded-md text-sm">
+                          {bilesen.birim || "Otomatik"}
                         </div>
                       </div>
                       

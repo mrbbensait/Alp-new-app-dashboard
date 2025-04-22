@@ -152,8 +152,8 @@ const TalepFormu: React.FC<TalepFormuProps> = ({ maxTalepler = 5 }) => {
     if (!baslik.trim()) return;
 
     try {
-      // LocalStorage'dan kullanıcı bilgilerini al
-      const userDataString = localStorage.getItem('user');
+      // sessionStorage'dan kullanıcı bilgilerini al
+      const userDataString = sessionStorage.getItem('user');
       let personelId = null;
       let personelName = null;
       

@@ -97,10 +97,15 @@ const Notes: React.FC<NotesProps> = ({ maxNotes = 3 }) => {
       const weekStart = formatDateForQuery(weekDays[0]);
       const weekEnd = formatDateForQuery(weekDays[6]);
       
-      // Bu haftanın notlarını getir
+      // Bu haftanın notlarını getir (oluşturan kullanıcı bilgisiyle birlikte)
       const { data, error } = await supabase
         .from('personel_notlar')
-        .select('*')
+        .select(`
+          *,
+          personel:created_by (
+            ad_soyad
+          )
+        `)
         .gte('tarih', weekStart)
         .lte('tarih', weekEnd)
         .order('created_at', { ascending: false });
@@ -110,7 +115,13 @@ const Notes: React.FC<NotesProps> = ({ maxNotes = 3 }) => {
       }
 
       if (data) {
-        setNotes(data);
+        // Kullanıcı bilgisini düzenle
+        const notesWithUserInfo = data.map(note => ({
+          ...note,
+          created_by_name: note.personel?.ad_soyad || 'Bilinmeyen Kullanıcı'
+        }));
+        
+        setNotes(notesWithUserInfo);
       }
     } catch (error) {
       console.error('Notlar yüklenirken hata:', error);
@@ -127,18 +138,33 @@ const Notes: React.FC<NotesProps> = ({ maxNotes = 3 }) => {
       setLoading(true);
       setSearchPerformed(true);
       
-      // Supabase'de metin araması yap
+      // Supabase'de metin araması yap (oluşturan kullanıcı bilgisiyle birlikte)
       const { data, error } = await supabase
         .from('personel_notlar')
-        .select('*')
+        .select(`
+          *,
+          personel:created_by (
+            ad_soyad
+          )
+        `)
         .ilike('metin', `%${searchTerm}%`)
         .order('created_at', { ascending: false });
 
       if (error) {
         throw error;
       }
-
-      setSearchResults(data || []);
+      
+      if (data) {
+        // Kullanıcı bilgisini düzenle
+        const resultsWithUserInfo = data.map(note => ({
+          ...note,
+          created_by_name: note.personel?.ad_soyad || 'Bilinmeyen Kullanıcı'
+        }));
+        
+        setSearchResults(resultsWithUserInfo);
+      } else {
+        setSearchResults([]);
+      }
     } catch (error) {
       console.error('Notlar aranırken hata:', error);
       setSearchResults([]);
@@ -160,8 +186,8 @@ const Notes: React.FC<NotesProps> = ({ maxNotes = 3 }) => {
       // Bugünün tarihini kullan
       const bugununTarihi = new Date();
       
-      // LocalStorage'dan kullanıcı bilgilerini al
-      const userDataString = localStorage.getItem('user');
+      // sessionStorage'dan kullanıcı bilgilerini al
+      const userDataString = sessionStorage.getItem('user');
       let personelId = null;
       
       if (userDataString) {
@@ -475,57 +501,6 @@ const Notes: React.FC<NotesProps> = ({ maxNotes = 3 }) => {
         </div>
       )}
       
-      {/* Not silme onay modalı */}
-      {showDeleteConfirmModal && noteToDelete && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-            <div className="p-4 border-b border-gray-200 flex items-center">
-              <AlertTriangle size={20} className="text-red-500 mr-2" />
-              <h3 className="text-lg font-medium text-red-600">Not Silme Onayı</h3>
-            </div>
-            
-            <div className="p-4">
-              <p className="mb-4">Bu notu silmek istediğinize emin misiniz?</p>
-              
-              <div className="bg-gray-50 p-3 rounded-md mb-4 border border-gray-200">
-                <p className="text-gray-800 break-words">{noteToDelete.metin}</p>
-                {noteToDelete.etiketler && noteToDelete.etiketler.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {noteToDelete.etiketler.map((etiket, i) => (
-                      <span key={i} className="inline-block bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded">
-                        #{etiket}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-              
-              <p className="text-sm text-gray-500 mb-4">
-                Bu işlem geri alınamaz. Not kalıcı olarak silinecektir.
-              </p>
-              
-              <div className="flex justify-end space-x-2">
-                <button
-                  onClick={() => {
-                    setShowDeleteConfirmModal(false);
-                    setNoteToDelete(null);
-                  }}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-                >
-                  İptal
-                </button>
-                <button
-                  onClick={deleteNote}
-                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-                >
-                  Evet, Sil
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      
       {/* Gün notları modalı */}
       {showDayNotesModal && selectedDay && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -565,12 +540,17 @@ const Notes: React.FC<NotesProps> = ({ maxNotes = 3 }) => {
                             ))}
                           </div>
                         )}
-                        <p className="text-xs text-gray-500 mt-2">
-                          {new Date(note.created_at).toLocaleTimeString('tr-TR', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </p>
+                        <div className="flex justify-between items-center mt-2">
+                          <p className="text-xs text-gray-500">
+                            {new Date(note.created_at).toLocaleTimeString('tr-TR', {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                          <p className="text-xs font-medium text-blue-600">
+                            {note.created_by_name || 'Bilinmeyen Kullanıcı'}
+                          </p>
+                        </div>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -605,6 +585,60 @@ const Notes: React.FC<NotesProps> = ({ maxNotes = 3 }) => {
                   Yeni Not Ekle
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Not silme onay modalı */}
+      {showDeleteConfirmModal && noteToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div className="p-4 border-b border-gray-200 flex items-center">
+              <AlertTriangle size={20} className="text-red-500 mr-2" />
+              <h3 className="text-lg font-medium text-red-600">Not Silme Onayı</h3>
+            </div>
+            
+            <div className="p-4">
+              <p className="mb-4">Bu notu silmek istediğinize emin misiniz?</p>
+              
+              <div className="bg-gray-50 p-3 rounded-md mb-4 border border-gray-200">
+                <p className="text-gray-800 break-words">{noteToDelete.metin}</p>
+                {noteToDelete.etiketler && noteToDelete.etiketler.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {noteToDelete.etiketler.map((etiket, i) => (
+                      <span key={i} className="inline-block bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded">
+                        #{etiket}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <p className="text-xs text-blue-600 font-medium mt-2">
+                  {noteToDelete.created_by_name || 'Bilinmeyen Kullanıcı'} tarafından oluşturuldu
+                </p>
+              </div>
+              
+              <p className="text-sm text-gray-500 mb-4">
+                Bu işlem geri alınamaz. Not kalıcı olarak silinecektir.
+              </p>
+              
+              <div className="flex justify-end space-x-2">
+                <button
+                  onClick={() => {
+                    setShowDeleteConfirmModal(false);
+                    setNoteToDelete(null);
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                >
+                  İptal
+                </button>
+                <button
+                  onClick={deleteNote}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  Evet, Sil
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -646,14 +680,19 @@ const Notes: React.FC<NotesProps> = ({ maxNotes = 3 }) => {
                     {searchResults.map((note) => (
                       <li key={note.id} className="p-3 bg-white rounded border border-gray-200 shadow-sm relative group">
                         <p className="text-sm text-gray-800 mb-1 pr-6 break-words">{note.metin}</p>
-                        <p className="text-xs text-gray-500">
-                          {new Date(note.tarih).toLocaleDateString('tr-TR', {
-                            weekday: 'long',
-                            day: 'numeric',
-                            month: 'long',
-                            year: 'numeric'
-                          })}
-                        </p>
+                        <div className="flex justify-between items-center">
+                          <p className="text-xs text-gray-500">
+                            {new Date(note.tarih).toLocaleDateString('tr-TR', {
+                              weekday: 'long',
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric'
+                            })}
+                          </p>
+                          <p className="text-xs text-blue-600 font-medium">
+                            {note.created_by_name || 'Bilinmeyen Kullanıcı'}
+                          </p>
+                        </div>
                         {note.etiketler && note.etiketler.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-1">
                             {note.etiketler.map((etiket, i) => (

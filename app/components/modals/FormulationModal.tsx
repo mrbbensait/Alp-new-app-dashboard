@@ -34,6 +34,7 @@ interface StockItem {
   ID?: number;
   "Hammadde Adı": string;
   "Stok Kategori": string;
+  "Birim": string;
   [key: string]: any;
 }
 
@@ -54,6 +55,8 @@ const FormulationModal: React.FC<FormulationModalProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [primaryKeyColumn, setPrimaryKeyColumn] = useState<string | null>(null);
   const [showUretimEmriModal, setShowUretimEmriModal] = useState(false);
+  const [uretimMiktari, setUretimMiktari] = useState<number>(100); // Üretim miktarı için state
+  const [ambalajEmri, setAmbalajEmri] = useState<number>(250); // Ambalaj emri (ml) için state
 
   // Modal açıldığında formülasyonları ve stok verilerini yükle
   useEffect(() => {
@@ -209,10 +212,11 @@ const FormulationModal: React.FC<FormulationModalProps> = ({
     
     updatedFormulations[index]["Hammadde Adı"] = value;
     
-    // Stok kategorisini otomatik doldur
+    // Stok kategorisini ve birim bilgisini otomatik doldur
     if (selectedStock) {
       console.log('Seçilen stok bilgisi:', selectedStock);
       updatedFormulations[index]["Stok Kategori"] = selectedStock["Stok Kategori"];
+      updatedFormulations[index]["Birim"] = selectedStock["Birim"]; // Birim bilgisini ekle
     } else {
       console.warn('Seçilen hammadde için stok bilgisi bulunamadı');
     }
@@ -229,7 +233,7 @@ const FormulationModal: React.FC<FormulationModalProps> = ({
       "Marka": brand,
       "Hammadde Adı": "",
       "Oran(100Kg)": 0,
-      "Birim": "Kg",
+      "Birim": "",
       "Stok Kategori": "",
       isNew: true,
       isEditing: true
@@ -417,7 +421,8 @@ const FormulationModal: React.FC<FormulationModalProps> = ({
           isOpen={showUretimEmriModal}
           onClose={() => setShowUretimEmriModal(false)}
           receteAdi={recipeName}
-          uretimMiktari={100} // Varsayılan değer olarak 100kg
+          uretimMiktari={uretimMiktari}
+          ambalajEmri={ambalajEmri}
         />
       )}
 
@@ -428,6 +433,38 @@ const FormulationModal: React.FC<FormulationModalProps> = ({
             {recipeName} - Formülasyon
           </h3>
           <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center">
+                <label htmlFor="uretimMiktari" className="mr-2 text-sm text-gray-600">
+                  Üretim Miktarı (kg):
+                </label>
+                <input
+                  id="uretimMiktari"
+                  type="number"
+                  value={uretimMiktari}
+                  onChange={(e) => setUretimMiktari(Number(e.target.value) || 100)}
+                  min="1"
+                  max="10000"
+                  step="1"
+                  className="border border-gray-300 rounded-md px-2 py-1 w-20 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="flex items-center">
+                <label htmlFor="ambalajEmri" className="mr-2 text-sm text-gray-600">
+                  Ambalaj (ml):
+                </label>
+                <input
+                  id="ambalajEmri"
+                  type="number"
+                  value={ambalajEmri}
+                  onChange={(e) => setAmbalajEmri(Number(e.target.value) || 250)}
+                  min="1"
+                  max="10000"
+                  step="1"
+                  className="border border-gray-300 rounded-md px-2 py-1 w-20 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
             <button
               onClick={handleShowReceteForm}
               className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -591,11 +628,16 @@ const FormulationModal: React.FC<FormulationModalProps> = ({
                               onChange={(e) => handleInputChange(index, "Birim", e.target.value)}
                               className="form-select rounded-md shadow-sm border-gray-300 w-full text-xs"
                             >
+                              <option value="">Birim Seçiniz</option>
                               <option value="Kg">Kg</option>
+                              <option value="gr">gr</option>
+                              <option value="Lt">Lt</option>
+                              <option value="ml">ml</option>
                               <option value="Adet">Adet</option>
+                              <option value="Paket">Paket</option>
                             </select>
                           ) : (
-                            formulation["Birim"]
+                            formulation["Birim"] || "Belirtilmemiş"
                           )}
                         </td>
                         <td className="px-3 py-2">

@@ -51,8 +51,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const yetkiliSayfalar = data.data.map((sayfa: any) => sayfa.sayfa_yolu);
         // Context state'ini güncelle
         setSayfaYetkileri(yetkiliSayfalar);
-        // Ayrıca localStorage'a da kaydet
-        localStorage.setItem('sayfaYetkileri', JSON.stringify(yetkiliSayfalar));
+        // sessionStorage'a kaydet
+        sessionStorage.setItem('sayfaYetkileri', JSON.stringify(yetkiliSayfalar));
         return yetkiliSayfalar;
       }
       return [];
@@ -64,19 +64,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Sayfa yüklendiğinde kullanıcı durumunu kontrol et
   useEffect(() => {
-    // localStorage'dan kullanıcı bilgilerini al
+    // sessionStorage'dan kullanıcı bilgilerini al (localStorage yerine)
     const checkAuth = () => {
       setIsLoading(true);
-      const isLoggedIn = localStorage.getItem('isLoggedIn');
-      const userDataString = localStorage.getItem('user');
-      const sayfaYetkileriString = localStorage.getItem('sayfaYetkileri');
+      const isLoggedIn = sessionStorage.getItem('isLoggedIn');
+      const userDataString = sessionStorage.getItem('user');
+      const sayfaYetkileriString = sessionStorage.getItem('sayfaYetkileri');
 
       if (isLoggedIn === 'true' && userDataString) {
         try {
           const userData = JSON.parse(userDataString);
           setUser(userData);
           
-          // Sayfa yetkilerini localStorage'dan al (varsa)
+          // Sayfa yetkilerini sessionStorage'dan al (varsa)
           if (sayfaYetkileriString) {
             try {
               const yetkiliSayfalar = JSON.parse(sayfaYetkileriString);
@@ -88,9 +88,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         } catch (error) {
           console.error('Kullanıcı verisi ayrıştırılamadı:', error);
           setUser(null);
-          localStorage.removeItem('isLoggedIn');
-          localStorage.removeItem('user');
-          localStorage.removeItem('sayfaYetkileri');
+          sessionStorage.removeItem('isLoggedIn');
+          sessionStorage.removeItem('user');
+          sessionStorage.removeItem('sayfaYetkileri');
           
           // Sayfa yenileme durumunda Login sayfasına yönlendirmeyi engelle
           if (!isPageRefresh()) {
@@ -143,7 +143,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       if (data) {
-        // Kullanıcı bilgilerini localStorage'a kaydet
+        // Kullanıcı bilgilerini sessionStorage'a kaydet (localStorage yerine)
         const userData: User = {
           id: data.id,
           kullanici_adi: data.kullanici_adi,
@@ -151,12 +151,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           rol_id: data.rol_id
         };
         
-        localStorage.setItem('isLoggedIn', 'true');
-        localStorage.setItem('user', JSON.stringify(userData));
+        sessionStorage.setItem('isLoggedIn', 'true');
+        sessionStorage.setItem('user', JSON.stringify(userData));
         
         // Middleware için kullanıcı verilerini cookie olarak kaydet
-        // 7 günlük bir cookie olarak ayarla
-        document.cookie = `userData=${encodeURIComponent(JSON.stringify(userData))}; path=/; max-age=${60*60*24*7}; SameSite=Lax`;
+        // Session cookie olarak ayarla (max-age kaldırıldı - tarayıcı kapandığında sona erecek)
+        document.cookie = `userData=${encodeURIComponent(JSON.stringify(userData))}; path=/; SameSite=Lax`;
         
         // Önce kullanıcı state'ini güncelle
         setUser(userData);
@@ -169,7 +169,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             if (data.success && data.data.length > 0) {
               const sayfaYollari = data.data.map((sayfa: any) => sayfa.sayfa_yolu);
               setSayfaYetkileri(sayfaYollari);
-              localStorage.setItem('sayfaYetkileri', JSON.stringify(sayfaYollari));
+              sessionStorage.setItem('sayfaYetkileri', JSON.stringify(sayfaYollari));
               return sayfaYollari;
             }
             return [];
@@ -194,9 +194,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Çıkış işlemi
   const logout = () => {
-    localStorage.removeItem('isLoggedIn');
-    localStorage.removeItem('user');
-    localStorage.removeItem('sayfaYetkileri');
+    sessionStorage.removeItem('isLoggedIn');
+    sessionStorage.removeItem('user');
+    sessionStorage.removeItem('sayfaYetkileri');
     
     // Cookie'yi de temizle
     document.cookie = 'userData=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';

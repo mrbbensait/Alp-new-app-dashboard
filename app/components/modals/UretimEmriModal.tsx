@@ -22,6 +22,7 @@ interface UretimEmriModalProps {
   receteAdi: string;
   uretimMiktari: number;
   uretimTarihi?: string;
+  ambalajEmri?: number; // Ambalaj emri (ml) değeri, opsiyonel
 }
 
 const UretimEmriModal: React.FC<UretimEmriModalProps> = ({
@@ -29,9 +30,10 @@ const UretimEmriModal: React.FC<UretimEmriModalProps> = ({
   onClose,
   receteAdi,
   uretimMiktari,
-  uretimTarihi: gelenUretimTarihi
+  uretimTarihi: gelenUretimTarihi,
+  ambalajEmri
 }) => {
-  console.log('UretimEmriModal render:', { isOpen, receteAdi, uretimMiktari, gelenUretimTarihi });
+  console.log('UretimEmriModal render:', { isOpen, receteAdi, uretimMiktari, gelenUretimTarihi, ambalajEmri });
 
   const [hammaddeler, setHammaddeler] = useState<Hammadde[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,8 +56,8 @@ const UretimEmriModal: React.FC<UretimEmriModalProps> = ({
     setError(null);
     
     try {
-      console.log('Formülasyon verileri yükleniyor:', receteAdi, uretimMiktari);
-      const formulasyonVerileri = await getFormulasyonByReceteAdi(receteAdi, uretimMiktari, true);
+      console.log('Formülasyon verileri yükleniyor:', receteAdi, uretimMiktari, 'Ambalaj Emri:', ambalajEmri);
+      const formulasyonVerileri = await getFormulasyonByReceteAdi(receteAdi, uretimMiktari, true, ambalajEmri);
       console.log('Formülasyon verileri yüklendi:', formulasyonVerileri);
       
       // Miktar undefined olabileceği için varsayılan değer ekleyelim

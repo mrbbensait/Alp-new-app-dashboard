@@ -12,22 +12,34 @@ export interface Hammadde {
  * @param receteAdi Reçete adı
  * @param uretimMiktari Üretim miktarı (kg) - Miktar hesabı için
  * @param bypassCache Önbelleği bypass etmek için
+ * @param manuelAmbalajEmri Manuel olarak belirtilen ambalaj emri değeri (ml)
  */
-export async function getFormulasyonByReceteAdi(receteAdi: string, uretimMiktari: number = 0, bypassCache: boolean = false): Promise<Hammadde[]> {
+export async function getFormulasyonByReceteAdi(receteAdi: string, uretimMiktari: number = 0, bypassCache: boolean = false, manuelAmbalajEmri?: number): Promise<Hammadde[]> {
   try {
-    console.log('getFormulasyonByReceteAdi çağrıldı:', { receteAdi, uretimMiktari, bypassCache });
+    console.log('getFormulasyonByReceteAdi çağrıldı:', { receteAdi, uretimMiktari, bypassCache, manuelAmbalajEmri });
     
     // Formülasyonlar tablosundan reçete adına göre verileri çek
     const formulasyonlar = await fetchFilteredData('Formülasyonlar', 'Reçete Adı', receteAdi, bypassCache);
     console.log('Formülasyon verileri alındı:', formulasyonlar);
 
     // Recete bilgilerini çek - Ambalaj Emri (ml) bilgisi için
-    const receteVerileri = await fetchFilteredData('Üretim Kuyruğu', 'Reçete Adı', receteAdi, bypassCache);
-    // En son eklenen reçete verisini al (id'ye göre sıralı olduğunu varsayıyoruz)
-    const recete = receteVerileri.length > 0 ? receteVerileri.sort((a: any, b: any) => b.id - a.id)[0] : null;
-    const ambalajEmri = recete && recete['Ambalaj Emri (ml)'] ? parseFloat(recete['Ambalaj Emri (ml)']) : 0;
+    // Manuel ambalaj emri değeri verilmişse, onu kullan
+    let ambalajEmri: number;
     
-    console.log('Reçete ve Ambalaj Emri bilgisi:', { recete, ambalajEmri });
+    if (manuelAmbalajEmri !== undefined) {
+      // Kullanıcı tarafından sağlanan ambalaj emri değerini kullan
+      ambalajEmri = manuelAmbalajEmri;
+      console.log('Manuel ambalaj emri kullanılıyor:', ambalajEmri);
+    } else {
+      // Veritabanından ambalaj emri değerini çek
+      const receteVerileri = await fetchFilteredData('Üretim Kuyruğu', 'Reçete Adı', receteAdi, bypassCache);
+      // En son eklenen reçete verisini al (id'ye göre sıralı olduğunu varsayıyoruz)
+      const recete = receteVerileri.length > 0 ? receteVerileri.sort((a: any, b: any) => b.id - a.id)[0] : null;
+      ambalajEmri = recete && recete['Ambalaj Emri (ml)'] ? parseFloat(recete['Ambalaj Emri (ml)']) : 0;
+      console.log('Veritabanından alınan ambalaj emri:', ambalajEmri);
+    }
+    
+    console.log('Reçete ve Ambalaj Emri bilgisi:', { ambalajEmri });
 
     // Hammadde listesini oluştur ve üretim miktarına göre gerçek miktar hesabını yap
     const hammaddeler = formulasyonlar.map((item: any) => {

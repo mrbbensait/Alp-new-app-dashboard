@@ -279,7 +279,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
 
   const changeSidebarMode = (mode: 'auto' | 'collapsed') => {
     setSidebarMode(mode);
-    localStorage.setItem('sidebarMode', mode);
+    sessionStorage.setItem('sidebarMode', mode);
     
     const newVisibility = mode !== 'collapsed';
     setIsDesktopSidebarVisible(newVisibility);
@@ -290,7 +290,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
   };
 
   useEffect(() => {
-    const savedMode = localStorage.getItem('sidebarMode');
+    const savedMode = sessionStorage.getItem('sidebarMode');
     if (savedMode === 'auto' || savedMode === 'collapsed') {
       setSidebarMode(savedMode as 'auto' | 'collapsed');
       const newVisibility = savedMode !== 'collapsed';
@@ -301,7 +301,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
       }
     } else if (savedMode === 'pinned') {
       setSidebarMode('auto');
-      localStorage.setItem('sidebarMode', 'auto');
+      sessionStorage.setItem('sidebarMode', 'auto');
       setIsDesktopSidebarVisible(true);
       
       if (onVisibilityChange) {
@@ -313,7 +313,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
   const handleOpenSidebar = () => {
     setIsDesktopSidebarVisible(true);
     setSidebarMode('auto');
-    localStorage.setItem('sidebarMode', 'auto');
+    sessionStorage.setItem('sidebarMode', 'auto');
     
     if (onVisibilityChange) {
       onVisibilityChange(true);
