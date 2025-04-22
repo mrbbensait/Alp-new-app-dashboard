@@ -514,6 +514,38 @@ export const tables: TableSchema[] = tableNames.map(tableName => {
     filteredColumns = orderedColumns;
   }
   
+  // SatınAlma siparişleri tablosu için özel sıralama
+  if (tableName === 'SatınAlma siparişleri') {
+    const columnOrder = [
+      'Alınan Ürün',
+      'Tedarikçi',
+      'Sipariş Miktarı',
+      'Birim',
+      'TeslimDurumu',
+      'Notlar'
+    ];
+    
+    // Verilen sıraya göre sütunları yeniden düzenle
+    const orderedColumns: {name: string, type: string}[] = [];
+    
+    // Önce sıralama dizisindeki sütunları ekle
+    columnOrder.forEach(colName => {
+      const column = filteredColumns.find(col => col.name === colName);
+      if (column) {
+        orderedColumns.push(column);
+      }
+    });
+    
+    // Sıralama dizisinde olmayan diğer sütunları da ekle
+    filteredColumns.forEach(col => {
+      if (!orderedColumns.some(orderedCol => orderedCol.name === col.name)) {
+        orderedColumns.push(col);
+      }
+    });
+    
+    filteredColumns = orderedColumns;
+  }
+  
   return {
     name: tableName,
     columns: filteredColumns

@@ -19,6 +19,8 @@ import PageGuard from '../../components/PageGuard';
 import { useAuth } from '../../lib/AuthContext';
 import MusteriEkleModal from '../../components/modals/MusteriEkleModal';
 import TedarikciEkleModal from '../../components/modals/TedarikciEkleModal';
+import SatinAlmaSiparisiEkleModal from '../../components/modals/SatinAlmaSiparisiEkleModal';
+import StokKartiEkleModal from '../../components/modals/StokKartiEkleModal';
 
 export default function TablePage() {
   const { tableName } = useParams<{ tableName: string }>();
@@ -27,6 +29,7 @@ export default function TablePage() {
   // Tablo adları için görüntüleme isimleri
   const tableDisplayNames: Record<string, string> = {
     'suppliers': 'Tedarikçiler',
+    'SatınAlma siparişleri': 'Satın Alma Siparişleri',
     // Diğer özel isimler buraya eklenebilir
   };
   
@@ -47,6 +50,8 @@ export default function TablePage() {
   const [updating, setUpdating] = useState(false);
   const [musteriEkleModalOpen, setMusteriEkleModalOpen] = useState(false);
   const [tedarikciEkleModalOpen, setTedarikciEkleModalOpen] = useState(false);
+  const [satinAlmaSiparisiEkleModalOpen, setSatinAlmaSiparisiEkleModalOpen] = useState(false);
+  const [stokKartiEkleModalOpen, setStokKartiEkleModalOpen] = useState(false);
   const { user } = useAuth();
   
   // Tablo şeması bulma
@@ -352,6 +357,45 @@ export default function TablePage() {
                   Yeni Tedarikçi Ekle
                 </button>
               )}
+
+              {/* Yeni SatınAlma Siparişi Ekle Butonu - Sadece SatınAlma siparişleri tablosu için göster */}
+              {decodedTableName === 'SatınAlma siparişleri' && (
+                <button
+                  onClick={() => setSatinAlmaSiparisiEkleModalOpen(true)}
+                  className="flex items-center justify-center px-4 h-10 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 w-full sm:w-auto"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                  </svg>
+                  SatınAlma Siparişi Gir
+                </button>
+              )}
+
+              {/* Yeni Reçete Ekle Butonu - Sadece Reçeteler tablosu için göster */}
+              {decodedTableName === 'Reçeteler' && (
+                <a
+                  href="/formlar/recete-kaydi"
+                  className="flex items-center justify-center px-4 h-10 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 w-full sm:w-auto"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                  </svg>
+                  Yeni Reçete Ekle
+                </a>
+              )}
+
+              {/* Stok Kartı Oluştur Butonu - Sadece Stok tablosu için göster */}
+              {decodedTableName === 'Stok' && (
+                <button
+                  onClick={() => setStokKartiEkleModalOpen(true)}
+                  className="flex items-center justify-center px-4 h-10 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 w-full sm:w-auto"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                  </svg>
+                  Stok Kartı Oluştur
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -449,6 +493,30 @@ export default function TablePage() {
             onSuccess={() => {
               setTedarikciEkleModalOpen(false);
               handleRefresh(); // Yeni tedarikçi eklendiğinde tabloyu yenile
+            }}
+          />
+        )}
+        
+        {/* Yeni SatınAlma Siparişi Ekleme Modalı */}
+        {decodedTableName === 'SatınAlma siparişleri' && (
+          <SatinAlmaSiparisiEkleModal
+            isOpen={satinAlmaSiparisiEkleModalOpen}
+            onClose={() => setSatinAlmaSiparisiEkleModalOpen(false)}
+            onSuccess={() => {
+              setSatinAlmaSiparisiEkleModalOpen(false);
+              handleRefresh(); // Yeni sipariş eklendiğinde tabloyu yenile
+            }}
+          />
+        )}
+        
+        {/* Yeni Stok Kartı Ekleme Modalı */}
+        {decodedTableName === 'Stok' && (
+          <StokKartiEkleModal
+            isOpen={stokKartiEkleModalOpen}
+            onClose={() => setStokKartiEkleModalOpen(false)}
+            onSuccess={() => {
+              setStokKartiEkleModalOpen(false);
+              handleRefresh(); // Yeni stok kartı eklendiğinde tabloyu yenile
             }}
           />
         )}

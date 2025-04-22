@@ -57,7 +57,7 @@ export default function PersonelHomePage() {
                           <ShoppingCart className="h-6 w-6 text-purple-600" />
                         </div>
                         <div>
-                          <span className="text-base font-medium text-gray-700">SatınAlma Siparişleri</span>
+                          <span className="text-base font-medium text-gray-700">Satın Alma Siparişleri</span>
                           <p className="text-xs text-gray-500 mt-1">Bekleyen siparişleri kontrol edin</p>
                         </div>
                       </div>

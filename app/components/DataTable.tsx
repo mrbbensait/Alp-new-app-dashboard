@@ -1050,11 +1050,11 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
                       </td>
                     ) : null}
                     
-                    {/* Silme butonunu her satırın sonuna ekleyin ve görünür yapın */}
-                    {tableName === 'Müşteriler' && (
+                    {/* Tedarikçiler tablosu için silme butonu */}
+                    {tableName === 'suppliers' && (
                       <td key="delete-button" className="px-3 py-4 whitespace-nowrap text-xs text-right">
                         <button
-                          onClick={() => handleDeleteClick(row.id, row['Müşteri Firma'] || `ID: ${row.id}`)}
+                          onClick={() => handleDeleteClick(row.id, row['Tedarikçi Adı'] || `ID: ${row.id}`)}
                           className="inline-flex items-center justify-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                         >
                           Sil
@@ -1062,11 +1062,11 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
                       </td>
                     )}
                     
-                    {/* Tedarikçiler tablosu için silme butonu */}
-                    {tableName === 'suppliers' && (
+                    {/* SatınAlma siparişleri tablosu için silme butonu - sadece teslim alınmamış olanlar için */}
+                    {tableName === 'SatınAlma siparişleri' && row['TeslimDurumu'] !== true && (
                       <td key="delete-button" className="px-3 py-4 whitespace-nowrap text-xs text-right">
                         <button
-                          onClick={() => handleDeleteClick(row.id, row['Tedarikçi Adı'] || `ID: ${row.id}`)}
+                          onClick={() => handleDeleteClick(row.id, row['Alınan Ürün'] || `ID: ${row.id}`)}
                           className="inline-flex items-center justify-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                         >
                           Sil
@@ -1259,18 +1259,6 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
                         </button>
                       </td>
                     ) : null}
-                    
-                    {/* Tedarikçiler tablosu için silme butonu */}
-                    {tableName === 'suppliers' && (
-                      <td key="delete-button" className="px-3 py-4 whitespace-nowrap text-xs text-right">
-                        <button
-                          onClick={() => handleDeleteClick(row.id, row['Tedarikçi Adı'] || `ID: ${row.id}`)}
-                          className="inline-flex items-center justify-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                        >
-                          Sil
-                        </button>
-                      </td>
-                    )}
                   </tr>
                 ))}
               </>
