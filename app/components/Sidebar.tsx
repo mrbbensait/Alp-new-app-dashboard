@@ -354,7 +354,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
           overflowY: 'auto',
           overscrollBehavior: 'contain',
           scrollbarWidth: 'thin',
-          scrollbarColor: '#4B5563 #1F2937'
+          scrollbarColor: '#4B5563 #1F2937',
+          maxHeight: '100vh' // Mobilde ekranı aşma sorununu çözmek için
         }}
       >
         <div className="flex items-center justify-center px-4 py-3 border-b border-gray-700">
@@ -617,11 +618,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
 
       {/* Menü açma kapama butonu */}
       <button
-        className="fixed top-4 left-4 z-40 lg:hidden bg-white p-2 rounded-md shadow-md border border-gray-200 hover:bg-gray-100 transition-colors"
+        className="fixed top-4 left-4 z-40 md:hidden bg-gray-800 p-2 rounded-md shadow-md border border-gray-600 hover:bg-gray-700 transition-colors"
         onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
         aria-label={isMobileSidebarOpen ? "Menüyü kapat" : "Menüyü aç"}
       >
-        {/* ... existing code ... */}
+        <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
       </button>
     </>
   );

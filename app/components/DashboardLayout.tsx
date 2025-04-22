@@ -127,9 +127,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, pageTitle, 
       <div 
         className="flex flex-col overflow-hidden transition-all duration-300"
         style={{
-          width: isSidebarVisible ? 'calc(100% - 16rem)' : '100%',
+          width: isSidebarVisible && !isMobileSidebarOpen ? 'calc(100% - 16rem)' : '100%',
           position: 'absolute',
-          left: isSidebarVisible ? '16rem' : '0',
+          left: isSidebarVisible && !isMobileSidebarOpen ? '16rem' : '0',
           top: 0,
           right: 0,
           bottom: 0,
@@ -146,16 +146,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, pageTitle, 
           </div>
           
           <div className="px-4 py-3 sm:px-6 md:px-8 flex justify-between items-center">
-            <button
-              type="button"
-              className="md:hidden text-gray-500 hover:text-gray-600 p-1"
-              onClick={() => setIsMobileSidebarOpen(true)}
-            >
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-            
             {/* Sayfa başlığı ve alt başlığı */}
             <div className="flex flex-col">
               {pageTitle && <h1 className="text-lg font-semibold text-gray-800">{pageTitle}</h1>}
