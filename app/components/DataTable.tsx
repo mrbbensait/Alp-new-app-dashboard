@@ -963,14 +963,8 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
                       );
                     })}
                     
-                    {/* İşlemler sütunu, Üretim Kuyruğu tablosunda bulktan ambalajlamaya geçmek için */}
-                    {(tableName === 'Üretim Kuyruğu' && row['Üretim Durumu'] === 'Üretim YAPILDI' && (row['Kalan Bulk (Kg)'] > 0)) ? (
-                      <td className={`${cell_base_classes}`}>
-                        {renderAmbalajlamaCell(row)}
-                      </td>
-                    ) : 
-                    // Bitmiş Ürün Stoğu tablosunda Teslimat Gir butonu
-                    (tableName === 'Bitmiş Ürün Stoğu' && onTeslimatClick && row['Kalan Adet'] > 0) ? (
+                    {/* Bitmiş Ürün Stoğu tablosunda Teslimat Gir butonu */}
+                    {(tableName === 'Bitmiş Ürün Stoğu' && onTeslimatClick && row['Kalan Adet'] > 0) ? (
                       <td className={`${cell_base_classes} text-center`}>
                         <button
                           onClick={() => onTeslimatClick(row.id, row['Reçete Adı'])}
@@ -1154,24 +1148,6 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
                         </td>
                       );
                     })}
-                    
-                    {/* İşlemler sütunu, Üretim Kuyruğu tablosunda bulktan ambalajlamaya geçmek için */}
-                    {(tableName === 'Üretim Kuyruğu' && row['Üretim Durumu'] === 'Üretim YAPILDI' && (row['Kalan Bulk (Kg)'] > 0)) ? (
-                      <td className={`${cell_base_classes}`}>
-                        {renderAmbalajlamaCell(row)}
-                      </td>
-                    ) : 
-                    // Bitmiş Ürün Stoğu tablosunda Teslimat Gir butonu
-                    (tableName === 'Bitmiş Ürün Stoğu' && onTeslimatClick && row['Kalan Adet'] > 0) ? (
-                      <td className={`${cell_base_classes} text-center`}>
-                        <button
-                          onClick={() => onTeslimatClick(row.id, row['Reçete Adı'])}
-                          className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                        >
-                          Teslimat Gir
-                        </button>
-                      </td>
-                    ) : null}
                   </tr>
                 ))}
               </>
