@@ -348,7 +348,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
         } ${(sidebarMode === 'auto' && isDesktopSidebarVisible) || sidebarMode === 'collapsed' && isDesktopSidebarVisible ? 'md:translate-x-0' : 'md:-translate-x-full'} md:static md:z-0 flex flex-col`}
         style={{ 
           minHeight: '100vh', 
-          maxHeight: '100vh',
           width: '16rem', 
           minWidth: '16rem', 
           flexShrink: 0,
@@ -358,31 +357,31 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
           scrollbarColor: '#4B5563 #1F2937'
         }}
       >
-        <div className="flex items-center justify-center px-3 py-2 border-b border-gray-700">
-          <div className="text-base font-bold leading-tight text-center tracking-wide">
+        <div className="flex items-center justify-center px-4 py-3 border-b border-gray-700">
+          <div className="text-lg font-bold leading-tight text-center tracking-wide">
             Alp Ai Dashboard
           </div>
           <button
             type="button"
-            className="md:hidden text-white hover:text-gray-300 absolute right-2 p-1 rounded-full bg-gray-700 hover:bg-gray-600"
+            className="md:hidden text-white hover:text-gray-300 absolute right-3 p-1 rounded-full bg-gray-700 hover:bg-gray-600"
             onClick={() => setIsMobileSidebarOpen(false)}
           >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        <div className="px-3 py-1.5 text-center font-medium text-gray-300 border-b border-gray-700">
-          <div className="text-xs text-shadow-sm" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
+        <div className="px-4 py-2 text-center font-medium text-gray-300 border-b border-gray-700">
+          <div className="text-sm text-shadow-sm" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
             Tam Entegre Yapay Zeka
           </div>
-          <div className="text-xs">
+          <div className="text-xs mt-1">
             Stok ve Üretim Yönetimi
           </div>
         </div>
 
-        <nav className="mt-1 px-2 flex-grow overflow-y-auto scrollbar-thin pb-1">
+        <nav className="mt-2 px-2 flex-grow overflow-y-auto scrollbar-thin">
           <div className="space-y-0.5">
             {/* Yönetici menü öğeleri */}
             {filteredAdminMenuItems.length > 0 && (
@@ -548,60 +547,58 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
           </div>
         </nav>
         
-        <div className="border-t border-gray-700 shrink-0">
-          <div className="px-2 py-1">
-            <div className="grid grid-cols-2 gap-x-1 gap-y-0 items-center">
+        <div className="text-xs text-gray-400 border-t border-gray-700 mt-auto">
+          <div className="px-2 py-1.5">
+            <div className="grid grid-cols-2 gap-1">
               <div>
-                <Link
-                  href="/ayarlar"
-                  className={`
-                    flex items-center px-2 py-1 text-sm font-medium rounded-md
-                    ${pathname === "/ayarlar" ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}
-                  `}
-                >
-                  <span className="mr-1.5 text-gray-400"><Settings size={14} /></span>
+              <Link
+                href="/ayarlar"
+                className={`
+                    flex items-center px-2.5 py-1.5 text-sm font-medium rounded-md
+                  ${pathname === "/ayarlar" ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}
+                `}
+              >
+                  <span className="mr-2 text-gray-400"><Settings size={16} /></span>
                   <span className="text-xs">Ayarlar</span>
-                </Link>
-              </div>
+              </Link>
+            </div>
               
-              <div className="flex items-center justify-end">
-                <span className="text-xs text-gray-500 pr-1">v4.3.1</span>
-              </div>
-              
-              <div className="col-span-2 mt-0.5">
-                <p className="text-xs font-medium text-gray-400 mb-0.5 flex justify-between">
-                  <span>Kenar Kontrolü</span>
-                </p>
-                <div className="flex flex-row gap-1 items-center bg-gray-900/30 rounded p-0.5">
-                  <div 
-                    className={`flex-1 flex items-center cursor-pointer px-1 py-0.5 rounded ${sidebarMode === 'auto' ? 'bg-gray-700' : 'hover:bg-gray-700/50'}`}
-                    onClick={() => changeSidebarMode('auto')}
-                  >
-                    <div className="w-2 h-2 flex items-center justify-center mr-1">
-                      {sidebarMode === 'auto' && (
-                        <div className="w-1 h-1 bg-white rounded-full"></div>
-                      )}
-                    </div>
-                    <span className={`text-xs ${sidebarMode === 'auto' ? 'text-white' : 'text-gray-400'}`}>Sabit</span>
-                  </div>
-                  
-                  <div 
-                    className={`flex-1 flex items-center cursor-pointer px-1 py-0.5 rounded ${sidebarMode === 'collapsed' ? 'bg-gray-700' : 'hover:bg-gray-700/50'}`}
-                    onClick={() => {
-                      console.log('Sidebar mode changed to collapsed');
-                      changeSidebarMode('collapsed');
-                    }}
-                  >
-                    <div className="w-2 h-2 flex items-center justify-center mr-1">
-                      {sidebarMode === 'collapsed' && (
-                        <div className="w-1 h-1 bg-white rounded-full"></div>
-                      )}
-                    </div>
-                    <span className={`text-xs ${sidebarMode === 'collapsed' ? 'text-white' : 'text-gray-400'}`}>Küçült</span>
-                  </div>
+              <div>
+                <p className="mb-1 px-2 text-xs font-medium">Kenar Kontrolü</p>
+                <div className="flex flex-row gap-1 items-center">
+              <div 
+                    className="flex-1 flex items-center cursor-pointer hover:bg-gray-700 px-1.5 py-1 rounded"
+                onClick={() => changeSidebarMode('auto')}
+              >
+                    <div className="w-3 h-3 flex items-center justify-center mr-1">
+                  {sidebarMode === 'auto' && (
+                        <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                  )}
                 </div>
+                    <span className={`text-xs ${sidebarMode === 'auto' ? 'text-white' : ''}`}>Sabit</span>
+              </div>
+              
+              <div 
+                    className="flex-1 flex items-center cursor-pointer hover:bg-gray-700 px-1.5 py-1 rounded"
+                onClick={() => {
+                  console.log('Sidebar mode changed to collapsed');
+                  changeSidebarMode('collapsed');
+                }}
+              >
+                    <div className="w-3 h-3 flex items-center justify-center mr-1">
+                  {sidebarMode === 'collapsed' && (
+                        <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                  )}
+                </div>
+                    <span className={`text-xs ${sidebarMode === 'collapsed' ? 'text-white' : ''}`}>Küçült</span>
+                  </div>
               </div>
             </div>
+          </div>
+        </div>
+        
+          <div className="px-4 py-1.5 text-xs text-gray-400 border-t border-gray-700 text-center">
+          Versiyon 4.3.1
           </div>
         </div>
       </aside>
