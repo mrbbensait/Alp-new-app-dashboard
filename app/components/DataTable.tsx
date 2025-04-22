@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { updateData, insertData } from '../lib/supabase';
+import { updateData, insertData, deleteData } from '../lib/supabase';
 import { supabase } from '../lib/supabase';
 import FormulationModal from './modals/FormulationModal';
 import { useAuth } from '../lib/AuthContext';
@@ -26,46 +26,61 @@ interface ConfirmModalProps {
   onConfirm: () => void;
   onCancel: () => void;
   tableName: string;
+  isDelete?: boolean;
 }
 
-const ConfirmModal: React.FC<ConfirmModalProps> = ({ isOpen, productName, onConfirm, onCancel, tableName }) => {
+const ConfirmModal: React.FC<ConfirmModalProps> = ({ isOpen, productName, onConfirm, onCancel, tableName, isDelete }) => {
   if (!isOpen) return null;
 
   // Üretim Kuyruğu tablosuna özel başlık ve içerik
   const isUretimKuyrugu = tableName === 'Üretim Kuyruğu';
-  const modalTitle = isUretimKuyrugu ? 'ÜRETİM ONAYI' : 'Teslim Onayı';
-  const modalContent = isUretimKuyrugu 
+  const isMusteriler = tableName === 'Müşteriler';
+  
+  let modalTitle = isUretimKuyrugu ? 'ÜRETİM ONAYI' : 'Teslim Onayı';
+  let modalContent = isUretimKuyrugu 
     ? 'Bu reçetenin BULK üretiminin yapıldığına dair ONAY veriyorsunuz:'
     : 'Bu siparişin teslim edildiğini onaylıyorsunuz:';
+  
+  // Eğer bu silme işlemi için onay modalıysa
+  if (isDelete) {
+    modalTitle = 'SİLME ONAYI';
+    modalContent = `Aşağıdaki ${isMusteriler ? 'müşteriyi' : 'kaydı'} silmek istediğinize emin misiniz?`;
+  }
 
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
       <div className="relative bg-white rounded-lg max-w-md mx-auto p-6 shadow-xl">
         <div className="text-center">
-          <svg className="mx-auto h-12 w-12 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
+          {isDelete ? (
+            <svg className="mx-auto h-12 w-12 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          ) : (
+            <svg className="mx-auto h-12 w-12 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          )}
           
-          <h3 className={`text-xl ${isUretimKuyrugu ? 'text-2xl' : 'text-lg'} leading-6 font-medium text-gray-900 mt-4`}>
+          <h3 className={`text-xl ${isUretimKuyrugu || isDelete ? 'text-2xl' : 'text-lg'} leading-6 font-medium ${isDelete ? 'text-red-600' : 'text-gray-900'} mt-4`}>
             {modalTitle}
           </h3>
           
           <div className="mt-3">
-            <p className={`${isUretimKuyrugu ? 'text-base font-medium' : 'text-sm'} text-gray-600 mb-3`}>
+            <p className={`${isUretimKuyrugu || isDelete ? 'text-base font-medium' : 'text-sm'} text-gray-600 mb-3`}>
               {modalContent}
             </p>
-            <div className="bg-indigo-50 py-3 px-4 rounded-md border border-indigo-200">
-              <span className="font-bold text-lg text-indigo-700">{productName}</span>
+            <div className={`${isDelete ? 'bg-red-50 border-red-200' : 'bg-indigo-50 border-indigo-200'} py-3 px-4 rounded-md border`}>
+              <span className={`font-bold text-lg ${isDelete ? 'text-red-700' : 'text-indigo-700'}`}>{productName}</span>
             </div>
           </div>
           
           <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3">
             <button
               type="button"
-              className="w-full sm:col-start-1 px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className={`w-full sm:col-start-1 px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${isDelete ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500' : 'bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500'} focus:outline-none focus:ring-2 focus:ring-offset-2`}
               onClick={onConfirm}
             >
-              Evet, Onayla
+              {isDelete ? 'Evet, Sil' : 'Evet, Onayla'}
             </button>
             <button
               type="button"
@@ -94,6 +109,8 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
   const [optimisticUpdates, setOptimisticUpdates] = useState<{[key: number]: {[key: string]: any}}>({});
   const [localData, setLocalData] = useState(data); // Yerel veri tutmak için eklendi
   const [localFilteredData, setLocalFilteredData] = useState<any[]>([]); // Yerel filtrelenmiş veri
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedDeleteRow, setSelectedDeleteRow] = useState<{ id: number, name: string } | null>(null);
   
   // Formülasyon modalı için state
   const [isFormulationModalOpen, setIsFormulationModalOpen] = useState(false);
@@ -739,8 +756,39 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
   // Tablo hücreleri için temel stil sınıfları
   const cell_base_classes = "px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500";
 
+  // Silme işlemi için onay
+  const handleDeleteClick = (rowId: number, firmaAdi: string) => {
+    setSelectedDeleteRow({ id: rowId, name: firmaAdi });
+    setIsDeleteModalOpen(true);
+  };
+
+  // Silme onaylandığında
+  const handleDeleteConfirm = async () => {
+    if (!selectedDeleteRow) return;
+
+    try {
+      setUpdatingRow(selectedDeleteRow.id);
+      await deleteData(tableName, selectedDeleteRow.id);
+
+      // Başarılı silme sonrası yenileme işlemini planla
+      scheduleAutoRefresh();
+      setIsDeleteModalOpen(false);
+    } catch (error) {
+      console.error(`${tableName} tablosundan kayıt silinirken hata:`, error);
+      alert('Kayıt silinirken bir hata oluştu.');
+    } finally {
+      setUpdatingRow(null);
+    }
+  };
+
+  // Silme modalını iptal et
+  const handleDeleteCancel = () => {
+    setIsDeleteModalOpen(false);
+    setSelectedDeleteRow(null);
+  };
+
   return (
-    <div className="bg-white shadow rounded-lg overflow-hidden mx-auto">
+    <div className="overflow-hidden shadow-sm border border-gray-200 rounded-lg">
       {/* Onay Modalı */}
       <ConfirmModal 
         isOpen={isModalOpen}
@@ -990,17 +1038,41 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
                       );
                     })}
                     
-                    {/* Bitmiş Ürün Stoğu tablosunda Teslimat Gir butonu */}
+                    {/* Teslimat Gir butonu - sadece Bitmiş Ürün Stoğu tablosu için */}
                     {(tableName === 'Bitmiş Ürün Stoğu' && onTeslimatClick && row['Kalan Adet'] > 0) ? (
-                      <td className={`${cell_base_classes} text-center`}>
+                      <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
                         <button
-                          onClick={() => onTeslimatClick(row.id, row['Reçete Adı'])}
-                          className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                          onClick={() => onTeslimatClick(row.id, row['Reçete Adı'] || `ID: ${row.id}`)}
+                          className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 py-1 px-3 rounded-md transition-colors duration-200"
                         >
                           Teslimat Gir
                         </button>
                       </td>
                     ) : null}
+                    
+                    {/* Silme butonunu her satırın sonuna ekleyin ve görünür yapın */}
+                    {tableName === 'Müşteriler' && (
+                      <td key="delete-button" className="px-3 py-4 whitespace-nowrap text-xs text-right">
+                        <button
+                          onClick={() => handleDeleteClick(row.id, row['Müşteri Firma'] || `ID: ${row.id}`)}
+                          className="inline-flex items-center justify-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                        >
+                          Sil
+                        </button>
+                      </td>
+                    )}
+                    
+                    {/* Tedarikçiler tablosu için silme butonu */}
+                    {tableName === 'suppliers' && (
+                      <td key="delete-button" className="px-3 py-4 whitespace-nowrap text-xs text-right">
+                        <button
+                          onClick={() => handleDeleteClick(row.id, row['Tedarikçi Adı'] || `ID: ${row.id}`)}
+                          className="inline-flex items-center justify-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                        >
+                          Sil
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
                 
@@ -1012,7 +1084,7 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
                       <div className="flex justify-center items-center text-xs text-indigo-700 font-medium text-center w-full mx-auto">
                         {tableName === 'Bitmiş Ürün Stoğu' ? 
                           'TAMAMLANMIŞ TESLİMATLAR' : 
-                          'ÜRETİM DURUMU "BİTTİ" OLANLAR'}
+                          'ÜRETİM DURUMU "BİTTİ" OLANLARI'}
                       </div>
                     </td>
                   </tr>
@@ -1175,6 +1247,30 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
                         </td>
                       );
                     })}
+                    
+                    {/* Müşteriler tablosu için silme butonu - tamamlanmış öğeler için de */}
+                    {tableName === 'Müşteriler' ? (
+                      <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
+                        <button
+                          onClick={() => handleDeleteClick(row.id, row['Müşteri Firma'] || `ID: ${row.id}`)}
+                          className="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 py-1 px-3 rounded-md transition-colors duration-200"
+                        >
+                          Sil
+                        </button>
+                      </td>
+                    ) : null}
+                    
+                    {/* Tedarikçiler tablosu için silme butonu */}
+                    {tableName === 'suppliers' && (
+                      <td key="delete-button" className="px-3 py-4 whitespace-nowrap text-xs text-right">
+                        <button
+                          onClick={() => handleDeleteClick(row.id, row['Tedarikçi Adı'] || `ID: ${row.id}`)}
+                          className="inline-flex items-center justify-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                        >
+                          Sil
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </>
@@ -1219,6 +1315,16 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
           )}
         </div>
       </div>
+
+      {/* Silme onay modalı */}
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        productName={selectedDeleteRow?.name || ''}
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+        tableName={tableName}
+        isDelete={true}
+      />
     </div>
   );
 };

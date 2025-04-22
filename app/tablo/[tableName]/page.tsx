@@ -17,10 +17,21 @@ import TeslimatGecmisiModal from '../../components/modals/TeslimatGecmisiModal';
 import TeslimatModal from '../../components/modals/TeslimatModal';
 import PageGuard from '../../components/PageGuard';
 import { useAuth } from '../../lib/AuthContext';
+import MusteriEkleModal from '../../components/modals/MusteriEkleModal';
+import TedarikciEkleModal from '../../components/modals/TedarikciEkleModal';
 
 export default function TablePage() {
   const { tableName } = useParams<{ tableName: string }>();
   const decodedTableName = decodeURIComponent(tableName as string);
+  
+  // Tablo adları için görüntüleme isimleri
+  const tableDisplayNames: Record<string, string> = {
+    'suppliers': 'Tedarikçiler',
+    // Diğer özel isimler buraya eklenebilir
+  };
+  
+  // Tablo başlığını belirle - özel isim varsa kullan, yoksa normal tablo adını kullan
+  const displayTableName = tableDisplayNames[decodedTableName] || decodedTableName;
   
   const [tableData, setTableData] = useState<any[]>([]);
   const [filteredData, setFilteredData] = useState<any[]>([]);
@@ -34,6 +45,8 @@ export default function TablePage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<{id: number, recipeName: string} | null>(null);
   const [updating, setUpdating] = useState(false);
+  const [musteriEkleModalOpen, setMusteriEkleModalOpen] = useState(false);
+  const [tedarikciEkleModalOpen, setTedarikciEkleModalOpen] = useState(false);
   const { user } = useAuth();
   
   // Tablo şeması bulma
@@ -270,9 +283,9 @@ export default function TablePage() {
       <DashboardLayout>
         <div className="mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-center">
           <div className="mb-4 sm:mb-0">
-            <h1 className="text-2xl font-semibold text-gray-900 whitespace-normal sm:whitespace-nowrap">{decodedTableName}</h1>
+            <h1 className="text-2xl font-semibold text-gray-900 whitespace-normal sm:whitespace-nowrap">{displayTableName}</h1>
             <p className="mt-1 text-sm text-gray-600 max-w-md">
-              {`${decodedTableName} tablosundaki verileri görüntüleyin ve yönetin.`}
+              {`${displayTableName} tablosundaki verileri görüntüleyin ve yönetin.`}
             </p>
           </div>
           
@@ -290,7 +303,7 @@ export default function TablePage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 h-10 sm:text-sm border-gray-300 rounded-md"
-                placeholder={`${decodedTableName} tablosunda ara...`}
+                placeholder={`${displayTableName} tablosunda ara...`}
               />
               {searchQuery && (
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer" onClick={() => setSearchQuery('')}>
@@ -301,17 +314,45 @@ export default function TablePage() {
               )}
             </div>
             
-            {/* Yenile Butonu */}
-            <button
-              onClick={handleRefresh}
-              className="flex items-center justify-center px-4 h-10 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 w-full sm:w-auto"
-              disabled={loading}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-              </svg>
-              Yenile
-            </button>
+            <div className="flex flex-col sm:flex-row w-full sm:w-auto space-y-2 sm:space-y-0 sm:space-x-2">
+              {/* Yenile Butonu */}
+              <button
+                onClick={handleRefresh}
+                className="flex items-center justify-center px-4 h-10 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 w-full sm:w-auto"
+                disabled={loading}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                </svg>
+                Yenile
+              </button>
+              
+              {/* Yeni Müşteri Ekle Butonu - Sadece Müşteriler tablosu için göster */}
+              {decodedTableName === 'Müşteriler' && (
+                <button
+                  onClick={() => setMusteriEkleModalOpen(true)}
+                  className="flex items-center justify-center px-4 h-10 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 w-full sm:w-auto"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                  </svg>
+                  Yeni Müşteri Ekle
+                </button>
+              )}
+              
+              {/* Yeni Tedarikçi Ekle Butonu - Sadece suppliers tablosu için göster */}
+              {decodedTableName === 'suppliers' && (
+                <button
+                  onClick={() => setTedarikciEkleModalOpen(true)}
+                  className="flex items-center justify-center px-4 h-10 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 w-full sm:w-auto"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                  </svg>
+                  Yeni Tedarikçi Ekle
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -386,6 +427,30 @@ export default function TablePage() {
               kullaniciAdSoyad={user?.ad_soyad || ''}
             />
           </>
+        )}
+        
+        {/* Yeni Müşteri Ekleme Modalı */}
+        {decodedTableName === 'Müşteriler' && (
+          <MusteriEkleModal
+            isOpen={musteriEkleModalOpen}
+            onClose={() => setMusteriEkleModalOpen(false)}
+            onSuccess={() => {
+              setMusteriEkleModalOpen(false);
+              handleRefresh(); // Yeni müşteri eklendiğinde tabloyu yenile
+            }}
+          />
+        )}
+        
+        {/* Yeni Tedarikçi Ekleme Modalı */}
+        {decodedTableName === 'suppliers' && (
+          <TedarikciEkleModal
+            isOpen={tedarikciEkleModalOpen}
+            onClose={() => setTedarikciEkleModalOpen(false)}
+            onSuccess={() => {
+              setTedarikciEkleModalOpen(false);
+              handleRefresh(); // Yeni tedarikçi eklendiğinde tabloyu yenile
+            }}
+          />
         )}
       </DashboardLayout>
     </PageGuard>
