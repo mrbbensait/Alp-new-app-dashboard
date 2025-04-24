@@ -10,14 +10,14 @@ import UretimEmriModal from './modals/UretimEmriModal';
 import UretimUyariModal from './modals/UretimUyariModal';
 import StokHareketModal from './modals/StokHareketModal';
 import { 
-  PencilIcon, 
-  CheckIcon, 
-  XIcon, 
-  ExclamationIcon, 
-  DocumentReportIcon, 
-  ArrowSmRightIcon,
-  TrashIcon
-} from '@heroicons/react/solid';
+  Pencil, 
+  Check, 
+  X, 
+  AlertTriangle, 
+  FileText, 
+  ArrowRight,
+  Trash
+} from 'lucide-react';
 
 interface DataTableProps {
   columns: {

@@ -5,15 +5,8 @@ const nextConfig = {
   // ... mevcut yapılandırmalar ...
   
   webpack: (config, { isServer, dev }) => {
-    // Sadece sunucu tarafında ve production build'de çalıştır
-    if (isServer && !dev) {
-      console.log('Sayfalar taranıyor ve veritabanı güncelleniyor...');
-      try {
-        execSync('node scripts/update-pages.js');
-      } catch (error) {
-        console.error('Sayfa güncelleme işlemi sırasında hata:', error);
-      }
-    }
+    // Sayfa tarama ve veritabanı güncelleme kodu kaldırıldı
+    // Bu işlem Vercel'de environment variable sorunları oluşturuyordu
     
     return config;
   },
