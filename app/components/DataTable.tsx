@@ -7,6 +7,17 @@ import TeslimBilgisiModal from './modals/TeslimBilgisiModal';
 import { fetchAllFromTable } from '../lib/supabase';
 import AmbalajlamaModal from './modals/AmbalajlamaModal';
 import UretimEmriModal from './modals/UretimEmriModal';
+import UretimUyariModal from './modals/UretimUyariModal';
+import StokHareketModal from './modals/StokHareketModal';
+import { 
+  PencilIcon, 
+  CheckIcon, 
+  XIcon, 
+  ExclamationIcon, 
+  DocumentReportIcon, 
+  ArrowSmRightIcon,
+  TrashIcon
+} from '@heroicons/react/solid';
 
 interface DataTableProps {
   columns: {
@@ -162,6 +173,10 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
   // Üretim Emri modalı için state
   const [isUretimEmriModalOpen, setIsUretimEmriModalOpen] = useState(false);
   const [selectedUretimEmri, setSelectedUretimEmri] = useState<{receteAdi: string, uretimMiktari: number, uretimTarihi?: string} | null>(null);
+
+  // Üretim uyarı modalı için state
+  const [isUretimUyariModalOpen, setIsUretimUyariModalOpen] = useState(false);
+  const [uyariReceteAdi, setUyariReceteAdi] = useState<string>('');
 
   // Stok Hareket modalı için state
   const [isStokHareketModalOpen, setIsStokHareketModalOpen] = useState(false);
@@ -325,7 +340,7 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
             siparis_id: selectedRow.id,
             personel_id: user.id,
           });
-          console.log(`Teslim alan personel kaydedildi: ${user.ad_soyad}`);
+          console.log(`Teslim alan personel kaydedildi: ${user.kullanici_adi}`);
         } catch (personelError) {
           console.error('Teslim alan personel kaydedilirken hata oluştu:', personelError);
           // Ana işlemi etkilememesi için bu hatayı yutuyoruz
@@ -533,7 +548,7 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
           id, 
           teslim_tarihi,
           personel:personel_id (
-            ad_soyad
+            kullanici_adi
           )
         `)
         .eq('siparis_id', urunId)
@@ -550,9 +565,9 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
         let personelAdi = 'Bilinmiyor';
         
         try {
-          if (data.personel && typeof data.personel === 'object' && 'ad_soyad' in data.personel) {
-            const adSoyad = data.personel.ad_soyad;
-            personelAdi = typeof adSoyad === 'string' ? adSoyad : 'Bilinmiyor';
+          if (data.personel && typeof data.personel === 'object' && 'kullanici_adi' in data.personel) {
+            const kullaniciAdi = data.personel.kullanici_adi;
+            personelAdi = typeof kullaniciAdi === 'string' ? kullaniciAdi : 'Bilinmiyor';
           }
         } catch (e) {
           console.error('Personel adı ayrıştırılırken hata:', e);
@@ -674,6 +689,15 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
 
   // Ambalajlama Adet Gir butonuna tıklanınca
   const handleAmbalajlamaClick = (row: any) => {
+    // Üretim Kuyruğu tablosunda ve Üretim Yapıldı mı? değeri false ise uyarı ver
+    if (tableName === 'Üretim Kuyruğu' && row['Üretim Yapıldı mı?'] !== true) {
+      // Üretim yapılmamış, uyarı modalini göster
+      setUyariReceteAdi(row['Reçete Adı'] || `ID: ${row.id}`);
+      setIsUretimUyariModalOpen(true);
+      return;
+    }
+    
+    // Normal durumda ambalajlama modalını aç
     setSelectedAmbalajlamaRow(row);
     setIsAmbalajlamaModalOpen(true);
   };
@@ -722,6 +746,54 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
       
       // Veritabanını güncelle
       await updateData(tableName, selectedAmbalajlamaRow.id, updateFields);
+      
+      // AmbalajlamaKayitlari tablosuna yeni kayıt ekle
+      try {
+        // Reçeteler tablosundan ilgili reçete bilgilerini al
+        const { data: receteData } = await supabase
+          .from('Reçeteler')
+          .select('*')
+          .eq('Reçete Adı', selectedAmbalajlamaRow['Reçete Adı'])
+          .maybeSingle();
+        
+        // Kullanıcı bilgisini belirle
+        const kullaniciEmail = userRolBilgileri?.email || 'Bilinmiyor';
+        
+        // AmbalajlamaKayitlari tablosuna eklenecek verileri hazırla
+        const ambalajlamaKayit = {
+          uretim_kuyrugu_id: selectedAmbalajlamaRow.id,
+          recete_adi: selectedAmbalajlamaRow['Reçete Adı'],
+          marka: selectedAmbalajlamaRow['Marka'],
+          musteri: selectedAmbalajlamaRow['Müşteri'],
+          ambalajlanan_adet: miktar,
+          ambalajlama_tarihi: new Date().toISOString(),
+          
+          // Reçeteler tablosundan alınan bilgiler
+          ml_bilgisi: receteData?.ml_bilgisi || null,
+          satis_fiyati_kg_bulk: receteData?.satis_fiyati_kg_bulk || null,
+          satis_fiyati_kg_ambalajli: receteData?.satis_fiyati_kg_ambalajli || null,
+          kg_bulk_maliyet: receteData?.kg_bulk_maliyet || null,
+          adet_bulk_maliyet: receteData?.adet_bulk_maliyet || null,
+          ambalaj_maliyeti: receteData?.ambalaj_maliyeti || null,
+          kg_ambalajli_maliyet: receteData?.kg_ambalajli_maliyet || null,
+          adet_ambalajli_maliyet: receteData?.adet_ambalajli_maliyet || null,
+          
+          // Hesaplanan değerler - ml dönüşümü ile
+          toplam_satis_degeri: ((miktar * (receteData?.ml_bilgisi || 0)) / 1000) * (receteData?.satis_fiyati_kg_ambalajli || 0),
+          toplam_maliyet: ((miktar * (receteData?.ml_bilgisi || 0)) / 1000) * (receteData?.kg_ambalajli_maliyet || 0),
+          kar: ((miktar * (receteData?.ml_bilgisi || 0)) / 1000) * ((receteData?.satis_fiyati_kg_ambalajli || 0) - (receteData?.kg_ambalajli_maliyet || 0)),
+          
+          // Kullanıcı bilgisi
+          kullanici: user?.kullanici_adi || 'Bilinmiyor'
+        };
+        
+        // Verileri AmbalajlamaKayitlari tablosuna ekle
+        await insertData('AmbalajlamaKayitlari', ambalajlamaKayit);
+        console.log('Ambalajlama kaydı başarıyla eklendi:', ambalajlamaKayit);
+      } catch (kayitHatasi) {
+        console.error('AmbalajlamaKayitlari tablosuna veri eklenirken hata:', kayitHatasi);
+        // Ana işlemi etkilememesi için burada hata fırlatmıyoruz
+      }
       
       // Modalı kapat
       setIsAmbalajlamaModalOpen(false);
@@ -817,6 +889,13 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
         isOpen={isTeslimBilgisiModalOpen}
         teslimBilgisi={teslimBilgisi}
         onClose={() => setIsTeslimBilgisiModalOpen(false)}
+      />
+      
+      {/* Üretim Uyarı Modalı */}
+      <UretimUyariModal
+        isOpen={isUretimUyariModalOpen}
+        onClose={() => setIsUretimUyariModalOpen(false)}
+        receteAdi={uyariReceteAdi}
       />
       
       {/* Ambalajlama Modalı */}
@@ -1041,7 +1120,7 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
                       );
                     })}
                     
-                    {/* Teslimat Gir butonu - sadece Bitmiş Ürün Stoğu tablosu için */}
+                    {/* Teslimat Gir butonu - sadece Bitmiş Ürün Stoğu tabosu için */}
                     {(tableName === 'Bitmiş Ürün Stoğu' && onTeslimatClick && row['Kalan Adet'] > 0) ? (
                       <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
                         <button

@@ -12,7 +12,7 @@ const UretimGirModal: React.FC<UretimGirModalProps> = ({ isOpen, onClose, onSucc
   const [receteAdi, setReceteAdi] = useState('');
   const [marka, setMarka] = useState('');
   const [bulkUretimEmri, setBulkUretimEmri] = useState('');
-  const [ambalajEmri, setAmbalajEmri] = useState('');
+  const [seciliRecete, setSeciliRecete] = useState<any>(null);
   
   // Dropdown için veriler
   const [receteler, setReceteler] = useState<any[]>([]);
@@ -95,8 +95,9 @@ const UretimGirModal: React.FC<UretimGirModalProps> = ({ isOpen, onClose, onSucc
   }, [markaArama, markalar]);
 
   // Reçete seçme
-  const handleReceteSelect = (seciliRecete: any) => {
-    setReceteAdi(seciliRecete['Reçete Adı']);
+  const handleReceteSelect = (seciliReceteObj: any) => {
+    setReceteAdi(seciliReceteObj['Reçete Adı']);
+    setSeciliRecete(seciliReceteObj);
     setReceteArama('');
     setShowReceteDropdown(false);
   };
@@ -136,14 +137,14 @@ const UretimGirModal: React.FC<UretimGirModalProps> = ({ isOpen, onClose, onSucc
         'Reçete Adı': receteAdi,
         'Marka': marka,
         'Bulk Üretim Emri(Kg)': bulkUretimEmri ? parseInt(bulkUretimEmri) : null,
-        'Ambalaj Emri (ml)': ambalajEmri ? parseInt(ambalajEmri) : null
+        'Ambalaj Emri (ml)': seciliRecete?.ml_bilgisi || null
       });
       
       // Başarılı durumda form alanlarını temizle ve başarı fonksiyonunu çağır
       setReceteAdi('');
       setMarka('');
       setBulkUretimEmri('');
-      setAmbalajEmri('');
+      setSeciliRecete(null);
       onSuccess();
     } catch (err) {
       console.error('Üretim kaydı eklenirken hata oluştu:', err);
@@ -295,25 +296,22 @@ const UretimGirModal: React.FC<UretimGirModalProps> = ({ isOpen, onClose, onSucc
               </div>
             </div>
 
-            {/* Ambalaj Emri - Sadece sayısal */}
-            <div>
-              <label htmlFor="ambalajEmri" className="block text-sm font-medium text-gray-700 mb-1">
-                Ambalaj Emri (ml)
-              </label>
-              <div className="mt-1 relative rounded-md shadow-sm">
-                <input
-                  type="text"
-                  id="ambalajEmri"
-                  value={ambalajEmri}
-                  onChange={(e) => handleNumericInputChange(e, setAmbalajEmri)}
-                  className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pr-12 sm:text-sm border-gray-300 rounded-md"
-                  placeholder="Örn: 250"
-                />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <span className="text-gray-500 sm:text-sm">ml</span>
+            {/* Ambalaj Emri Bilgisi (Salt okunur) */}
+            {seciliRecete && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Ambalaj Emri (ml)
+                </label>
+                <div className="mt-1 relative rounded-md shadow-sm">
+                  <div className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pr-12 sm:text-sm border-gray-300 rounded-md bg-gray-100 p-2">
+                    {seciliRecete.ml_bilgisi || 'Belirtilmemiş'}
+                  </div>
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <span className="text-gray-500 sm:text-sm">ml</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             <div className="flex justify-end space-x-3 mt-6">
               <button

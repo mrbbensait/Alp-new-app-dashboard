@@ -172,7 +172,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, pageTitle, 
           {showWarning && (
             <div className="absolute left-1/2 transform -translate-x-1/2 top-0 w-full max-w-xl text-center z-20">
               <div className="warning-pulse bg-red-50 border-2 border-red-500 rounded-lg px-4 py-2 shadow-lg mx-4 mt-2">
-                <p className="text-red-600 font-bold">BackEnd Kodlama Üzerinde Güncelleme Yapılıyor!</p>
+                <p className="text-red-600 font-bold">Mali Performans üzerinde güncellemeler yapılıyor!</p>
                 <p className="text-red-500 text-sm">Lütfen bir kayıt girişi yapmayınız, sayfalar arasında dolaşabilirsiniz.</p>
               </div>
             </div>

@@ -5,13 +5,16 @@ import { useRouter } from 'next/navigation';
 import DashboardLayout from '../../components/DashboardLayout';
 import { FileText, Plus, Trash2, Search } from 'lucide-react';
 import { fetchAllFromTable } from '../../lib/supabase';
-import PageGuard from '@/app/components/PageGuard';
+import PageGuard from '../../components/PageGuard';
+import { useAuth } from '@/app/lib/AuthContext';
+import { supabase } from '@/app/lib/supabase';
 
 interface StokItem {
   'Hammadde Adı': string;
   'Stok Kategori': string;
   'Hammadde ID': string;
   'Birim': string;
+  'kg_fiyat': number;
   [key: string]: any;
 }
 
@@ -33,6 +36,9 @@ interface Bilesen {
 export default function ReceteKaydiPage() {
   const [receteAdi, setReceteAdi] = useState('');
   const [marka, setMarka] = useState('');
+  const [satisFiyati, setSatisFiyati] = useState('');
+  const [satisAmbalajliFiyati, setSatisAmbalajliFiyati] = useState('');
+  const [mlBilgisi, setMlBilgisi] = useState('');
   const [bilesenler, setBilesenler] = useState<Bilesen[]>([]);
   const [showNotification, setShowNotification] = useState(false);
   
@@ -51,6 +57,34 @@ export default function ReceteKaydiPage() {
   // API durumu için state
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Kullanıcı rol bilgileri için state
+  const [userRolBilgileri, setUserRolBilgileri] = useState<any>(null);
+  const { user } = useAuth();
+
+  // Kullanıcının rol bilgilerini veritabanından çek
+  useEffect(() => {
+    const fetchRolBilgileri = async () => {
+      if (user?.rol_id) {
+        try {
+          const { data, error } = await supabase
+            .from('roller')
+            .select('*')
+            .eq('id', user.rol_id)
+            .single();
+            
+          if (!error && data) {
+            console.log('Kullanıcı rol bilgileri:', data);
+            setUserRolBilgileri(data);
+          }
+        } catch (err) {
+          console.error('Rol bilgileri alınırken hata:', err);
+        }
+      }
+    };
+    
+    fetchRolBilgileri();
+  }, [user]);
 
   // Verileri yükleme
   const loadData = useCallback(async () => {
@@ -85,6 +119,67 @@ export default function ReceteKaydiPage() {
     return bilesenler
       .filter(b => b.kategori !== 'Ambalaj')
       .reduce((total, bilesen) => total + (parseFloat(bilesen.oran) || 0), 0);
+  };
+
+  // Kg Bulk Maliyet hesaplama (sadece Hammadde kategorisindekiler)
+  const calculateKgBulkCost = () => {
+    return bilesenler
+      .filter(b => b.kategori !== 'Ambalaj')
+      .reduce((total, bilesen) => {
+        // Her bileşenin kg_fiyat değerini stokItems içinde bul
+        const stokItem = stokItems.find(item => item['Hammadde ID'] === bilesen.hammaddeId);
+        const kgFiyat = stokItem ? stokItem['kg_fiyat'] || 0 : 0;
+        const oran = parseFloat(bilesen.oran) || 0;
+        
+        // Bileşenin maliyetini hesapla (oran/100 * kg_fiyat)
+        const bilesenMaliyeti = (oran / 100) * kgFiyat;
+        
+        return total + bilesenMaliyeti;
+      }, 0);
+  };
+
+  // 1 Adet Bulk Maliyet hesaplama
+  const calculateBirAdetBulkMaliyet = () => {
+    const kgBulkMaliyet = calculateKgBulkCost();
+    const ml = parseFloat(mlBilgisi) || 0;
+    if (ml <= 0) return 0;
+    
+    return (ml * kgBulkMaliyet) / 1000;
+  };
+
+  // Ambalaj maliyeti (Y değeri) hesaplama
+  const calculateAmbalajMaliyeti = () => {
+    return bilesenler
+      .filter(b => b.kategori === 'Ambalaj')
+      .reduce((total, bilesen) => {
+        const stokItem = stokItems.find(item => item['Hammadde ID'] === bilesen.hammaddeId);
+        const kgFiyat = stokItem ? stokItem['kg_fiyat'] || 0 : 0;
+        const oran = parseFloat(bilesen.oran) || 0;
+        
+        // Oran (yüzde değil, doğrudan değer) x kg_fiyat x (1000/ml)
+        const ml = parseFloat(mlBilgisi) || 0;
+        if (ml <= 0) return total;
+        
+        const ambalajBilesenMaliyeti = oran * kgFiyat * (1000 / ml);
+        return total + ambalajBilesenMaliyeti;
+      }, 0);
+  };
+
+  // Kg Ambalajlı Maliyet hesaplama
+  const calculateKgAmbalajliMaliyet = () => {
+    const kgBulkMaliyet = calculateKgBulkCost();
+    const ambalajMaliyeti = calculateAmbalajMaliyeti();
+    return kgBulkMaliyet + ambalajMaliyeti;
+  };
+
+  // 1 Adet Ambalajlı Maliyet hesaplama
+  const calculateBirAdetAmbalajliMaliyet = () => {
+    const kgAmbalajliMaliyet = calculateKgAmbalajliMaliyet();
+    const ml = parseFloat(mlBilgisi) || 0;
+    if (ml <= 0) return 0;
+    
+    const binBoluMl = 1000 / ml;
+    return kgAmbalajliMaliyet / binBoluMl;
   };
 
   // Bileşen ekleme
@@ -202,6 +297,11 @@ export default function ReceteKaydiPage() {
       return;
     }
     
+    if (!mlBilgisi.trim() || isNaN(parseFloat(mlBilgisi)) || parseFloat(mlBilgisi) <= 0) {
+      alert('Lütfen geçerli bir ML bilgisi giriniz.');
+      return;
+    }
+    
     if (bilesenler.length === 0) {
       alert('Lütfen en az bir bileşen ekleyiniz.');
       return;
@@ -220,15 +320,22 @@ export default function ReceteKaydiPage() {
     const totalPercentage = calculateTotalPercentage();
     
     if (Math.abs(totalPercentage - 100) > 0.1) {
-      if (!confirm(`Bileşenlerin toplam oranı (Ambalaj kategorisi hariç) ${totalPercentage.toFixed(2)}% olarak hesaplandı. İdeal olarak %100 olmalıdır. Devam etmek istiyor musunuz?`)) {
-        return;
-      }
+      alert(`Bileşenlerin toplam oranı (Ambalaj kategorisi hariç) ${totalPercentage.toFixed(2)}% olarak hesaplandı. Lütfen toplamı %100 olacak şekilde düzenleyin.`);
+      return;
     }
     
     // Form verilerini topla
     const formData = {
       receteAdi,
       marka,
+      satis_fiyati: satisFiyati,
+      satis_fiyati_ambalajli: satisAmbalajliFiyati,
+      ml_bilgisi: mlBilgisi,
+      kg_bulk_maliyet: calculateKgBulkCost(),
+      bir_adet_bulk_maliyet: calculateBirAdetBulkMaliyet(),
+      ambalaj_maliyeti: calculateAmbalajMaliyeti(),
+      kg_ambalajli_maliyet: calculateKgAmbalajliMaliyet(),
+      bir_adet_ambalajli_maliyet: calculateBirAdetAmbalajliMaliyet(),
       bilesenler: bilesenler.map(b => ({
         adi: b.adi,
         kategori: b.kategori,
@@ -305,6 +412,9 @@ export default function ReceteKaydiPage() {
         // Formu sıfırla
         setReceteAdi('');
         setMarka('');
+        setSatisFiyati('');
+        setSatisAmbalajliFiyati('');
+        setMlBilgisi('');
         setBilesenler([]);
       } finally {
         setIsLoading(false);
@@ -322,7 +432,21 @@ export default function ReceteKaydiPage() {
   };
 
   const totalPercentage = calculateTotalPercentage();
+  const kgBulkMaliyet = calculateKgBulkCost();
+  const birAdetBulkMaliyet = calculateBirAdetBulkMaliyet();
+  const ambalajMaliyeti = calculateAmbalajMaliyeti();
+  const kgAmbalajliMaliyet = calculateKgAmbalajliMaliyet();
+  const birAdetAmbalajliMaliyet = calculateBirAdetAmbalajliMaliyet();
   
+  // Kar yüzdesi hesaplama
+  const calculateKarYuzdesi = (satisFiyati: number, maliyet: number) => {
+    if (maliyet <= 0) return 0;
+    return ((satisFiyati - maliyet) / maliyet) * 100;
+  };
+
+  const bulkKarYuzdesi = calculateKarYuzdesi(parseFloat(satisFiyati) || 0, kgBulkMaliyet);
+  const ambalajliKarYuzdesi = calculateKarYuzdesi(parseFloat(satisAmbalajliFiyati) || 0, kgAmbalajliMaliyet);
+
   // Yükleme durumunda gösterilecek içerik
   if (isLoading) {
     return (
@@ -365,228 +489,362 @@ export default function ReceteKaydiPage() {
   return (
     <PageGuard sayfaYolu="/formlar/recete-kaydi">
       <DashboardLayout>
-        <div className="container mx-auto px-4 py-6 max-w-4xl">
-          {/* Başlık */}
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-800 flex items-center">
-              <FileText className="mr-2" size={24} />
-              Reçete ve Formülasyon Kaydı
-            </h1>
-            <p className="text-gray-600">
-              Yeni reçete ve formülasyonlarınızı kaydetmek için bu formu kullanabilirsiniz.
-            </p>
-          </div>
-          
-          {/* Form */}
-          <div className="bg-white shadow-md rounded-lg p-6">
-            <form onSubmit={handleSubmit}>
-              {/* Reçete Adı */}
-              <div className="mb-4">
-                <label htmlFor="receteAdi" className="block text-sm font-medium text-gray-700 mb-1">
-                  Reçete Adı
-                </label>
-                <input
-                  type="text"
-                  id="receteAdi"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="Reçete adını giriniz"
-                  value={receteAdi}
-                  onChange={(e) => setReceteAdi(e.target.value)}
-                />
-              </div>
-              
-              {/* Marka Seçimi */}
-              <div className="mb-6">
-                <label htmlFor="marka" className="block text-sm font-medium text-gray-700 mb-1">
-                  Marka
-                </label>
-                <div className="marka-dropdown-container relative">
+        <div className="container mx-auto px-4 py-6 max-w-5xl flex">
+          {/* Sol Taraf - Form */}
+          <div className={`${userRolBilgileri?.recete_satis_bilgisi || userRolBilgileri?.recete_maliyet_bilgisi ? 'w-3/4' : 'w-3/4'} pr-6`}>
+            {/* Başlık */}
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-gray-800 flex items-center">
+                <FileText className="mr-2" size={24} />
+                Reçete ve Formülasyon Kaydı
+              </h1>
+              <p className="text-gray-600">
+                Yeni reçete ve formülasyonlarınızı kaydetmek için bu formu kullanabilirsiniz.
+              </p>
+            </div>
+            
+            {/* Form */}
+            <div className="bg-white shadow-md rounded-lg p-6">
+              <form onSubmit={handleSubmit}>
+                {/* Reçete Adı */}
+                <div className="mb-4">
+                  <label htmlFor="receteAdi" className="block text-sm font-medium text-gray-700 mb-1">
+                    Reçete Adı
+                  </label>
+                  <input
+                    type="text"
+                    id="receteAdi"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="Reçete adını giriniz"
+                    value={receteAdi}
+                    onChange={(e) => setReceteAdi(e.target.value)}
+                  />
+                </div>
+                
+                {/* Marka Seçimi */}
+                <div className="mb-4">
+                  <label htmlFor="marka" className="block text-sm font-medium text-gray-700 mb-1">
+                    Marka
+                  </label>
+                  <div className="marka-dropdown-container relative">
+                    <button
+                      type="button"
+                      className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-left focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 flex justify-between items-center"
+                      onClick={toggleMarkaDropdown}
+                    >
+                      <span>{marka || "Marka seçiniz"}</span>
+                      <Search size={16} className="text-gray-400" />
+                    </button>
+                    
+                    {showMarkaDropdown && (
+                      <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-sm overflow-auto border border-gray-300">
+                        <div className="sticky top-0 p-2 bg-white border-b">
+                          <input
+                            type="text"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                            placeholder="Marka veya müşteri adı ile ara..."
+                            value={markaSearchTerm}
+                            onChange={handleMarkaSearch}
+                          />
+                        </div>
+                        
+                        {filteredMarkalar.length > 0 ? (
+                          filteredMarkalar.map((item, idx) => (
+                            <div
+                              key={idx}
+                              className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                              onClick={() => selectMarka(item)}
+                            >
+                              <div className="font-medium">{item['Marka']}</div>
+                              <div className="text-xs text-gray-500">{item['Müşteri Firma']}</div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="px-3 py-2 text-gray-500 italic text-center">
+                            Sonuç bulunamadı
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Bileşenler Başlık */}
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium text-gray-900">Bileşenler</h3>
+                  <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    Math.abs(totalPercentage - 100) < 0.01 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    Toplam: {totalPercentage.toFixed(2)}%
+                  </div>
+                </div>
+                
+                {/* Bileşenler Listesi */}
+                <div className="space-y-3 mb-6">
+                  {bilesenler.length === 0 ? (
+                    <div className="text-center py-4 text-gray-500 bg-gray-50 rounded-md">
+                      Henüz bileşen eklenmedi. Aşağıdaki buton ile bileşen ekleyebilirsiniz.
+                    </div>
+                  ) : (
+                    bilesenler.map((bilesen, index) => (
+                      <div key={index} className="flex flex-col md:flex-row gap-3 p-3 bg-gray-50 rounded-md">
+                        {/* Ürün Seçimi */}
+                        <div className="flex-grow">
+                          <label className="block text-xs font-medium text-gray-500 mb-1">
+                            Bileşen
+                          </label>
+                          <div className="bilesen-dropdown-container relative">
+                            <button
+                              type="button"
+                              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-left focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                              onClick={() => toggleDropdown(index)}
+                            >
+                              {bilesen.adi || "Bileşen seçiniz"}
+                            </button>
+                            
+                            {activeDropdownIndex === index && (
+                              <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-sm overflow-auto border border-gray-300">
+                                <div className="sticky top-0 p-2 bg-white border-b">
+                                  <input
+                                    type="text"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                    placeholder="Ara..."
+                                    value={bilesenSearchTerm}
+                                    onChange={handleBilesenSearch}
+                                  />
+                                </div>
+                                
+                                {filteredStokItems.length > 0 ? (
+                                  filteredStokItems.map((item, itemIndex) => (
+                                    <div
+                                      key={itemIndex}
+                                      className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                                      onClick={() => selectBilesen(index, item)}
+                                    >
+                                      <div className="font-medium">{item['Hammadde Adı']}</div>
+                                      <div className="text-xs text-gray-500">
+                                        {item['Stok Kategori']} • {item['Birim'] || 'Belirtilmemiş'}
+                                      </div>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="px-3 py-2 text-gray-500 italic text-center">
+                                    Sonuç bulunamadı
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Kategori Gösterimi */}
+                        <div className="w-full md:w-1/5">
+                          <label className="block text-xs font-medium text-gray-500 mb-1">
+                            Kategori
+                          </label>
+                          <div className="px-3 py-2 bg-gray-100 border border-gray-200 rounded-md text-sm">
+                            {bilesen.kategori || "Kategori"}
+                          </div>
+                        </div>
+                        
+                        {/* Birim Gösterimi */}
+                        <div className="w-full md:w-1/6">
+                          <label className="block text-xs font-medium text-gray-500 mb-1">
+                            Birim
+                          </label>
+                          <div className="px-3 py-2 bg-gray-100 border border-gray-200 rounded-md text-sm">
+                            {bilesen.birim || "Otomatik"}
+                          </div>
+                        </div>
+                        
+                        {/* Oran Girişi */}
+                        <div className="w-full md:w-1/5">
+                          <label className="block text-xs font-medium text-gray-500 mb-1">
+                            Oran (%)
+                          </label>
+                          <input
+                            type="number"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                            placeholder="Oran"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            value={bilesen.oran}
+                            onChange={(e) => updateComponent(index, 'oran', e.target.value)}
+                          />
+                        </div>
+                        
+                        {/* Silme Butonu */}
+                        <div className="flex items-end md:w-auto">
+                          <button
+                            type="button"
+                            className="w-full md:w-auto px-3 py-2 bg-red-50 text-red-700 rounded-md hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors"
+                            onClick={() => removeComponent(index)}
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                
+                {/* Bileşen Ekle Butonu */}
+                <div className="mb-6">
                   <button
                     type="button"
-                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-left focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 flex justify-between items-center"
-                    onClick={toggleMarkaDropdown}
+                    className="flex items-center px-4 py-2 bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                    onClick={addComponent}
                   >
-                    <span>{marka || "Marka seçiniz"}</span>
-                    <Search size={16} className="text-gray-400" />
+                    <Plus size={18} className="mr-2" />
+                    Bileşen Ekle
                   </button>
+                </div>
+                
+                {/* Gönder Butonu */}
+                <div className="flex justify-center">
+                  <button
+                    type="submit"
+                    className="px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors font-medium"
+                  >
+                    Formu Gönder
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+          
+          {/* Sağ Taraf */}
+          <div className="w-1/4">
+            {/* ML Bilgisi Alanı - Her zaman görünür */}
+            <div className="bg-white shadow-md rounded-lg p-3 mb-4 sticky top-4">
+              <h3 className="text-sm font-medium text-gray-900 mb-2">ML Bilgisi</h3>
+              
+              <div>
+                <label htmlFor="mlBilgisi" className="block text-xs font-medium text-gray-700 mb-0.5">
+                  ML Değeri
+                </label>
+                <input
+                  type="number"
+                  id="mlBilgisi"
+                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="ML bilgisi giriniz"
+                  min="1"
+                  value={mlBilgisi}
+                  onChange={(e) => setMlBilgisi(e.target.value)}
+                />
+              </div>
+            </div>
+            
+            {/* Satış Bilgileri ve Maliyet Hesaplamaları - Rol yetkilerine göre göster/gizle */}
+            {userRolBilgileri?.recete_satis_bilgisi && (
+              <div className="bg-white shadow-md rounded-lg p-3 mb-4 sticky top-24">
+                <h3 className="text-sm font-medium text-gray-900 mb-2">Satış Bilgileri</h3>
+                
+                <div className="space-y-2">
+                  <div>
+                    <div className="flex justify-between items-center">
+                      <label htmlFor="satisFiyati" className="text-xs font-medium text-gray-700">
+                        Satış Fiyatı (Eur) - Kg Bulk
+                      </label>
+                      {satisFiyati && kgBulkMaliyet > 0 && (
+                        <span className="text-xs text-green-600">
+                          Kar: %{bulkKarYuzdesi.toFixed(1)}
+                        </span>
+                      )}
+                    </div>
+                    <input
+                      type="number"
+                      id="satisFiyati"
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 mt-0.5"
+                      placeholder="Kg bulk fiyatı"
+                      min="0"
+                      step="0.01"
+                      value={satisFiyati}
+                      onChange={(e) => setSatisFiyati(e.target.value)}
+                    />
+                  </div>
                   
-                  {showMarkaDropdown && (
-                    <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-sm overflow-auto border border-gray-300">
-                      <div className="sticky top-0 p-2 bg-white border-b">
-                        <input
-                          type="text"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                          placeholder="Marka veya müşteri adı ile ara..."
-                          value={markaSearchTerm}
-                          onChange={handleMarkaSearch}
-                        />
-                      </div>
-                      
-                      {filteredMarkalar.length > 0 ? (
-                        filteredMarkalar.map((item, idx) => (
-                          <div
-                            key={idx}
-                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                            onClick={() => selectMarka(item)}
-                          >
-                            <div className="font-medium">{item['Marka']}</div>
-                            <div className="text-xs text-gray-500">{item['Müşteri Firma']}</div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="px-3 py-2 text-gray-500 italic text-center">
-                          Sonuç bulunamadı
+                  <div>
+                    <div className="flex justify-between items-center">
+                      <label htmlFor="satisAmbalajliFiyati" className="text-xs font-medium text-gray-700">
+                        Satış Fiyatı (Eur) - Kg Ambalajlı
+                      </label>
+                      {satisAmbalajliFiyati && kgAmbalajliMaliyet > 0 && (
+                        <span className="text-xs text-green-600">
+                          Kar: %{ambalajliKarYuzdesi.toFixed(1)}
+                        </span>
+                      )}
+                    </div>
+                    <input
+                      type="number"
+                      id="satisAmbalajliFiyati"
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 mt-0.5"
+                      placeholder="Kg ambalajlı fiyatı"
+                      min="0"
+                      step="0.01"
+                      value={satisAmbalajliFiyati}
+                      onChange={(e) => setSatisAmbalajliFiyati(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          
+            {/* Maliyet Hesaplamaları - Rol yetkisine göre göster/gizle */}
+            {userRolBilgileri?.recete_maliyet_bilgisi && (
+              <div className="bg-white shadow-md rounded-lg p-3 sticky top-44">
+                <h3 className="text-sm font-medium text-gray-900 mb-2">Maliyet Hesaplamaları</h3>
+                <div className="text-xs text-gray-500 -mt-1 mb-2 italic">Referans 1Kg</div>
+                
+                <div className="space-y-2">
+                  <div>
+                    <div className="flex justify-between items-center">
+                      <div className="text-xs font-medium text-gray-500">Kg Bulk Maliyet:</div>
+                      {satisFiyati && kgBulkMaliyet > 0 && (
+                        <div className="text-xs text-green-600 whitespace-nowrap">
+                          Kar: %{bulkKarYuzdesi.toFixed(1)}
                         </div>
                       )}
                     </div>
-                  )}
-                </div>
-              </div>
-              
-              {/* Bileşenler Başlık */}
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-gray-900">Bileşenler</h3>
-                <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  Math.abs(totalPercentage - 100) < 0.01 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-yellow-100 text-yellow-800'
-                }`}>
-                  Toplam: {totalPercentage.toFixed(2)}%
-                </div>
-              </div>
-              
-              {/* Bileşenler Listesi */}
-              <div className="space-y-3 mb-6">
-                {bilesenler.length === 0 ? (
-                  <div className="text-center py-4 text-gray-500 bg-gray-50 rounded-md">
-                    Henüz bileşen eklenmedi. Aşağıdaki buton ile bileşen ekleyebilirsiniz.
+                    <div className="text-sm font-semibold text-gray-900">{kgBulkMaliyet.toFixed(2)} €</div>
                   </div>
-                ) : (
-                  bilesenler.map((bilesen, index) => (
-                    <div key={index} className="flex flex-col md:flex-row gap-3 p-3 bg-gray-50 rounded-md">
-                      {/* Ürün Seçimi */}
-                      <div className="flex-grow">
-                        <label className="block text-xs font-medium text-gray-500 mb-1">
-                          Bileşen
-                        </label>
-                        <div className="bilesen-dropdown-container relative">
-                          <button
-                            type="button"
-                            className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-left focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                            onClick={() => toggleDropdown(index)}
-                          >
-                            {bilesen.adi || "Bileşen seçiniz"}
-                          </button>
-                          
-                          {activeDropdownIndex === index && (
-                            <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-sm overflow-auto border border-gray-300">
-                              <div className="sticky top-0 p-2 bg-white border-b">
-                                <input
-                                  type="text"
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                                  placeholder="Ara..."
-                                  value={bilesenSearchTerm}
-                                  onChange={handleBilesenSearch}
-                                />
-                              </div>
-                              
-                              {filteredStokItems.length > 0 ? (
-                                filteredStokItems.map((item, itemIndex) => (
-                                  <div
-                                    key={itemIndex}
-                                    className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                                    onClick={() => selectBilesen(index, item)}
-                                  >
-                                    <div className="font-medium">{item['Hammadde Adı']}</div>
-                                    <div className="text-xs text-gray-500">
-                                      {item['Stok Kategori']} • {item['Birim'] || 'Belirtilmemiş'}
-                                    </div>
-                                  </div>
-                                ))
-                              ) : (
-                                <div className="px-3 py-2 text-gray-500 italic text-center">
-                                  Sonuç bulunamadı
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {/* Kategori Gösterimi */}
-                      <div className="w-full md:w-1/5">
-                        <label className="block text-xs font-medium text-gray-500 mb-1">
-                          Kategori
-                        </label>
-                        <div className="px-3 py-2 bg-gray-100 border border-gray-200 rounded-md text-sm">
-                          {bilesen.kategori || "Kategori"}
-                        </div>
-                      </div>
-                      
-                      {/* Birim Gösterimi */}
-                      <div className="w-full md:w-1/6">
-                        <label className="block text-xs font-medium text-gray-500 mb-1">
-                          Birim
-                        </label>
-                        <div className="px-3 py-2 bg-gray-100 border border-gray-200 rounded-md text-sm">
-                          {bilesen.birim || "Otomatik"}
-                        </div>
-                      </div>
-                      
-                      {/* Oran Girişi */}
-                      <div className="w-full md:w-1/5">
-                        <label className="block text-xs font-medium text-gray-500 mb-1">
-                          Oran (%)
-                        </label>
-                        <input
-                          type="number"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                          placeholder="Oran"
-                          min="0"
-                          max="100"
-                          step="0.01"
-                          value={bilesen.oran}
-                          onChange={(e) => updateComponent(index, 'oran', e.target.value)}
-                        />
-                      </div>
-                      
-                      {/* Silme Butonu */}
-                      <div className="flex items-end md:w-auto">
-                        <button
-                          type="button"
-                          className="w-full md:w-auto px-3 py-2 bg-red-50 text-red-700 rounded-md hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors"
-                          onClick={() => removeComponent(index)}
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
+                  
+                  <div>
+                    <div className="text-xs font-medium text-gray-500">1 Adet Bulk Maliyet:</div>
+                    <div className="text-sm font-semibold text-gray-900">
+                      {birAdetBulkMaliyet.toFixed(4)} € ({mlBilgisi}ml)
                     </div>
-                  ))
-                )}
+                  </div>
+                  
+                  <div className="pt-1 border-t">
+                    <div className="text-xs font-medium text-gray-500">Ambalaj Maliyeti:</div>
+                    <div className="text-sm font-semibold text-gray-900">{ambalajMaliyeti.toFixed(4)} €</div>
+                  </div>
+                  
+                  <div>
+                    <div className="flex justify-between items-center">
+                      <div className="text-xs font-medium text-gray-500">Kg Ambalajlı Maliyet:</div>
+                      {satisAmbalajliFiyati && kgAmbalajliMaliyet > 0 && (
+                        <div className="text-xs text-green-600 whitespace-nowrap">
+                          Kar: %{ambalajliKarYuzdesi.toFixed(1)}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-sm font-semibold text-gray-900">{kgAmbalajliMaliyet.toFixed(2)} €</div>
+                  </div>
+                  
+                  <div>
+                    <div className="text-xs font-medium text-gray-500">1 Adet Ambalajlı Maliyet:</div>
+                    <div className="text-sm font-semibold text-gray-900">
+                      {birAdetAmbalajliMaliyet.toFixed(4)} € ({mlBilgisi}ml)
+                    </div>
+                  </div>
+                </div>
               </div>
-              
-              {/* Bileşen Ekle Butonu */}
-              <div className="mb-6">
-                <button
-                  type="button"
-                  className="flex items-center px-4 py-2 bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-                  onClick={addComponent}
-                >
-                  <Plus size={18} className="mr-2" />
-                  Bileşen Ekle
-                </button>
-              </div>
-              
-              {/* Gönder Butonu */}
-              <div className="flex justify-center">
-                <button
-                  type="submit"
-                  className="px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors font-medium"
-                >
-                  Formu Gönder
-                </button>
-              </div>
-            </form>
+            )}
           </div>
           
           {/* Bildirim */}

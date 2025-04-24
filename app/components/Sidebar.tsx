@@ -186,6 +186,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
       path: '/raporlar/personel-performans', 
       icon: <Activity size={18} />
     },
+    { 
+      name: 'Mali Performans', 
+      path: '/raporlar/mali-performans', 
+      icon: <BarChart2 size={18} />
+    },
   ];
 
   // Personel sayfaları - tüm kullanıcıların erişebileceği
@@ -328,6 +333,73 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
       }
     };
   }, []);
+
+  const navigasyon = [
+    {
+      name: 'Ana Sayfa',
+      href: '/',
+      icon: Home,
+      yetkiGerekli: false,
+      sayfaYolu: '/'
+    },
+    {
+      name: 'İş Emirleri',
+      href: '/is-emirleri',
+      icon: Clipboard,
+      yetkiGerekli: true,
+      sayfaYolu: '/is-emirleri'
+    },
+    {
+      name: 'Formlar',
+      icon: FileText,
+      yetkiGerekli: true,
+      sayfaYolu: '/formlar',
+      altMenuler: [
+        { name: 'Reçete Kaydı', href: '/formlar/recete-kaydi', yetkiGerekli: true, sayfaYolu: '/formlar/recete-kaydi' },
+        { name: 'Stok Kaydı', href: '/formlar/stok-kaydi', yetkiGerekli: true, sayfaYolu: '/formlar/stok-kaydi' },
+        { name: 'Müşteri Kaydı', href: '/formlar/musteri-kaydi', yetkiGerekli: true, sayfaYolu: '/formlar/musteri-kaydi' },
+        { name: 'Formülasyon Kaydı', href: '/formlar/formulasyon-kaydi', yetkiGerekli: true, sayfaYolu: '/formlar/formulasyon-kaydi' }
+      ]
+    },
+    {
+      name: 'Tablolar',
+      icon: Database,
+      yetkiGerekli: true,
+      sayfaYolu: '/tablo',
+      altMenuler: [
+        { name: 'Stok Tablosu', href: '/tablo/Stok', yetkiGerekli: true, sayfaYolu: '/tablo/Stok' },
+        { name: 'Reçete Tablosu', href: '/tablo/Reçeteler', yetkiGerekli: true, sayfaYolu: '/tablo/Reçeteler' },
+        { name: 'Müşteri Tablosu', href: '/tablo/Müşteriler', yetkiGerekli: true, sayfaYolu: '/tablo/Müşteriler' },
+        { name: 'Üretim Kuyruğu', href: '/tablo/Üretim%20Kuyruğu', yetkiGerekli: true, sayfaYolu: '/tablo/Üretim%20Kuyruğu' },
+        { name: 'Bitmiş Ürün Stoğu', href: '/tablo/Bitmiş%20Ürün%20Stoğu', yetkiGerekli: true, sayfaYolu: '/tablo/Bitmiş%20Ürün%20Stoğu' },
+        { name: 'Formülasyonlar', href: '/tablo/Formülasyonlar', yetkiGerekli: true, sayfaYolu: '/tablo/Formülasyonlar' }
+      ]
+    },
+    {
+      name: 'Teslimat Geçmişi',
+      href: '/teslimat-gecmisi',
+      icon: Truck,
+      yetkiGerekli: true,
+      sayfaYolu: '/teslimat-gecmisi'
+    },
+    {
+      name: 'Raporlar',
+      icon: BarChart2,
+      yetkiGerekli: true,
+      sayfaYolu: '/raporlar',
+      altMenuler: [
+        { name: 'Personel Performans', href: '/raporlar/personel-performans', yetkiGerekli: true, sayfaYolu: '/raporlar/personel-performans' },
+        { name: 'Mali Performans', href: '/raporlar/mali-performans', yetkiGerekli: true, sayfaYolu: '/raporlar/mali-performans' }
+      ]
+    },
+    {
+      name: 'Ayarlar',
+      href: '/ayarlar',
+      icon: Settings,
+      yetkiGerekli: true,
+      sayfaYolu: '/ayarlar'
+    }
+  ];
 
   return (
     <>

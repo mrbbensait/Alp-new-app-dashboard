@@ -15,10 +15,9 @@ import {
   Filler,
 } from 'chart.js';
 import { Line, Bar, Pie, Scatter } from 'react-chartjs-2';
-import { PerformansRaporu, MaliyetFiyat } from '@/app/lib/types/index';
+import { PerformansRaporu } from '@/app/lib/types/index';
 import { GrafikTuru } from './GrafikTurSecici';
 import { formatDateTR, getGunAdi } from '@/app/utils/date-utils';
-import { hesaplaRaporToplamKar } from '@/app/utils/hesaplamalar';
 
 // Chart.js bileşenlerini kaydet
 ChartJS.register(
@@ -36,7 +35,6 @@ ChartJS.register(
 
 interface PerformansGrafikleriProps {
   raporlar: PerformansRaporu[];
-  maliyetFiyatlar: MaliyetFiyat[];
   grafikTuru: GrafikTuru;
   baslangicTarihi: string;
   bitisTarihi: string;
@@ -51,7 +49,6 @@ interface PerformansGrafikleriProps {
 
 const PerformansGrafikleri: React.FC<PerformansGrafikleriProps> = ({
   raporlar,
-  maliyetFiyatlar,
   grafikTuru,
   baslangicTarihi,
   bitisTarihi,
