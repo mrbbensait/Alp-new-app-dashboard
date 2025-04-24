@@ -1040,7 +1040,7 @@ function MaliPerformansPage() {
             {/* Özet bilgiler */}
             <div className="mb-8">
               {/* Üst satır - 5 kutu */}
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-4">
                 {/* Toplam Satış Değeri */}
               <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setShowGelirDetay(true)}>
                 <div className="flex justify-between items-start">
@@ -1141,7 +1141,7 @@ function MaliPerformansPage() {
             </div>
             
               {/* Alt satır - 2 kutu */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Ambalajlanan Adet */}
                 <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setShowSatisDetay(true)}>
                   <div className="flex justify-between items-start">
@@ -1196,12 +1196,12 @@ function MaliPerformansPage() {
             <div className="grid grid-cols-1 gap-6 mb-8">
               {/* Ambalajlama Kayıtları Tablosu */}
               <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mt-6">
-                <div className="flex justify-between items-center mb-4">
+                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-800">Mali Ölçek İzleme</h3>
                     <p className="text-sm text-gray-600">Ambalajlama kayıtları</p>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 mt-2 lg:mt-0">
                 <button 
                       onClick={() => {
                         setFiltreAmbalajlamaRecete('');
@@ -1325,7 +1325,7 @@ function MaliPerformansPage() {
                 </div>
                 
                 {/* Filtreler */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
                   <div>
                     <label htmlFor="filtreAmbalajlamaRecete" className="block text-sm font-medium text-gray-700 mb-1">
                       Reçete Adı
@@ -1509,7 +1509,7 @@ function MaliPerformansPage() {
                 </div>
                 
                 {/* Filtreler */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
                   <div>
                     <label htmlFor="filtreReceteAdi" className="block text-sm font-medium text-gray-700 mb-1">
                       Reçete Adı
@@ -1630,11 +1630,11 @@ function MaliPerformansPage() {
               
               {/* İşletme Giderleri Tablosu */}
               <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                <div className="flex justify-between items-center mb-4">
+                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4">
                   <h3 className="text-lg font-semibold text-gray-800">İşletme Giderleri Detayı</h3>
                   <button
                     onClick={() => handleIsletmeGideriDuzenle(null)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md text-sm"
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md text-sm mt-2 lg:mt-0"
                   >
                     + Yeni Gider Ekle
                   </button>
