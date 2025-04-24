@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPage } from '@/app/lib/createPage';
 import { supabase } from '@/app/lib/supabase';
-import { format, subDays, parseISO, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
+import { format, subDays, parseISO, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import {
   BarChart, LineChart, PieChart, Calendar, Filter, RefreshCw, DollarSign, TrendingUp, TrendingDown, Download, Package, X
@@ -23,6 +23,8 @@ import {
   ArcElement,
 } from 'chart.js';
 import { Line, Bar, Pie } from 'react-chartjs-2';
+import * as XLSX from 'xlsx';
+import { toast } from 'react-hot-toast';
 
 // Chart.js bileşenlerini kaydet
 ChartJS.register(
@@ -39,7 +41,7 @@ ChartJS.register(
 );
 
 // Tarih aralığı türleri
-type TarihAraligi = 'bugun' | 'dun' | 'haftalik' | 'aylik' | 'ozel';
+type TarihAraligi = 'bugun' | 'dun' | 'haftalik' | 'aylik' | 'gecenay' | 'ozel';
 
 // Grafik türü
 type GrafikTuru = 'cizgi' | 'bar' | 'pasta' | 'alan';
@@ -192,8 +194,43 @@ function MaliPerformansPage() {
   const [netKarZarar, setNetKarZarar] = useState(0);
   const [satisAdetleri, setSatisAdetleri] = useState(0);
   
+  // İşletme giderleri için hesaplanan toplamlar
+  const [toplamAylikIsletmeGideri, setToplamAylikIsletmeGideri] = useState(0);
+  const [toplamGunlukIsletmeGideri, setToplamGunlukIsletmeGideri] = useState(0);
+  const [dovizKuru, setDovizKuru] = useState(0.029); // 1 TRY = 0.029 EUR (varsayılan değer)
+  const [isGunuSayisi, setIsGunuSayisi] = useState(0); // Seçilen tarih aralığındaki iş günü sayısı
+  const [gercekNetKarZarar, setGercekNetKarZarar] = useState(0); // İşletme maliyeti düşülmüş net kar/zarar
+  
+  // Sabit iş günü sayısı - aylık 22 iş günü
+  const SABIT_IS_GUNU_SAYISI = 22;
+  
   // Günlük kar-zarar verileri
   const [gunlukKarZararVerileri, setGunlukKarZararVerileri] = useState<{[key: string]: number}>({});
+  
+  // Döviz kuru alınıyor (EUR/TRY)
+  const getDovizKuru = async () => {
+    try {
+      // Döviz kuru API'si
+      const response = await fetch('https://api.exchangerate-api.com/v4/latest/EUR');
+      const data = await response.json();
+      
+      if (data && data.rates && data.rates.TRY) {
+        // EUR/TRY çapraz kuru (1 EUR = X TRY)
+        const eurToTry = data.rates.TRY;
+        // TRY/EUR (1 TRY = Y EUR)
+        const tryToEur = 1 / eurToTry;
+        setDovizKuru(tryToEur);
+      }
+    } catch (error) {
+      console.error('Döviz kuru alınırken hata:', error);
+      // Hata durumunda varsayılan değer kullan (1 TRY = 0.029 EUR)
+    }
+  };
+  
+  // Sayfa yüklendiğinde döviz kurunu al
+  useEffect(() => {
+    getDovizKuru();
+  }, []);
   
   // İstenilen tarih aralığındaki verileri getir
   useEffect(() => {
@@ -226,6 +263,16 @@ function MaliPerformansPage() {
           setNetKarZarar(performansData.netKarZarar);
           setSatisAdetleri(performansData.toplamTeslimatAdedi);
           setIsletmeGiderleri(performansData.isletmeGiderleri);
+          
+          // İşletme giderlerinden toplam aylık ve günlük maliyetleri hesapla
+          const isletmeGiderleriVerisi = performansData.isletmeGiderleri || [];
+          const toplamAylik = isletmeGiderleriVerisi.reduce((toplam: number, gider: IsletmeGideri) => 
+            toplam + gider.aylik_gider_tl, 0);
+          const toplamGunluk = isletmeGiderleriVerisi.reduce((toplam: number, gider: IsletmeGideri) => 
+            toplam + (gider.aylik_gider_tl / SABIT_IS_GUNU_SAYISI), 0); // 22 iş günü
+          
+          setToplamAylikIsletmeGideri(toplamAylik);
+          setToplamGunlukIsletmeGideri(toplamGunluk);
           
           // Reçete verisini ayarla
           if (performansData.receteler) {
@@ -267,13 +314,22 @@ function MaliPerformansPage() {
         break;
       
       case 'haftalik':
-        yeniBaslangic = format(startOfWeek(bugun, { locale: tr }), 'yyyy-MM-dd');
-        yeniBitis = format(endOfWeek(bugun, { locale: tr }), 'yyyy-MM-dd');
+        // Bu hafta - her zaman Pazartesiden başlar
+        yeniBaslangic = format(startOfWeek(bugun, { locale: tr, weekStartsOn: 1 }), 'yyyy-MM-dd');
+        yeniBitis = format(endOfWeek(bugun, { locale: tr, weekStartsOn: 1 }), 'yyyy-MM-dd');
         break;
       
       case 'aylik':
         yeniBaslangic = format(startOfMonth(bugun), 'yyyy-MM-dd');
         yeniBitis = format(endOfMonth(bugun), 'yyyy-MM-dd');
+        break;
+      
+      case 'gecenay':
+        // Geçen ayın başlangıcı ve bitiş tarihi
+        const gecenAyinBasi = subMonths(startOfMonth(bugun), 1);
+        const gecenAyinSonu = endOfMonth(gecenAyinBasi);
+        yeniBaslangic = format(gecenAyinBasi, 'yyyy-MM-dd');
+        yeniBitis = format(gecenAyinSonu, 'yyyy-MM-dd');
         break;
       
       case 'ozel':
@@ -390,10 +446,71 @@ function MaliPerformansPage() {
     }
   };
   
-  // Excel'e verileri aktar
-  const handleExcelExport = () => {
-    // Excel export işlemi burada yapılacak
-    alert('Excel export özelliği henüz eklenmedi');
+  // Excel'e verileri aktar işlevini düzenliyorum
+  const handleExcelExport = (data: any[], dosyaAdi: string) => {
+    try {
+      // Excel verisini hazırla
+      let excelData: Record<string, any>[] = [];
+      
+      // Ambalajlama_Kayitlari için veri formatı
+      if (dosyaAdi === 'Ambalajlama_Kayitlari') {
+        excelData = data.map(kayit => ({
+          'Ambalajlama Tarihi': format(new Date(kayit.ambalajlama_tarihi), 'dd.MM.yyyy'),
+          'Reçete Adı': kayit.recete_adi,
+          'Marka': kayit.marka,
+          'Müşteri': kayit.musteri,
+          'ML Bilgisi': kayit.ml_bilgisi,
+          'Ambalajlanan Adet': kayit.ambalajlanan_adet,
+          'Toplam Maliyet': kayit.toplam_maliyet,
+          'Toplam Satış Değeri': kayit.toplam_satis_degeri,
+          'Kâr': kayit.kar,
+          'Satış Fiyatı Kg Bulk': kayit.satis_fiyati_kg_bulk,
+          'Satış Fiyatı Kg Ambalajlı': kayit.satis_fiyati_kg_ambalajli,
+          'Kg Bulk Maliyet': kayit.kg_bulk_maliyet,
+          'Adet Bulk Maliyet': kayit.adet_bulk_maliyet,
+          'Ambalaj Maliyeti': kayit.ambalaj_maliyeti,
+          'Kg Ambalajlı Maliyet': kayit.kg_ambalajli_maliyet,
+          'Adet Ambalajlı Maliyet': kayit.adet_ambalajli_maliyet,
+          'Üretim Kuyruğu ID': kayit.uretim_kuyrugu_id
+        }));
+      } 
+      // Recete_Detaylari için veri formatı
+      else if (dosyaAdi === 'Recete_Detaylari') {
+        excelData = data.map(recete => ({
+          'Reçete Adı': recete['Reçete Adı'],
+          'Marka': recete['Marka'],
+          'Reçete ID': recete['Reçete ID'],
+          'ML Bilgisi': recete.ml_bilgisi,
+          'Satış Fiyatı (Bulk)': recete.satis_fiyati_kg_bulk,
+          'Satış Fiyatı (Amb.)': recete.satis_fiyati_kg_ambalajli,
+          'Maliyet (Bulk, kg)': recete.kg_bulk_maliyet,
+          'Maliyet (Bulk, adet)': recete.adet_bulk_maliyet,
+          'Ambalaj Maliyeti': recete.ambalaj_maliyeti,
+          'Maliyet (Amb., kg)': recete.kg_ambalajli_maliyet,
+          'Maliyet (Amb., adet)': recete.adet_ambalajli_maliyet
+        }));
+      }
+      
+      // Excel çalışma kitabı oluştur
+      const workbook = XLSX.utils.book_new();
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+      
+      // Sütun genişliklerini ayarla
+      const wscols = Array(Object.keys(excelData[0] || {}).length).fill({ wch: 18 });
+      worksheet['!cols'] = wscols;
+      
+      // Excel dosyasını oluştur
+      XLSX.utils.book_append_sheet(workbook, worksheet, dosyaAdi);
+      
+      // Excel dosyasını indir
+      const excelFileName = `${dosyaAdi}_${format(new Date(), 'dd-MM-yyyy')}.xlsx`;
+      XLSX.writeFile(workbook, excelFileName);
+      
+      toast.success('Excel dosyası başarıyla indirildi');
+    } catch (error) {
+      console.error('Excel dışa aktarımı sırasında hata:', error);
+      alert('Excel aktarımı sırasında bir hata oluştu');
+    }
   };
   
   // İşletme gideri düzenleme modalını aç
@@ -460,6 +577,16 @@ function MaliPerformansPage() {
         setIsletmeGiderleri(data.data.isletmeGiderleri);
         setToplamGider(data.data.toplamGider);
         setNetKarZarar(data.data.netKarZarar);
+        
+        // İşletme giderlerinden toplam aylık ve günlük maliyetleri hesapla
+        const isletmeGiderleriVerisi = data.data.isletmeGiderleri || [];
+        const toplamAylik = isletmeGiderleriVerisi.reduce((toplam: number, gider: IsletmeGideri) => 
+          toplam + gider.aylik_gider_tl, 0);
+        const toplamGunluk = isletmeGiderleriVerisi.reduce((toplam: number, gider: IsletmeGideri) => 
+          toplam + (gider.aylik_gider_tl / SABIT_IS_GUNU_SAYISI), 0); // 22 iş günü
+          
+        setToplamAylikIsletmeGideri(toplamAylik);
+        setToplamGunlukIsletmeGideri(toplamGunluk);
       }
     } catch (error) {
       console.error('İşletme gideri kaydedilirken hata:', error);
@@ -490,6 +617,16 @@ function MaliPerformansPage() {
         setIsletmeGiderleri(data.data.isletmeGiderleri);
         setToplamGider(data.data.toplamGider);
         setNetKarZarar(data.data.netKarZarar);
+        
+        // İşletme giderlerinden toplam aylık ve günlük maliyetleri hesapla
+        const isletmeGiderleriVerisi = data.data.isletmeGiderleri || [];
+        const toplamAylik = isletmeGiderleriVerisi.reduce((toplam: number, gider: IsletmeGideri) => 
+          toplam + gider.aylik_gider_tl, 0);
+        const toplamGunluk = isletmeGiderleriVerisi.reduce((toplam: number, gider: IsletmeGideri) => 
+          toplam + (gider.aylik_gider_tl / 22), 0); // 22 iş günü
+          
+        setToplamAylikIsletmeGideri(toplamAylik);
+        setToplamGunlukIsletmeGideri(toplamGunluk);
       }
     } catch (error) {
       console.error('İşletme gideri silinirken hata:', error);
@@ -547,15 +684,22 @@ function MaliPerformansPage() {
     try {
       if (!ambalajlamaBaslangicTarihi || !ambalajlamaBitisTarihi) return;
       
+      console.log('Ambalajlama Kayıtları Sorgulama:', {
+        baslangic: ambalajlamaBaslangicTarihi,
+        bitis: ambalajlamaBitisTarihi
+      });
+      
       // Ambalajlama kayıtlarını çek
       const { data, error } = await supabase
         .from('AmbalajlamaKayitlari')
         .select('*')
-        .gte('ambalajlama_tarihi', ambalajlamaBaslangicTarihi)
-        .lte('ambalajlama_tarihi', ambalajlamaBitisTarihi)
+        .gte('ambalajlama_tarihi', `${ambalajlamaBaslangicTarihi}T00:00:00.000Z`)  // ISO formatında tarih sorgulama
+        .lte('ambalajlama_tarihi', `${ambalajlamaBitisTarihi}T23:59:59.999Z`)
         .order('ambalajlama_tarihi', { ascending: false });
       
       if (error) throw error;
+      
+      console.log('Ambalajlama kayıtları alındı:', data?.length || 0);
       
       setAmbalajlamaKayitlari(data || []);
       
@@ -605,6 +749,64 @@ function MaliPerformansPage() {
     getAmbalajlamaKayitlari();
   }, [ambalajlamaBaslangicTarihi, ambalajlamaBitisTarihi, filtreAmbalajlamaRecete, filtreAmbalajlamaMusteri]);
 
+  // Ambalajlama verileri veya işletme giderleri değiştiğinde gerçek net kar/zarar hesaplaması
+  useEffect(() => {
+    // Sabit 22 iş günü kullanılıyor
+    
+    // Aylık işletme maliyetini 22 iş gününe bölerek günlük maliyet hesapla
+    const gercekGunlukMaliyet = toplamAylikIsletmeGideri / SABIT_IS_GUNU_SAYISI;
+    
+    // Seçilen tarih aralığındaki günler için işletme maliyeti hesapla
+    // Seçilen aralıktaki gün sayısını hesapla
+    let seciliGunSayisi = 0;
+    if (ambalajlamaBaslangicTarihi && ambalajlamaBitisTarihi) {
+      const baslangic = new Date(ambalajlamaBaslangicTarihi);
+      const bitis = new Date(ambalajlamaBitisTarihi);
+      // İki tarih arasındaki gün sayısını hesapla (milisaniye -> gün)
+      const gunFarki = Math.round((bitis.getTime() - baslangic.getTime()) / (1000 * 60 * 60 * 24)) + 1; // +1 ile başlangıç gününü de dahil ediyoruz
+      seciliGunSayisi = gunFarki;
+      
+      // Hafta içi/hafta sonu ayrımı yapılmadan, seçilen gün sayısının SABIT_IS_GUNU_SAYISI'na oranını hesaplayalım
+      // Örneğin 10 günlük bir aralık seçildi, 22 günde 10 gün = 10/22 * aylık maliyet
+      const oran = Math.min(seciliGunSayisi / 30, 1); // 30 günlük ay varsayımı, maksimum 1 (tam ay)
+      seciliGunSayisi = Math.round(SABIT_IS_GUNU_SAYISI * oran);
+    }
+    
+    setIsGunuSayisi(seciliGunSayisi);
+    
+    // İşletme maliyeti: günlük maliyet x seçilen gün sayısı
+    const isletmeMaliyeti = (gercekGunlukMaliyet * dovizKuru * seciliGunSayisi);
+    
+    // Gerçek net kar/zarar: ambalajlama karı - işletme maliyeti
+    const gercekKarZarar = ambalajlamaToplamKar - isletmeMaliyeti;
+    
+    setGercekNetKarZarar(gercekKarZarar);
+    
+    console.log('Tarih Hesaplama:', {
+      baslangic: ambalajlamaBaslangicTarihi,
+      bitis: ambalajlamaBitisTarihi,
+      toplamGun: seciliGunSayisi,
+      isGunu: seciliGunSayisi,
+      ambalajlamaToplamKar,
+      isletmeMaliyeti,
+      gercekNetKarZarar
+    });
+  }, [ambalajlamaToplamKar, toplamAylikIsletmeGideri, dovizKuru, ambalajlamaBaslangicTarihi, ambalajlamaBitisTarihi]);
+
+  // Hata ayıklama için useEffect
+  useEffect(() => {
+    console.log('Hesaplama Değerleri:', {
+      toplamAylikIsletmeGideri,
+      aylikIsGunu: hesaplaAylikIsGunuSayisi(),
+      seciliIsGunu: isGunuSayisi,
+      gunlukMaliyet: toplamAylikIsletmeGideri / hesaplaAylikIsGunuSayisi(),
+      eurGunlukMaliyet: (toplamAylikIsletmeGideri / hesaplaAylikIsGunuSayisi()) * dovizKuru,
+      toplamIsletmeMaliyeti: (toplamAylikIsletmeGideri / hesaplaAylikIsGunuSayisi()) * dovizKuru * isGunuSayisi,
+      ambalajlamaToplamKar,
+      gercekNetKarZarar
+    });
+  }, [toplamAylikIsletmeGideri, isGunuSayisi, dovizKuru, ambalajlamaToplamKar, gercekNetKarZarar]);
+
   // Ambalajlama için tarih aralığı değiştirme işleyicisi
   const handleAmbalajlamaTarihAralikDegistir = (aralikTur: TarihAraligi) => {
     const bugun = new Date();
@@ -624,13 +826,22 @@ function MaliPerformansPage() {
         break;
       
       case 'haftalik':
-        yeniBaslangic = format(startOfWeek(bugun, { locale: tr }), 'yyyy-MM-dd');
-        yeniBitis = format(endOfWeek(bugun, { locale: tr }), 'yyyy-MM-dd');
+        // Bu hafta - her zaman Pazartesiden başlar
+        yeniBaslangic = format(startOfWeek(bugun, { locale: tr, weekStartsOn: 1 }), 'yyyy-MM-dd');
+        yeniBitis = format(endOfWeek(bugun, { locale: tr, weekStartsOn: 1 }), 'yyyy-MM-dd');
         break;
       
       case 'aylik':
         yeniBaslangic = format(startOfMonth(bugun), 'yyyy-MM-dd');
         yeniBitis = format(endOfMonth(bugun), 'yyyy-MM-dd');
+        break;
+      
+      case 'gecenay':
+        // Geçen ayın başlangıcı ve bitiş tarihi
+        const gecenAyinBasi = subMonths(startOfMonth(bugun), 1);
+        const gecenAyinSonu = endOfMonth(gecenAyinBasi);
+        yeniBaslangic = format(gecenAyinBasi, 'yyyy-MM-dd');
+        yeniBitis = format(gecenAyinSonu, 'yyyy-MM-dd');
         break;
       
       case 'ozel':
@@ -645,6 +856,12 @@ function MaliPerformansPage() {
     setAmbalajlamaTarihAraligi(aralikTur);
     setAmbalajlamaBaslangicTarihi(yeniBaslangic);
     setAmbalajlamaBitisTarihi(yeniBitis);
+    
+    console.log('Tarih Aralığı Değişti:', {
+      aralikTur,
+      yeniBaslangic,
+      yeniBitis
+    });
   };
 
   // Ambalajlama için özel tarih değişimi
@@ -677,13 +894,22 @@ function MaliPerformansPage() {
         break;
       
       case 'haftalik':
-        yeniBaslangic = format(startOfWeek(bugun, { locale: tr }), 'yyyy-MM-dd');
-        yeniBitis = format(endOfWeek(bugun, { locale: tr }), 'yyyy-MM-dd');
+        // Bu hafta - her zaman Pazartesiden başlar
+        yeniBaslangic = format(startOfWeek(bugun, { locale: tr, weekStartsOn: 1 }), 'yyyy-MM-dd');
+        yeniBitis = format(endOfWeek(bugun, { locale: tr, weekStartsOn: 1 }), 'yyyy-MM-dd');
         break;
       
       case 'aylik':
         yeniBaslangic = format(startOfMonth(bugun), 'yyyy-MM-dd');
         yeniBitis = format(endOfMonth(bugun), 'yyyy-MM-dd');
+        break;
+      
+      case 'gecenay':
+        // Geçen ayın başlangıcı ve bitiş tarihi
+        const gecenAyinBasi = subMonths(startOfMonth(bugun), 1);
+        const gecenAyinSonu = endOfMonth(gecenAyinBasi);
+        yeniBaslangic = format(gecenAyinBasi, 'yyyy-MM-dd');
+        yeniBitis = format(gecenAyinSonu, 'yyyy-MM-dd');
         break;
       
       case 'ozel':
@@ -736,120 +962,67 @@ function MaliPerformansPage() {
     setFiltreBitmisUrunMusteri('');
   };
   
+  // Belirli bir tarih aralığındaki iş günü sayısını hesapla (hafta içi günler)
+  const hesaplaIsGunuSayisi = (baslangic: string, bitis: string): number => {
+    const baslangicTarihi = new Date(baslangic);
+    const bitisTarihi = new Date(bitis);
+    let isGunuSayisi = 0;
+    
+    // Türkiye resmi tatilleri (2025 örnek)
+    const resmiTatiller = [
+      "2025-01-01", // Yılbaşı
+      "2025-04-23", // Ulusal Egemenlik ve Çocuk Bayramı
+      "2025-05-01", // İşçi Bayramı
+      "2025-05-19", // Gençlik ve Spor Bayramı
+      "2025-07-15", // Demokrasi Bayramı
+      "2025-08-30", // Zafer Bayramı
+      "2025-10-29", // Cumhuriyet Bayramı
+      // Dini bayramlar (yıla göre değişir, bu tarihler örnek olarak verilmiştir)
+      "2025-03-10", // Ramazan Bayramı 1. Gün
+      "2025-03-11", // Ramazan Bayramı 2. Gün
+      "2025-03-12", // Ramazan Bayramı 3. Gün
+      "2025-05-17", // Kurban Bayramı 1. Gün
+      "2025-05-18", // Kurban Bayramı 2. Gün
+      "2025-05-19", // Kurban Bayramı 3. Gün
+      "2025-05-20"  // Kurban Bayramı 4. Gün
+    ];
+    
+    // Tarihleri dolaş
+    const suankiTarih = new Date(baslangicTarihi);
+    while (suankiTarih <= bitisTarihi) {
+      const tarihStr = format(suankiTarih, 'yyyy-MM-dd');
+      
+      // Hafta içi günleri (1-5: Pazartesi-Cuma, 0: Pazar, 6: Cumartesi)
+      const haftaninGunu = suankiTarih.getDay();
+      
+      // Eğer hafta içi ise ve resmi tatil değilse iş günüdür
+      if (haftaninGunu >= 1 && haftaninGunu <= 5 && !resmiTatiller.includes(tarihStr)) {
+        isGunuSayisi++;
+      }
+      
+      // Sonraki güne geç
+      suankiTarih.setDate(suankiTarih.getDate() + 1);
+    }
+    
+    return isGunuSayisi;
+  };
+  
+  // Bir aydaki toplam iş günü sayısını hesapla
+  const hesaplaAylikIsGunuSayisi = (): number => {
+    const bugun = new Date();
+    const ayBaslangic = format(startOfMonth(bugun), 'yyyy-MM-dd');
+    const ayBitis = format(endOfMonth(bugun), 'yyyy-MM-dd');
+    
+    return hesaplaIsGunuSayisi(ayBaslangic, ayBitis);
+  };
+  
   return (
     <DashboardLayout>
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-800">Mali Performans Analizi</h1>
-          
-          <div className="flex space-x-3">
-            {/* Tarih aralığı seçici */}
-            <div className="bg-white border border-gray-200 rounded-md inline-flex">
-              <button
-                type="button"
-                onClick={() => handleTarihAralikDegistir('bugun')}
-                className={`px-3 py-2 text-sm ${
-                  tarihAraligi === 'bugun' 
-                    ? 'bg-blue-50 text-blue-600 border-blue-200' 
-                    : 'text-gray-600 hover:bg-gray-50'
-                } rounded-l-md`}
-              >
-                Bugün
-              </button>
-              
-              <button
-                type="button"
-                onClick={() => handleTarihAralikDegistir('haftalik')}
-                className={`px-3 py-2 text-sm ${
-                  tarihAraligi === 'haftalik' 
-                    ? 'bg-blue-50 text-blue-600 border-blue-200' 
-                    : 'text-gray-600 hover:bg-gray-50'
-                } border-l border-gray-200`}
-              >
-                Bu Hafta
-              </button>
-              
-              <button
-                type="button"
-                onClick={() => handleTarihAralikDegistir('aylik')}
-                className={`px-3 py-2 text-sm ${
-                  tarihAraligi === 'aylik' 
-                    ? 'bg-blue-50 text-blue-600 border-blue-200' 
-                    : 'text-gray-600 hover:bg-gray-50'
-                } border-l border-gray-200 rounded-r-md`}
-              >
-                Bu Ay
-              </button>
-            </div>
             
-            {/* Özel tarih girişi */}
-            <div className="flex items-center space-x-2">
-              <input
-                type="date"
-                value={baslangicTarihi}
-                onChange={(e) => handleOzelTarihDegisim(e.target.value, bitisTarihi)}
-                className="border border-gray-300 rounded-md px-2 py-1 text-sm"
-              />
-              <span className="text-gray-500">-</span>
-              <input
-                type="date"
-                value={bitisTarihi}
-                onChange={(e) => handleOzelTarihDegisim(baslangicTarihi, e.target.value)}
-                className="border border-gray-300 rounded-md px-2 py-1 text-sm"
-              />
-            </div>
-            
-            {/* Grafik türü seçici */}
-            <div className="bg-white border border-gray-200 rounded-md inline-flex">
-              <button
-                type="button"
-                onClick={() => handleGrafikTuruDegistir('cizgi')}
-                className={`relative p-2 flex items-center justify-center ${
-                  grafikTuru === 'cizgi' 
-                    ? 'bg-blue-50 text-blue-600 border-blue-200' 
-                    : 'text-gray-600 hover:bg-gray-50'
-                } rounded-l-md`}
-                title="Çizgi Grafik"
-              >
-                <LineChart size={20} />
-              </button>
-              
-              <button
-                type="button"
-                onClick={() => handleGrafikTuruDegistir('bar')}
-                className={`relative p-2 flex items-center justify-center ${
-                  grafikTuru === 'bar' 
-                    ? 'bg-blue-50 text-blue-600 border-blue-200' 
-                    : 'text-gray-600 hover:bg-gray-50'
-                } border-l border-gray-200`}
-                title="Bar Grafik"
-              >
-                <BarChart size={20} />
-              </button>
-              
-              <button
-                type="button"
-                onClick={() => handleGrafikTuruDegistir('pasta')}
-                className={`relative p-2 flex items-center justify-center ${
-                  grafikTuru === 'pasta' 
-                    ? 'bg-blue-50 text-blue-600 border-blue-200' 
-                    : 'text-gray-600 hover:bg-gray-50'
-                } border-l border-gray-200 rounded-r-md`}
-                title="Pasta Grafik"
-              >
-                <PieChart size={20} />
-              </button>
-            </div>
-            
-            {/* Excel'e aktar butonu */}
-            <button
-              onClick={handleExcelExport}
-              className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-sm flex items-center space-x-1"
-            >
-              <Download size={16} />
-              <span>Excel'e Aktar</span>
-            </button>
-          </div>
+          {/* Filtreleme butonlarını, grafik seçicisini ve excel butonunu kaldırıyorum */}
         </div>
         
         {hata && (
@@ -865,14 +1038,16 @@ function MaliPerformansPage() {
         ) : (
           <>
             {/* Özet bilgiler */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-              {/* Toplam Gelir */}
+            <div className="mb-8">
+              {/* Üst satır - 5 kutu */}
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
+                {/* Toplam Satış Değeri */}
               <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setShowGelirDetay(true)}>
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="text-sm font-medium text-gray-500">Toplam Gelir</p>
+                      <p className="text-sm font-medium text-gray-500">Toplam Satış Değeri</p>
                     <h3 className="text-2xl font-bold text-green-600 mt-1">
-                      {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(toplamGelir)}
+                        {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0, minimumFractionDigits: 0 }).format(ambalajlamaToplamSatisDegeri)}
                     </h3>
                   </div>
                   <div className="bg-green-100 p-2 rounded-lg">
@@ -880,17 +1055,17 @@ function MaliPerformansPage() {
                   </div>
                 </div>
                 <div className="mt-2 text-sm text-gray-600">
-                  Teslimat faturalarının toplamı
+                    Gerçek zaman Mali Ölçek İzleme tablosunun toplamı
                 </div>
               </div>
               
-              {/* Toplam Gider */}
+                {/* Toplam Maliyet */}
               <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setShowGiderDetay(true)}>
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="text-sm font-medium text-gray-500">Toplam Gider</p>
+                      <p className="text-sm font-medium text-gray-500">Toplam Maliyet</p>
                     <h3 className="text-2xl font-bold text-red-600 mt-1">
-                      {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(toplamGider)}
+                        {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0, minimumFractionDigits: 0 }).format(ambalajlamaToplamMaliyet)}
                     </h3>
                   </div>
                   <div className="bg-red-100 p-2 rounded-lg">
@@ -898,21 +1073,21 @@ function MaliPerformansPage() {
                   </div>
                 </div>
                 <div className="mt-2 text-sm text-gray-600">
-                  İşletme giderleri toplamı
+                    Ürün + Ambalaj Maliyetleri toplamı
                 </div>
               </div>
               
-              {/* Net Kar/Zarar */}
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setShowKarZararDetay(true)}>
+                {/* Toplam Kar (YENİ) */}
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors">
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="text-sm font-medium text-gray-500">Net Kar/Zarar</p>
-                    <h3 className={`text-2xl font-bold mt-1 ${netKarZarar >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(netKarZarar)}
+                      <p className="text-sm font-medium text-gray-500">Toplam Kar</p>
+                      <h3 className={`text-2xl font-bold mt-1 ${ambalajlamaToplamKar >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0, minimumFractionDigits: 0 }).format(ambalajlamaToplamKar)}
                     </h3>
                   </div>
-                  <div className={`p-2 rounded-lg ${netKarZarar >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
-                    {netKarZarar >= 0 ? (
+                    <div className={`p-2 rounded-lg ${ambalajlamaToplamKar >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
+                      {ambalajlamaToplamKar >= 0 ? (
                       <TrendingUp className="h-6 w-6 text-green-600" />
                     ) : (
                       <TrendingDown className="h-6 w-6 text-red-600" />
@@ -920,52 +1095,419 @@ function MaliPerformansPage() {
                   </div>
                 </div>
                 <div className="mt-2 text-sm text-gray-600">
-                  Gelir - Gider
+                    Toplam Satış - Toplam Maliyet
                 </div>
               </div>
               
-              {/* Toplam Satış Adedi */}
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setShowSatisDetay(true)}>
+                {/* İşletme Maliyeti (YENİ) */}
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors">
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="text-sm font-medium text-gray-500">Toplam Satış Adedi</p>
-                    <h3 className="text-2xl font-bold text-blue-600 mt-1">
-                      {new Intl.NumberFormat('tr-TR').format(satisAdetleri)}
+                      <p className="text-sm font-medium text-gray-500">İşletme Maliyeti</p>
+                      <h3 className="text-2xl font-bold text-orange-600 mt-1">
+                        {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0, minimumFractionDigits: 0 }).format((toplamAylikIsletmeGideri / SABIT_IS_GUNU_SAYISI) * dovizKuru * isGunuSayisi)}
                     </h3>
                   </div>
-                  <div className="bg-blue-100 p-2 rounded-lg">
-                    <Package className="h-6 w-6 text-blue-600" />
+                    <div className="bg-orange-100 p-2 rounded-lg">
+                      <TrendingDown className="h-6 w-6 text-orange-600" />
                   </div>
                 </div>
                 <div className="mt-2 text-sm text-gray-600">
-                  Toplam teslimat adedi
-                </div>
+                    Seçili dönemdeki işletme giderleri ({isGunuSayisi} gün)
               </div>
             </div>
             
+                {/* Net Kar/Zarar */}
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setShowKarZararDetay(true)}>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Net Kar/Zarar (İşletme Maliyeti Düşülmüş)</p>
+                      <h3 className={`text-2xl font-bold mt-1 ${gercekNetKarZarar >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0, minimumFractionDigits: 0 }).format(gercekNetKarZarar)}
+                      </h3>
+                </div>
+                    <div className={`p-2 rounded-lg ${gercekNetKarZarar >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
+                      {gercekNetKarZarar >= 0 ? (
+                        <TrendingUp className="h-6 w-6 text-green-600" />
+                      ) : (
+                        <TrendingDown className="h-6 w-6 text-red-600" />
+                      )}
+              </div>
+                </div>
+                  <div className="mt-2 text-sm text-gray-600">
+                    Kar ({new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(ambalajlamaToplamKar)}) - İşletme Maliyeti = Gerçek Net Kar/Zarar
+                  </div>
+              </div>
+            </div>
+            
+              {/* Alt satır - 2 kutu */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Ambalajlanan Adet */}
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setShowSatisDetay(true)}>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Ambalajlanan Adet</p>
+                      <h3 className="text-2xl font-bold text-blue-600 mt-1">
+                        {new Intl.NumberFormat('tr-TR').format(ambalajlamaToplamAdet)}
+                      </h3>
+                    </div>
+                    <div className="bg-blue-100 p-2 rounded-lg">
+                      <Package className="h-6 w-6 text-blue-600" />
+                  </div>
+                </div>
+                  <div className="mt-2 text-sm text-gray-600">
+                    Toplam Ambalajlanan Adet sayısı
+                </div>
+              </div>
+              
+                {/* İşletme Yürütme Maliyeti */}
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setShowGiderDetay(true)}>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">İşletme Yürütme Maliyeti</p>
+                      <div className="grid grid-cols-2 gap-4 mt-2">
+                        <div>
+                          <p className="text-xs text-gray-500">Aylık Maliyet:</p>
+                          <h3 className="text-xl font-bold text-orange-600">
+                            {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0, minimumFractionDigits: 0 }).format(toplamAylikIsletmeGideri * dovizKuru)}
+                          </h3>
+                </div>
+                        <div>
+                          <p className="text-xs text-gray-500">Günlük Maliyet:</p>
+                          <h3 className="text-xl font-bold text-orange-600">
+                            {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0, minimumFractionDigits: 0 }).format(toplamGunlukIsletmeGideri * dovizKuru)}
+                          </h3>
+                                  </div>
+                      </div>
+                    </div>
+                    <div className="bg-orange-100 p-2 rounded-lg">
+                      <TrendingDown className="h-6 w-6 text-orange-600" />
+                    </div>
+                  </div>
+                  <div className="mt-2 text-sm text-gray-600 flex justify-between">
+                    <span>İşletme giderleri tablosundaki değerlerin toplamı</span>
+                    <span className="text-xs text-gray-400">1 EUR ≈ {new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 0 }).format(1/dovizKuru)} TL</span>
+                </div>
+              </div>
+            </div>
+              </div>
+              
             {/* Grafikler ve Tablolar */}
             <div className="grid grid-cols-1 gap-6 mb-8">
+              {/* Ambalajlama Kayıtları Tablosu */}
+              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mt-6">
+                <div className="flex justify-between items-center mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800">Mali Ölçek İzleme</h3>
+                    <p className="text-sm text-gray-600">Ambalajlama kayıtları</p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                <button 
+                      onClick={() => {
+                        setFiltreAmbalajlamaRecete('');
+                        setFiltreAmbalajlamaMusteri('');
+                      }}
+                      className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-md text-sm"
+                    >
+                      Filtreleri Temizle
+                    </button>
+                    <button
+                      onClick={() => handleExcelExport(filtrelenmisAmbalajlamaKayitlari, 'Ambalajlama_Kayitlari')}
+                      className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md text-sm flex items-center space-x-1"
+                    >
+                      <Download size={14} />
+                      <span>Excel'e Aktar</span>
+                </button>
+              </div>
+                </div>
+                
+                {/* Tarih Seçimi */}
+                <div className="flex flex-wrap items-center gap-2 mb-4">
+                  <div className="bg-white border border-gray-200 rounded-md inline-flex">
+                    <button
+                      type="button"
+                      onClick={() => handleAmbalajlamaTarihAralikDegistir('bugun')}
+                      className={`relative px-3 py-1.5 text-sm ${
+                        ambalajlamaTarihAraligi === 'bugun' 
+                          ? 'bg-blue-50 text-blue-600 border-blue-200' 
+                          : 'text-gray-600 hover:bg-gray-50'
+                      } rounded-l-md`}
+                    >
+                      Bugün
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => handleAmbalajlamaTarihAralikDegistir('dun')}
+                      className={`relative px-3 py-1.5 text-sm ${
+                        ambalajlamaTarihAraligi === 'dun' 
+                          ? 'bg-blue-50 text-blue-600 border-blue-200' 
+                          : 'text-gray-600 hover:bg-gray-50'
+                      } border-l border-gray-200`}
+                    >
+                      Dün
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => handleAmbalajlamaTarihAralikDegistir('haftalik')}
+                      className={`relative px-3 py-1.5 text-sm ${
+                        ambalajlamaTarihAraligi === 'haftalik' 
+                          ? 'bg-blue-50 text-blue-600 border-blue-200' 
+                          : 'text-gray-600 hover:bg-gray-50'
+                      } border-l border-gray-200`}
+                    >
+                      Bu Hafta
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => handleAmbalajlamaTarihAralikDegistir('aylik')}
+                      className={`relative px-3 py-1.5 text-sm ${
+                        ambalajlamaTarihAraligi === 'aylik' 
+                          ? 'bg-blue-50 text-blue-600 border-blue-200' 
+                          : 'text-gray-600 hover:bg-gray-50'
+                      } border-l border-gray-200`}
+                    >
+                      Bu Ay
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => handleAmbalajlamaTarihAralikDegistir('gecenay')}
+                      className={`relative px-3 py-1.5 text-sm ${
+                        ambalajlamaTarihAraligi === 'gecenay' 
+                          ? 'bg-blue-50 text-blue-600 border-blue-200' 
+                          : 'text-gray-600 hover:bg-gray-50'
+                      } border-l border-gray-200`}
+                    >
+                      Geçen Ay
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAmbalajlamaTarihAraligi('ozel');
+                        // Varsayılan tarih aralığını ayarlıyoruz, böylece özel aralık seçildiğinde input'larda tarih olacak
+                        if (!ambalajlamaBaslangicTarihi) {
+                          setAmbalajlamaBaslangicTarihi(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
+                        }
+                        if (!ambalajlamaBitisTarihi) {
+                          setAmbalajlamaBitisTarihi(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
+                        }
+                      }}
+                      className={`relative px-3 py-1.5 text-sm ${
+                        ambalajlamaTarihAraligi === 'ozel' 
+                          ? 'bg-blue-50 text-blue-600 border-blue-200' 
+                          : 'text-gray-600 hover:bg-gray-50'
+                      } border-l border-gray-200 rounded-r-md`}
+                    >
+                      Özel Aralık
+                    </button>
+                  </div>
+                  
+                  {/* Özel tarih seçimi her zaman görünür yapılıyor */}
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="date"
+                      value={ambalajlamaBaslangicTarihi}
+                      onChange={(e) => handleAmbalajlamaOzelTarihDegisim(e.target.value, ambalajlamaBitisTarihi)}
+                      className="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <span className="text-gray-500">-</span>
+                    <input
+                      type="date"
+                      value={ambalajlamaBitisTarihi}
+                      onChange={(e) => handleAmbalajlamaOzelTarihDegisim(ambalajlamaBaslangicTarihi, e.target.value)}
+                      className="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+                
+                {/* Filtreler */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label htmlFor="filtreAmbalajlamaRecete" className="block text-sm font-medium text-gray-700 mb-1">
+                      Reçete Adı
+                    </label>
+                    <input
+                      id="filtreAmbalajlamaRecete"
+                      type="text"
+                      value={filtreAmbalajlamaRecete}
+                      onChange={(e) => setFiltreAmbalajlamaRecete(e.target.value)}
+                      placeholder="Reçete adı ara..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+              </div>
+                  <div>
+                    <label htmlFor="filtreAmbalajlamaMusteri" className="block text-sm font-medium text-gray-700 mb-1">
+                      Müşteri
+                    </label>
+                    <input
+                      id="filtreAmbalajlamaMusteri"
+                      type="text"
+                      value={filtreAmbalajlamaMusteri}
+                      onChange={(e) => setFiltreAmbalajlamaMusteri(e.target.value)}
+                      placeholder="Müşteri ara..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+            </div>
+          </div>
+                
+                <div className="overflow-x-auto max-w-full">
+                  <div className="inline-block min-w-full shadow-sm border border-gray-200 rounded-lg overflow-hidden">
+                    <div className="overflow-x-auto" style={{ maxHeight: '600px' }}>
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50 sticky top-0">
+                          <tr>
+                          <th className="px-3 py-2 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Ambalajlama Tarihi
+                            </th>
+                          <th className="px-3 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Reçete Adı
+                            </th>
+                            <th className="px-3 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Marka
+                            </th>
+                            <th className="px-3 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Müşteri
+                            </th>
+                          <th className="px-3 py-2 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              ML Bilgisi
+                            </th>
+                          <th className="px-3 py-2 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Ambalajlanan Adet
+                            </th>
+                            <th className="px-3 py-2 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-green-50">
+                              Toplam Maliyet
+                            </th>
+                            <th className="px-3 py-2 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-green-100">
+                              Toplam Satış Değeri
+                            </th>
+                            <th className="px-3 py-2 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-green-200">
+                              Kâr
+                            </th>
+                            <th className="px-3 py-2 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-red-50">
+                              Satış Fiyatı Kg Bulk
+                            </th>
+                            <th className="px-3 py-2 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-red-100">
+                              Satış Fiyatı Kg Ambalajlı
+                            </th>
+                            <th className="px-3 py-2 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
+                              Kg Bulk Maliyet
+                            </th>
+                            <th className="px-3 py-2 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
+                              Adet Bulk Maliyet
+                            </th>
+                            <th className="px-3 py-2 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50">
+                              Ambalaj Maliyeti
+                            </th>
+                            <th className="px-3 py-2 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-purple-50">
+                              Kg Ambalajlı Maliyet
+                            </th>
+                            <th className="px-3 py-2 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-purple-50">
+                              Adet Ambalajlı Maliyet
+                            </th>
+                            <th className="px-3 py-2 bg-gray-50 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Üretim Kuyruğu ID
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {filtrelenmisAmbalajlamaKayitlari.map((kayit, index) => (
+                            <tr key={index} className="hover:bg-gray-50">
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-700">
+                                {format(new Date(kayit.ambalajlama_tarihi), 'dd.MM.yyyy')}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                                {kayit.recete_adi}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-700">
+                                {kayit.marka}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-700">
+                                {kayit.musteri}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-700">
+                                {kayit.ml_bilgisi} ml
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-700">
+                                {kayit.ambalajlanan_adet} adet
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-700 bg-green-50">
+                                {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.toplam_maliyet)}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-700 bg-green-100">
+                                {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.toplam_satis_degeri)}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-medium text-gray-700 bg-green-200">
+                                {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.kar)}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-700 bg-red-50">
+                                {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.satis_fiyati_kg_bulk)}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-700 bg-red-100">
+                                {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.satis_fiyati_kg_ambalajli)}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-700 bg-gray-50">
+                                {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.kg_bulk_maliyet)}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-700 bg-gray-50">
+                                {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.adet_bulk_maliyet)}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-700 bg-blue-50">
+                                {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.ambalaj_maliyeti)}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-700 bg-purple-50">
+                                {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.kg_ambalajli_maliyet)}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-700 bg-purple-50">
+                                {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.adet_ambalajli_maliyet)}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-center text-gray-700">
+                                {kayit.uretim_kuyrugu_id}
+                              </td>
+                            </tr>
+                          ))}
+                          {filtrelenmisAmbalajlamaKayitlari.length === 0 && (
+                            <tr>
+                              <td colSpan={17} className="px-3 py-4 text-center text-sm text-gray-500">
+                                Bu kriterlere uygun ambalajlama kaydı bulunamadı. {ambalajlamaKayitlari.length > 0 ? `Filtreleme öncesi ${ambalajlamaKayitlari.length} kayıt mevcut.` : 'Hiç kayıt bulunamadı.'}
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="mt-4 text-sm text-gray-500">
+                  Toplam {filtrelenmisAmbalajlamaKayitlari.length} ambalajlama kaydı ({ambalajlamaKayitlari.length} toplam)
+                </div>
+              </div>
+              
               {/* Reçeteler Tablosu */}
               <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold text-gray-800">Reçete Detayları</h3>
                   <div className="flex items-center space-x-2">
-                    <button
+                <button 
                       onClick={handleFiltreleriTemizle}
                       className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-md text-sm"
                     >
                       Filtreleri Temizle
                     </button>
                     <button
-                      onClick={handleExcelExport}
+                      onClick={() => handleExcelExport(filtrelenmisReceteler, 'Recete_Detaylari')}
                       className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md text-sm flex items-center space-x-1"
                     >
                       <Download size={14} />
                       <span>Excel'e Aktar</span>
-                    </button>
-                </div>
+                </button>
               </div>
-              
+                </div>
+                
                 {/* Filtreler */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <div>
@@ -979,8 +1521,8 @@ function MaliPerformansPage() {
                       onChange={(e) => setFiltreliReceteAdi(e.target.value)}
                       placeholder="Reçete adı ara..."
                       className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+                    />
+                  </div>
                   <div>
                     <label htmlFor="filtreMarka" className="block text-sm font-medium text-gray-700 mb-1">
                       Marka
@@ -993,31 +1535,31 @@ function MaliPerformansPage() {
                       placeholder="Marka ara..."
                       className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-              </div>
-            </div>
-            
+                  </div>
+                </div>
+                
                 <div className="overflow-x-auto max-w-full">
                   <div className="inline-block min-w-full shadow-sm border border-gray-200 rounded-lg overflow-hidden">
                     <div className="overflow-x-auto" style={{ maxHeight: '600px' }}>
-                  <table className="min-w-full divide-y divide-gray-200">
+                    <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50 sticky top-0">
-                      <tr>
-                        <th className="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Reçete Adı
-                        </th>
+                        <tr>
+                            <th className="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Reçete Adı
+                            </th>
                             <th className="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Marka
                             </th>
                             <th className="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Reçete ID
-                        </th>
-                        <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          </th>
+                          <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                               ML Bilgisi
-                        </th>
-                        <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          </th>
+                          <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Satış Fiyatı (Bulk)
-                        </th>
-                        <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            </th>
+                            <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Satış Fiyatı (Amb.)
                             </th>
                             <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1034,27 +1576,27 @@ function MaliPerformansPage() {
                             </th>
                             <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Maliyet (Amb., adet)
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
                           {filtrelenmisReceteler.map((recete, index) => (
-                          <tr key={index} className="hover:bg-gray-50">
-                            <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                            <tr key={index} className="hover:bg-gray-50">
+                              <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
                               {recete['Reçete Adı']}
-                            </td>
+                              </td>
                               <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
                                 {recete['Marka']}
                               </td>
                               <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
                                 {recete['Reçete ID']}
-                            </td>
-                            <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
+                              </td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
                                 {recete.ml_bilgisi} ml
-                            </td>
-                            <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
+                              </td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
                                 {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(recete.satis_fiyati_kg_bulk)}
-                            </td>
+                              </td>
                               <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
                                 {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(recete.satis_fiyati_kg_ambalajli)}
                               </td>
@@ -1072,7 +1614,7 @@ function MaliPerformansPage() {
                               </td>
                               <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
                                 {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(recete.adet_ambalajli_maliyet)}
-                            </td>
+                              </td>
                           </tr>
                           ))}
                     </tbody>
@@ -1123,26 +1665,25 @@ function MaliPerformansPage() {
                     <tbody className="bg-white divide-y divide-gray-200">
                       {isletmeGiderleri.map((gider, index) => {
                         const oran = toplamGider > 0 ? (gider.aylik_gider_tl / toplamGider) * 100 : 0;
-                        const gunlukTutar = gider.aylik_gider_tl / 22; // 22 iş günü
                         
                         return (
                           <tr key={index} className="hover:bg-gray-50">
                             <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
                               {gider.gider_adi}
-                            </td>
-                            <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
-                                  {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(gider.aylik_gider_tl)}
-                            </td>
-                            <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
-                                  {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(gunlukTutar)}
-                            </td>
-                            <td className="px-4 py-2 whitespace-nowrap text-sm text-right font-medium text-gray-700">
+                              </td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
+                                  {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(gider.aylik_gider_tl / SABIT_IS_GUNU_SAYISI)}
+                              </td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
+                                  {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(gider.aylik_gider_tl / SABIT_IS_GUNU_SAYISI)}
+                              </td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right font-medium text-gray-700">
                               {new Intl.NumberFormat('tr-TR', { 
                                 style: 'percent', 
                                 minimumFractionDigits: 1,
                                 maximumFractionDigits: 1
                               }).format(oran / 100)}
-                            </td>
+                              </td>
                                 <td className="px-4 py-2 whitespace-nowrap text-sm text-center">
                                   <div className="flex justify-center space-x-2">
                                     <button
@@ -1164,495 +1705,14 @@ function MaliPerformansPage() {
                                       </svg>
                                     </button>
                                   </div>
-                            </td>
-                          </tr>
+                              </td>
+                            </tr>
                         );
                       })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-              </div>
-              
-              {/* Bitmiş Ürün Stoğu Tablosu */}
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-gray-800">Bitmiş Ürün Stoğu</h3>
-                  <div className="flex items-center space-x-2">
-                <button 
-                      onClick={handleBitmisUrunFiltreleriTemizle}
-                      className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-md text-sm"
-                    >
-                      Filtreleri Temizle
-                    </button>
-                    <button
-                      onClick={handleExcelExport}
-                      className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md text-sm flex items-center space-x-1"
-                    >
-                      <Download size={14} />
-                      <span>Excel'e Aktar</span>
-                </button>
-              </div>
-                </div>
-                
-                {/* Tarih Aralığı Filtreleri */}
-                <div className="mb-4">
-                  <div className="bg-white border border-gray-200 rounded-md inline-flex mb-3">
-                    <button
-                      type="button"
-                      onClick={() => handleAmbalajlamaTarihAralikDegistir('bugun')}
-                      className={`px-3 py-2 text-sm ${
-                        ambalajlamaTarihAraligi === 'bugun' 
-                          ? 'bg-blue-50 text-blue-600 border-blue-200' 
-                          : 'text-gray-600 hover:bg-gray-50'
-                      }`}
-                    >
-                      Bugün
-                    </button>
-                    
-                    <button
-                      type="button"
-                      onClick={() => handleAmbalajlamaTarihAralikDegistir('haftalik')}
-                      className={`px-3 py-2 text-sm ${
-                        ambalajlamaTarihAraligi === 'haftalik' 
-                          ? 'bg-blue-50 text-blue-600 border-blue-200' 
-                          : 'text-gray-600 hover:bg-gray-50'
-                      } border-l border-gray-200`}
-                    >
-                      Bu Hafta
-                    </button>
-                    
-                    <button
-                      type="button"
-                      onClick={() => handleAmbalajlamaTarihAralikDegistir('aylik')}
-                      className={`px-3 py-2 text-sm ${
-                        ambalajlamaTarihAraligi === 'aylik' 
-                          ? 'bg-blue-50 text-blue-600 border-blue-200' 
-                          : 'text-gray-600 hover:bg-gray-50'
-                      } border-l border-gray-200`}
-                    >
-                      Bu Ay
-                    </button>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="date"
-                      value={ambalajlamaBaslangicTarihi}
-                      onChange={(e) => handleAmbalajlamaOzelTarihDegisim(e.target.value, ambalajlamaBitisTarihi)}
-                      className="border border-gray-300 rounded-md px-2 py-1 text-sm"
-                    />
-                    <span className="text-gray-500">-</span>
-                    <input
-                      type="date"
-                      value={ambalajlamaBitisTarihi}
-                      onChange={(e) => handleAmbalajlamaOzelTarihDegisim(ambalajlamaBaslangicTarihi, e.target.value)}
-                      className="border border-gray-300 rounded-md px-2 py-1 text-sm"
-                    />
-                  </div>
-                </div>
-                
-                {/* Filtreler */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label htmlFor="filtreBitmisUrunRecete" className="block text-sm font-medium text-gray-700 mb-1">
-                      Reçete Adı
-                    </label>
-                    <input
-                      id="filtreBitmisUrunRecete"
-                      type="text"
-                      value={filtreBitmisUrunRecete}
-                      onChange={(e) => setFiltreBitmisUrunRecete(e.target.value)}
-                      placeholder="Reçete adı ara..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-              </div>
-                  <div>
-                    <label htmlFor="filtreBitmisUrunMusteri" className="block text-sm font-medium text-gray-700 mb-1">
-                      Müşteri
-                    </label>
-                    <input
-                      id="filtreBitmisUrunMusteri"
-                      type="text"
-                      value={filtreBitmisUrunMusteri}
-                      onChange={(e) => setFiltreBitmisUrunMusteri(e.target.value)}
-                      placeholder="Müşteri ara..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-            </div>
-          </div>
-                
-                <div className="overflow-x-auto max-w-full">
-                  <div className="inline-block min-w-full shadow-sm border border-gray-200 rounded-lg overflow-hidden">
-                    <div className="overflow-x-auto" style={{ maxHeight: '600px' }}>
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50 sticky top-0">
-                          <tr>
-                            <th className="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Reçete Adı
-                            </th>
-                            <th className="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Reçete ID
-                            </th>
-                            <th className="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Müşteri
-                            </th>
-                            <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Ambalaj (ml)
-                            </th>
-                            <th className="px-4 py-3 bg-gray-50 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Paketlendiği Tarih
-                            </th>
-                            <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              STOK / ADET
-                            </th>
-                            <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Teslim Edilen
-                            </th>
-                            <th className="px-4 py-3 bg-gray-50 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Teslimat Tarihi
-                            </th>
-                            <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Kalan Adet
-                            </th>
-                            <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Üretim Kuyruğu Ref.
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {filtrelenmisUrunStogu.map((urun, index) => (
-                            <tr key={index} className="hover:bg-gray-50">
-                              <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {urun['Reçete Adı']}
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
-                                {urun['Reçete ID']}
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
-                                {urun['Müşteri']}
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
-                                {urun['Ambalaj (ml)']} ml
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-sm text-center text-gray-700">
-                                {urun['Paketlendiği Tarih'] ? format(new Date(urun['Paketlendiği Tarih']), 'dd.MM.yyyy') : '-'}
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
-                                {urun["STOK / ADET"] || 0} adet
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
-                                {urun["Teslim Edilen"] || 0} adet
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-sm text-center text-gray-700">
-                                {urun['Teslimat Tarihi'] ? format(new Date(urun['Teslimat Tarihi']), 'dd.MM.yyyy') : '-'}
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
-                                {urun["Kalan Adet"] || 0} adet
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
-                                {urun["Üretim Kuyruğu Referans"] || '-'}
-                              </td>
-                            </tr>
-                          ))}
-                          {filtrelenmisUrunStogu.length === 0 && (
-                            <tr>
-                              <td colSpan={10} className="px-4 py-4 text-center text-sm text-gray-500">
-                                Bu kriterlere uygun bitmiş ürün stoğu bulunamadı. {bitmisUrunStogu.length > 0 ? `Filtreleme öncesi ${bitmisUrunStogu.length} kayıt mevcut.` : 'Hiç kayıt bulunamadı.'}
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="mt-4 text-sm text-gray-500">
-                  Toplam {filtrelenmisUrunStogu.length} ürün stokta ({bitmisUrunStogu.length} toplam)
-                </div>
-              </div>
-              
-              {/* Ambalajlama Kayıtları Tablosu */}
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mt-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-gray-800">Ambalajlama Kayıtları</h3>
-                  <div className="flex items-center space-x-2">
-                <button 
-                      onClick={() => {
-                        setFiltreAmbalajlamaRecete('');
-                        setFiltreAmbalajlamaMusteri('');
-                      }}
-                      className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-md text-sm"
-                    >
-                      Filtreleri Temizle
-                    </button>
-                    <button
-                      onClick={handleExcelExport}
-                      className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md text-sm flex items-center space-x-1"
-                    >
-                      <Download size={14} />
-                      <span>Excel'e Aktar</span>
-                </button>
-              </div>
-                </div>
-                
-                {/* Tarih Seçimi */}
-                <div className="flex flex-wrap items-center gap-2 mb-4">
-                  <div className="bg-white border border-gray-200 rounded-md inline-flex">
-                    <button
-                      type="button"
-                      onClick={() => handleAmbalajlamaTarihAralikDegistir('bugun')}
-                      className={`relative px-3 py-1.5 text-sm ${
-                        ambalajlamaTarihAraligi === 'bugun' 
-                          ? 'bg-blue-50 text-blue-600 border-blue-200' 
-                          : 'text-gray-600 hover:bg-gray-50'
-                      } rounded-l-md`}
-                    >
-                      Bugün
-                    </button>
-                    
-                    <button
-                      type="button"
-                      onClick={() => handleAmbalajlamaTarihAralikDegistir('dun')}
-                      className={`relative px-3 py-1.5 text-sm ${
-                        ambalajlamaTarihAraligi === 'dun' 
-                          ? 'bg-blue-50 text-blue-600 border-blue-200' 
-                          : 'text-gray-600 hover:bg-gray-50'
-                      } border-l border-gray-200`}
-                    >
-                      Dün
-                    </button>
-                    
-                    <button
-                      type="button"
-                      onClick={() => handleAmbalajlamaTarihAralikDegistir('haftalik')}
-                      className={`relative px-3 py-1.5 text-sm ${
-                        ambalajlamaTarihAraligi === 'haftalik' 
-                          ? 'bg-blue-50 text-blue-600 border-blue-200' 
-                          : 'text-gray-600 hover:bg-gray-50'
-                      } border-l border-gray-200`}
-                    >
-                      Son 7 Gün
-                    </button>
-                    
-                    <button
-                      type="button"
-                      onClick={() => handleAmbalajlamaTarihAralikDegistir('aylik')}
-                      className={`relative px-3 py-1.5 text-sm ${
-                        ambalajlamaTarihAraligi === 'aylik' 
-                          ? 'bg-blue-50 text-blue-600 border-blue-200' 
-                          : 'text-gray-600 hover:bg-gray-50'
-                      } border-l border-gray-200`}
-                    >
-                      Bu Ay
-                    </button>
-                    
-                    <button
-                      type="button"
-                      onClick={() => handleAmbalajlamaTarihAralikDegistir('ozel')}
-                      className={`relative px-3 py-1.5 text-sm ${
-                        ambalajlamaTarihAraligi === 'ozel' 
-                          ? 'bg-blue-50 text-blue-600 border-blue-200' 
-                          : 'text-gray-600 hover:bg-gray-50'
-                      } border-l border-gray-200 rounded-r-md`}
-                    >
-                      Özel Aralık
-                    </button>
-                  </div>
-                  
-                  {ambalajlamaTarihAraligi === 'ozel' && (
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="date"
-                        value={ambalajlamaBaslangicTarihi}
-                        onChange={(e) => handleAmbalajlamaOzelTarihDegisim(e.target.value, ambalajlamaBitisTarihi)}
-                        className="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                      <span className="text-gray-500">-</span>
-                      <input
-                        type="date"
-                        value={ambalajlamaBitisTarihi}
-                        onChange={(e) => handleAmbalajlamaOzelTarihDegisim(ambalajlamaBaslangicTarihi, e.target.value)}
-                        className="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  )}
-                </div>
-                
-                {/* Filtreler */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label htmlFor="filtreAmbalajlamaRecete" className="block text-sm font-medium text-gray-700 mb-1">
-                      Reçete Adı
-                    </label>
-                    <input
-                      id="filtreAmbalajlamaRecete"
-                      type="text"
-                      value={filtreAmbalajlamaRecete}
-                      onChange={(e) => setFiltreAmbalajlamaRecete(e.target.value)}
-                      placeholder="Reçete adı ara..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="filtreAmbalajlamaMusteri" className="block text-sm font-medium text-gray-700 mb-1">
-                      Müşteri
-                    </label>
-                    <input
-                      id="filtreAmbalajlamaMusteri"
-                      type="text"
-                      value={filtreAmbalajlamaMusteri}
-                      onChange={(e) => setFiltreAmbalajlamaMusteri(e.target.value)}
-                      placeholder="Müşteri ara..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-                
-                <div className="overflow-x-auto max-w-full">
-                  <div className="inline-block min-w-full shadow-sm border border-gray-200 rounded-lg overflow-hidden">
-                    <div className="overflow-x-auto" style={{ maxHeight: '600px' }}>
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50 sticky top-0">
-                        <tr>
-                          <th className="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Kimlik Numarası
-                            </th>
-                            <th className="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Üretim Kuyruğu Kimlik Numarası
-                            </th>
-                            <th className="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Reçete Adı
-                            </th>
-                            <th className="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Marka
-                            </th>
-                            <th className="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Müşteri
-                          </th>
-                          <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Mililitre Bilgisi
-                          </th>
-                          <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Ambalajlanan Adet
-                            </th>
-                            <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Ambalajlama Tarihi
-                            </th>
-                            <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Satış Fiyatı Kilogram Bulk
-                            </th>
-                            <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Satış Fiyatı Kilogram Ambalajlı
-                            </th>
-                            <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Kilogram Bulk Maliyet
-                            </th>
-                            <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Adet Bulk Maliyet
-                            </th>
-                            <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Ambalaj Maliyeti
-                            </th>
-                            <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Kilogram Ambalajlı Maliyet
-                            </th>
-                            <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Adet Ambalajlı Maliyet
-                            </th>
-                            <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Toplam Satış Değeri
-                            </th>
-                            <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Toplam Maliyet
-                            </th>
-                            <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Kâr
-                            </th>
-                            <th className="px-4 py-3 bg-gray-50 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Kullanıcı
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                          {filtrelenmisAmbalajlamaKayitlari.map((kayit, index) => (
-                            <tr key={index} className="hover:bg-gray-50">
-                              <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {kayit.id}
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {kayit.uretim_kuyrugu_id}
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {kayit.recete_adi}
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
-                                {kayit.marka}
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
-                                {kayit.musteri}
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
-                                {kayit.ml_bilgisi} ml
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
-                                {kayit.ambalajlanan_adet} adet
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
-                                {format(new Date(kayit.ambalajlama_tarihi), 'dd.MM.yyyy')}
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
-                                {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.satis_fiyati_kg_bulk)}
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
-                                {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.satis_fiyati_kg_ambalajli)}
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
-                                {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.kg_bulk_maliyet)}
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
-                                {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.adet_bulk_maliyet)}
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
-                                {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.ambalaj_maliyeti)}
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
-                                {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.kg_ambalajli_maliyet)}
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
-                                {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.adet_ambalajli_maliyet)}
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
-                                {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.toplam_satis_degeri)}
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
-                                {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.toplam_maliyet)}
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right font-medium text-gray-700">
-                                {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.kar)}
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-sm text-center text-gray-700">
-                                {kayit.kullanici}
-                              </td>
-                            </tr>
-                          ))}
-                          {filtrelenmisAmbalajlamaKayitlari.length === 0 && (
-                            <tr>
-                              <td colSpan={20} className="px-4 py-4 text-center text-sm text-gray-500">
-                                Bu kriterlere uygun ambalajlama kaydı bulunamadı. {ambalajlamaKayitlari.length > 0 ? `Filtreleme öncesi ${ambalajlamaKayitlari.length} kayıt mevcut.` : 'Hiç kayıt bulunamadı.'}
-                              </td>
-                            </tr>
-                          )}
                       </tbody>
                     </table>
                   </div>
                 </div>
-              </div>
-                
-                <div className="mt-4 text-sm text-gray-500">
-                  Toplam {filtrelenmisAmbalajlamaKayitlari.length} ambalajlama kaydı ({ambalajlamaKayitlari.length} toplam)
             </div>
           </div>
             </div>
