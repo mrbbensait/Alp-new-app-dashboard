@@ -121,12 +121,10 @@ interface AmbalajlamaKaydi {
   ambalajlanan_adet: number;
   ambalajlama_tarihi: string;
   ml_bilgisi: number;
-  satis_fiyati_kg_bulk: number;
-  satis_fiyati_kg_ambalajli: number;
+  birim_satis_fiyati: number;
   kg_bulk_maliyet: number;
   adet_bulk_maliyet: number;
   ambalaj_maliyeti: number;
-  kg_ambalajli_maliyet: number;
   adet_ambalajli_maliyet: number;
   toplam_satis_degeri: number;
   toplam_maliyet: number;
@@ -1718,10 +1716,7 @@ function MaliPerformansPage() {
                               Kâr
                             </th>
                             <th className="px-3 py-2 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-red-50">
-                              Satış Fiyatı Kg Bulk
-                            </th>
-                            <th className="px-3 py-2 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-red-100">
-                              Satış Fiyatı Kg Ambalajlı
+                              Birim Satış Fiyatı
                             </th>
                             <th className="px-3 py-2 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
                               Kg Bulk Maliyet
@@ -1731,9 +1726,6 @@ function MaliPerformansPage() {
                             </th>
                             <th className="px-3 py-2 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50">
                               Ambalaj Maliyeti
-                            </th>
-                            <th className="px-3 py-2 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-purple-50">
-                              Kg Ambalajlı Maliyet
                             </th>
                             <th className="px-3 py-2 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-purple-50">
                               Adet Ambalajlı Maliyet
@@ -1774,10 +1766,7 @@ function MaliPerformansPage() {
                                 {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.kar)}
                               </td>
                               <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-700 bg-red-50">
-                                {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.satis_fiyati_kg_bulk)}
-                              </td>
-                              <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-700 bg-red-100">
-                                {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.satis_fiyati_kg_ambalajli)}
+                                {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.birim_satis_fiyati)}
                               </td>
                               <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-700 bg-gray-50">
                                 {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.kg_bulk_maliyet)}
@@ -1789,9 +1778,6 @@ function MaliPerformansPage() {
                                 {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.ambalaj_maliyeti)}
                               </td>
                               <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-700 bg-purple-50">
-                                {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.kg_ambalajli_maliyet)}
-                              </td>
-                              <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-700 bg-purple-50">
                                 {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.adet_ambalajli_maliyet)}
                               </td>
                               <td className="px-3 py-2 whitespace-nowrap text-sm text-center text-gray-700">
@@ -1801,7 +1787,7 @@ function MaliPerformansPage() {
                           ))}
                           {filtrelenmisAmbalajlamaKayitlari.length === 0 && (
                             <tr>
-                              <td colSpan={17} className="px-3 py-4 text-center text-sm text-gray-500">
+                              <td colSpan={15} className="px-3 py-4 text-center text-sm text-gray-500">
                                 Bu kriterlere uygun ambalajlama kaydı bulunamadı. {ambalajlamaKayitlari.length > 0 ? `Filtreleme öncesi ${ambalajlamaKayitlari.length} kayıt mevcut.` : 'Hiç kayıt bulunamadı.'}
                               </td>
                             </tr>
