@@ -37,7 +37,6 @@ export default function ReceteKaydiPage() {
   const [receteAdi, setReceteAdi] = useState('');
   const [marka, setMarka] = useState('');
   const [satisFiyati, setSatisFiyati] = useState('');
-  const [satisAmbalajliFiyati, setSatisAmbalajliFiyati] = useState('');
   const [mlBilgisi, setMlBilgisi] = useState('');
   const [bilesenler, setBilesenler] = useState<Bilesen[]>([]);
   const [showNotification, setShowNotification] = useState(false);
@@ -128,7 +127,9 @@ export default function ReceteKaydiPage() {
 
   // Kg Bulk Maliyet hesaplama (sadece Hammadde kategorisindekiler)
   const calculateKgBulkCost = () => {
-    return bilesenler
+    console.log("Bileşenler:", bilesenler);
+    
+    const bulkMaliyet = bilesenler
       .filter(b => b.kategori !== 'Ambalaj')
       .reduce((total, bilesen) => {
         // Her bileşenin kg_fiyat değerini stokItems içinde bul
@@ -136,20 +137,37 @@ export default function ReceteKaydiPage() {
         const kgFiyat = stokItem ? stokItem['kg_fiyat'] || 0 : 0;
         const oran = parseFloat(bilesen.oran) || 0;
         
+        console.log("Bileşen hesaplanıyor:", {
+          adi: bilesen.adi,
+          kategori: bilesen.kategori,
+          oran: oran,
+          kgFiyat: kgFiyat,
+          bilesenMaliyeti: (oran / 100) * kgFiyat
+        });
+        
         // Bileşenin maliyetini hesapla (oran/100 * kg_fiyat)
         const bilesenMaliyeti = (oran / 100) * kgFiyat;
         
         return total + bilesenMaliyeti;
       }, 0);
+    
+    console.log("Toplam Kg Bulk Maliyet:", bulkMaliyet);
+    return bulkMaliyet;
   };
 
   // 1 Adet Bulk Maliyet hesaplama
   const calculateBirAdetBulkMaliyet = () => {
     const kgBulkMaliyet = calculateKgBulkCost();
     const ml = parseFloat(mlBilgisi) || 0;
+    
+    console.log("Bulk maliyet hesaplanıyor:", { kgBulkMaliyet, ml });
+    
     if (ml <= 0) return 0;
     
-    return (ml * kgBulkMaliyet) / 1000;
+    const birAdetBulkMaliyet = (ml * kgBulkMaliyet) / 1000;
+    console.log("1 Adet Bulk Maliyet:", birAdetBulkMaliyet);
+    
+    return birAdetBulkMaliyet;
   };
 
   // Ambalaj maliyeti (Y değeri) hesaplama
@@ -161,11 +179,8 @@ export default function ReceteKaydiPage() {
         const kgFiyat = stokItem ? stokItem['kg_fiyat'] || 0 : 0;
         const oran = parseFloat(bilesen.oran) || 0;
         
-        // Oran (yüzde değil, doğrudan değer) x kg_fiyat x (1000/ml)
-        const ml = parseFloat(mlBilgisi) || 0;
-        if (ml <= 0) return total;
-        
-        const ambalajBilesenMaliyeti = oran * kgFiyat * (1000 / ml);
+        // Yeni hesaplama: Sadece oran x kg_fiyat
+        const ambalajBilesenMaliyeti = oran * kgFiyat;
         return total + ambalajBilesenMaliyeti;
       }, 0);
   };
@@ -179,12 +194,10 @@ export default function ReceteKaydiPage() {
 
   // 1 Adet Ambalajlı Maliyet hesaplama
   const calculateBirAdetAmbalajliMaliyet = () => {
-    const kgAmbalajliMaliyet = calculateKgAmbalajliMaliyet();
-    const ml = parseFloat(mlBilgisi) || 0;
-    if (ml <= 0) return 0;
-    
-    const binBoluMl = 1000 / ml;
-    return kgAmbalajliMaliyet / binBoluMl;
+    // Yeni hesaplama: 1 Adet Bulk Maliyet + 1 Adet Ambalaj Maliyeti
+    const birAdetBulkMaliyet = calculateBirAdetBulkMaliyet();
+    const ambalajMaliyeti = calculateAmbalajMaliyeti();
+    return birAdetBulkMaliyet + ambalajMaliyeti;
   };
 
   // Bileşen ekleme
@@ -352,7 +365,6 @@ export default function ReceteKaydiPage() {
       receteAdi,
       marka,
       satis_fiyati: satisFiyati.trim() === '' ? '0' : satisFiyati,
-      satis_fiyati_ambalajli: satisAmbalajliFiyati.trim() === '' ? '0' : satisAmbalajliFiyati,
       ml_bilgisi: mlBilgisi,
       kg_bulk_maliyet: calculateKgBulkCost(),
       bir_adet_bulk_maliyet: calculateBirAdetBulkMaliyet(),
@@ -443,7 +455,6 @@ export default function ReceteKaydiPage() {
         setReceteAdi('');
         setMarka('');
         setSatisFiyati('');
-        setSatisAmbalajliFiyati('');
         setMlBilgisi('');
         setBilesenler([]);
       } finally {
@@ -474,8 +485,8 @@ export default function ReceteKaydiPage() {
     return ((satisFiyati - maliyet) / maliyet) * 100;
   };
 
-  const bulkKarYuzdesi = calculateKarYuzdesi(parseFloat(satisFiyati) || 0, kgBulkMaliyet);
-  const ambalajliKarYuzdesi = calculateKarYuzdesi(parseFloat(satisAmbalajliFiyati) || 0, kgAmbalajliMaliyet);
+  // Kar hesaplamaları - Satış fiyatı 1 adet ambalajlı ürünün fiyatıdır
+  const birAdetAmbalajliKarYuzdesi = calculateKarYuzdesi(parseFloat(satisFiyati) || 0, birAdetAmbalajliMaliyet);
 
   // Yükleme durumunda gösterilecek içerik
   if (isLoading) {
@@ -606,13 +617,6 @@ export default function ReceteKaydiPage() {
                 {/* Bileşenler Başlık ve Toplam */}
                 <div className="flex items-center justify-between mb-2 mt-3">
                   <h3 className="text-base font-medium text-gray-900">Bileşenler</h3>
-                  <div className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                    Math.abs(totalPercentage - 100) < 0.01 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    Toplam: {totalPercentage.toFixed(2)}%
-                  </div>
                 </div>
                 
                 {/* Bileşenler Listesi */}
@@ -675,7 +679,7 @@ export default function ReceteKaydiPage() {
                         </div>
                         
                         {/* Kategori Gösterimi */}
-                        <div className="w-full md:w-1/5">
+                        <div className="w-full md:w-1/4">
                           <label className="block text-xs font-medium text-gray-500 mb-0.5">
                             Kategori
                           </label>
@@ -684,18 +688,8 @@ export default function ReceteKaydiPage() {
                           </div>
                         </div>
                         
-                        {/* Birim Gösterimi */}
-                        <div className="w-full md:w-1/6">
-                          <label className="block text-xs font-medium text-gray-500 mb-0.5">
-                            Birim
-                          </label>
-                          <div className="px-2 py-1.5 bg-gray-100 border border-gray-200 rounded-md text-sm">
-                            {bilesen.birim || "Kg"}
-                          </div>
-                        </div>
-                        
                         {/* Oran Girişi */}
-                        <div className="w-full md:w-1/5">
+                        <div className="w-full md:w-1/4">
                           <label className="block text-xs font-medium text-gray-500 mb-0.5">
                             Oran (%)
                           </label>
@@ -739,7 +733,15 @@ export default function ReceteKaydiPage() {
                 </div>
                 
                 {/* Gönder Butonu */}
-                <div className="flex justify-center">
+                <div className="flex justify-between items-center">
+                  <div className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                    Math.abs(totalPercentage - 100) < 0.01 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    Toplam: {totalPercentage.toFixed(2)}%
+                  </div>
+                  
                   <button
                     type="submit"
                     className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors font-medium text-sm"
@@ -753,133 +755,102 @@ export default function ReceteKaydiPage() {
           
           {/* Sağ Taraf */}
           <div className="w-1/4">
-            {/* ML Bilgisi Alanı - Her zaman görünür */}
-            <div className="bg-white shadow-md rounded-lg p-3 mb-4 sticky top-4">
-              <h3 className="text-sm font-medium text-gray-900 mb-2">ML Bilgisi</h3>
+            {/* Sağ taraftaki alanları içeren sticky container */}
+            <div className="sticky top-4 space-y-4">
+              {/* ML Bilgisi Alanı - Her zaman görünür */}
+              <div className="bg-white shadow-md rounded-lg p-3">
+                <h3 className="text-sm font-medium text-gray-900 mb-2">ML Bilgisi</h3>
+                
+                <div>
+                  <label htmlFor="mlBilgisi" className="block text-xs font-medium text-gray-700 mb-0.5">
+                    ML Değeri
+                  </label>
+                  <input
+                    type="number"
+                    id="mlBilgisi"
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="ML bilgisi giriniz"
+                    min="1"
+                    value={mlBilgisi}
+                    onChange={(e) => setMlBilgisi(e.target.value)}
+                  />
+                </div>
+              </div>
               
-              <div>
-                <label htmlFor="mlBilgisi" className="block text-xs font-medium text-gray-700 mb-0.5">
-                  ML Değeri
-                </label>
-                <input
-                  type="number"
-                  id="mlBilgisi"
-                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="ML bilgisi giriniz"
-                  min="1"
-                  value={mlBilgisi}
-                  onChange={(e) => setMlBilgisi(e.target.value)}
-                />
-              </div>
-            </div>
+              {/* Satış Bilgileri ve Maliyet Hesaplamaları - Rol yetkilerine göre göster/gizle */}
+              {userRolBilgileri?.recete_satis_bilgisi && (
+                <div className="bg-white shadow-md rounded-lg p-3">
+                  <h3 className="text-sm font-medium text-gray-900 mb-2">Satış Bilgileri</h3>
+                  
+                  <div className="space-y-2">
+                    <div>
+                      <div className="flex justify-between items-center">
+                        <label htmlFor="satisFiyati" className="text-xs font-medium text-gray-700">
+                          Satış Fiyatı (Eur) - 1 Birim
+                        </label>
+                        {satisFiyati && birAdetAmbalajliMaliyet > 0 && (
+                          <span className="text-xs text-green-600">
+                            Kar: %{birAdetAmbalajliKarYuzdesi.toFixed(1)}
+                          </span>
+                        )}
+                      </div>
+                      <input
+                        type="number"
+                        id="satisFiyati"
+                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 mt-0.5"
+                        placeholder="Birim satış fiyatı"
+                        min="0"
+                        step="0.01"
+                        value={satisFiyati}
+                        onChange={(e) => setSatisFiyati(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             
-            {/* Satış Bilgileri ve Maliyet Hesaplamaları - Rol yetkilerine göre göster/gizle */}
-            {userRolBilgileri?.recete_satis_bilgisi && (
-              <div className="bg-white shadow-md rounded-lg p-3 mb-4 sticky top-24">
-                <h3 className="text-sm font-medium text-gray-900 mb-2">Satış Bilgileri</h3>
-                
-                <div className="space-y-2">
-                  <div>
-                    <div className="flex justify-between items-center">
-                      <label htmlFor="satisFiyati" className="text-xs font-medium text-gray-700">
-                        Satış Fiyatı (Eur) - Kg Bulk
-                      </label>
-                      {satisFiyati && kgBulkMaliyet > 0 && (
-                        <span className="text-xs text-green-600">
-                          Kar: %{bulkKarYuzdesi.toFixed(1)}
-                        </span>
-                      )}
-                    </div>
-                    <input
-                      type="number"
-                      id="satisFiyati"
-                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 mt-0.5"
-                      placeholder="Kg bulk fiyatı"
-                      min="0"
-                      step="0.01"
-                      value={satisFiyati}
-                      onChange={(e) => setSatisFiyati(e.target.value)}
-                    />
-                  </div>
+              {/* Maliyet Hesaplamaları - Rol yetkisine göre göster/gizle */}
+              {userRolBilgileri?.recete_maliyet_bilgisi && (
+                <div className="bg-white shadow-md rounded-lg p-3">
+                  <h3 className="text-sm font-medium text-gray-900 mb-2">Maliyet Hesaplamaları</h3>
                   
-                  <div>
-                    <div className="flex justify-between items-center">
-                      <label htmlFor="satisAmbalajliFiyati" className="text-xs font-medium text-gray-700">
-                        Satış Fiyatı (Eur) - Kg Ambalajlı
-                      </label>
-                      {satisAmbalajliFiyati && kgAmbalajliMaliyet > 0 && (
-                        <span className="text-xs text-green-600">
-                          Kar: %{ambalajliKarYuzdesi.toFixed(1)}
-                        </span>
-                      )}
+                  <div className="space-y-2">
+                    <div>
+                      <div className="flex justify-between items-center">
+                        <div className="text-xs font-medium text-gray-500">1Kg Bulk Maliyet:</div>
+                      </div>
+                      <div className="text-sm font-semibold text-gray-900">{kgBulkMaliyet.toFixed(2)} €</div>
                     </div>
-                    <input
-                      type="number"
-                      id="satisAmbalajliFiyati"
-                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 mt-0.5"
-                      placeholder="Kg ambalajlı fiyatı"
-                      min="0"
-                      step="0.01"
-                      value={satisAmbalajliFiyati}
-                      onChange={(e) => setSatisAmbalajliFiyati(e.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-          
-            {/* Maliyet Hesaplamaları - Rol yetkisine göre göster/gizle */}
-            {userRolBilgileri?.recete_maliyet_bilgisi && (
-              <div className="bg-white shadow-md rounded-lg p-3 sticky top-44">
-                <h3 className="text-sm font-medium text-gray-900 mb-2">Maliyet Hesaplamaları</h3>
-                <div className="text-xs text-gray-500 -mt-1 mb-2 italic">Referans 1Kg</div>
-                
-                <div className="space-y-2">
-                  <div>
-                    <div className="flex justify-between items-center">
-                      <div className="text-xs font-medium text-gray-500">Kg Bulk Maliyet:</div>
-                      {satisFiyati && kgBulkMaliyet > 0 && (
-                        <div className="text-xs text-green-600 whitespace-nowrap">
-                          Kar: %{bulkKarYuzdesi.toFixed(1)}
-                        </div>
-                      )}
+                    
+                    <div>
+                      <div className="text-xs font-medium text-gray-500">1 Adet Bulk Maliyet:</div>
+                      <div className="text-sm font-semibold text-gray-900">
+                        {birAdetBulkMaliyet.toFixed(4)} € ({mlBilgisi}ml)
+                      </div>
                     </div>
-                    <div className="text-sm font-semibold text-gray-900">{kgBulkMaliyet.toFixed(2)} €</div>
-                  </div>
-                  
-                  <div>
-                    <div className="text-xs font-medium text-gray-500">1 Adet Bulk Maliyet:</div>
-                    <div className="text-sm font-semibold text-gray-900">
-                      {birAdetBulkMaliyet.toFixed(4)} € ({mlBilgisi}ml)
+                    
+                    <div className="pt-1 border-t">
+                      <div className="text-xs font-medium text-gray-500">1 Adet Ambalaj Maliyeti:</div>
+                      <div className="text-sm font-semibold text-gray-900">{ambalajMaliyeti.toFixed(4)} €</div>
                     </div>
-                  </div>
-                  
-                  <div className="pt-1 border-t">
-                    <div className="text-xs font-medium text-gray-500">Ambalaj Maliyeti:</div>
-                    <div className="text-sm font-semibold text-gray-900">{ambalajMaliyeti.toFixed(4)} €</div>
-                  </div>
-                  
-                  <div>
-                    <div className="flex justify-between items-center">
-                      <div className="text-xs font-medium text-gray-500">Kg Ambalajlı Maliyet:</div>
-                      {satisAmbalajliFiyati && kgAmbalajliMaliyet > 0 && (
-                        <div className="text-xs text-green-600 whitespace-nowrap">
-                          Kar: %{ambalajliKarYuzdesi.toFixed(1)}
-                        </div>
-                      )}
-                    </div>
-                    <div className="text-sm font-semibold text-gray-900">{kgAmbalajliMaliyet.toFixed(2)} €</div>
-                  </div>
-                  
-                  <div>
-                    <div className="text-xs font-medium text-gray-500">1 Adet Ambalajlı Maliyet:</div>
-                    <div className="text-sm font-semibold text-gray-900">
-                      {birAdetAmbalajliMaliyet.toFixed(4)} € ({mlBilgisi}ml)
+                    
+                    <div>
+                      <div className="flex justify-between items-center">
+                        <div className="text-xs font-medium text-gray-500">1 Adet Ambalajlı Maliyet:</div>
+                        {satisFiyati && birAdetAmbalajliMaliyet > 0 && (
+                          <div className="text-xs text-green-600 whitespace-nowrap">
+                            Kar: %{birAdetAmbalajliKarYuzdesi.toFixed(1)}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-sm font-semibold text-gray-900">
+                        {birAdetAmbalajliMaliyet.toFixed(4)} € ({mlBilgisi}ml)
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
           
           {/* Bildirim */}
