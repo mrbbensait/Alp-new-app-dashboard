@@ -56,6 +56,8 @@ export default function ReceteKaydiPage() {
   
   // Bileşen arama kutusu için ref
   const bilesenSearchInputRef = useRef<HTMLInputElement>(null);
+  // Marka arama kutusu için ref
+  const markaSearchInputRef = useRef<HTMLInputElement>(null);
   
   // API durumu için state
   const [isLoading, setIsLoading] = useState(true);
@@ -271,6 +273,15 @@ export default function ReceteKaydiPage() {
     setMarkaSearchTerm('');
     setFilteredMarkalar(markalar);
   };
+
+  // Marka dropdown'ı açıldığında arama kutusuna otomatik odaklanma
+  useEffect(() => {
+    if (showMarkaDropdown && markaSearchInputRef.current) {
+      setTimeout(() => {
+        markaSearchInputRef.current?.focus();
+      }, 50);
+    }
+  }, [showMarkaDropdown]);
 
   // Marka seçimi
   const selectMarka = (musteriItem: Musteri) => {
@@ -561,6 +572,7 @@ export default function ReceteKaydiPage() {
                         <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-sm overflow-auto border border-gray-300">
                           <div className="sticky top-0 p-2 bg-white border-b">
                             <input
+                              ref={markaSearchInputRef}
                               type="text"
                               className="w-full px-3 py-1.5 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                               placeholder="Marka veya müşteri adı ile ara..."
