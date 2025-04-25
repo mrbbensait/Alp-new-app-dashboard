@@ -359,21 +359,13 @@ export default function ReceteKaydiPage() {
       ambalaj_maliyeti: calculateAmbalajMaliyeti(),
       kg_ambalajli_maliyet: calculateKgAmbalajliMaliyet(),
       bir_adet_ambalajli_maliyet: calculateBirAdetAmbalajliMaliyet(),
-      bilesenler: bilesenler.map(b => {
-        // Kategori bazlı varsayılan birim belirleme
-        let defaultBirim = 'Kg';
-        if (b.kategori === 'Ambalaj') defaultBirim = 'Adet';
-        else if (b.kategori === 'Koku') defaultBirim = 'Kg';
-        else if (b.kategori === 'Hammadde') defaultBirim = 'Kg';
-        
-        return {
-          adi: b.adi,
-          kategori: b.kategori,
-          oran: b.oran,
-          hammaddeId: b.hammaddeId,
-          birim: b.birim || defaultBirim
-        };
-      }),
+      bilesenler: bilesenler.map(b => ({
+        adi: b.adi,
+        kategori: b.kategori,
+        oran: b.oran,
+        hammaddeId: b.hammaddeId,
+        birim: b.birim || 'Kg'
+      })),
       kayitTarihi: new Date().toISOString()
     };
     
@@ -698,7 +690,7 @@ export default function ReceteKaydiPage() {
                             Birim
                           </label>
                           <div className="px-2 py-1.5 bg-gray-100 border border-gray-200 rounded-md text-sm">
-                            {bilesen.birim || "Belirtilmemiş"}
+                            {bilesen.birim || "Kg"}
                           </div>
                         </div>
                         
