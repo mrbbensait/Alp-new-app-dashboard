@@ -60,13 +60,12 @@ interface Recete {
   "Reçete Adı": string;
   "Marka": string;
   "Reçete ID": string;
+  "Notlar": string | null;
   ml_bilgisi: number;
-  satis_fiyati_kg_bulk: number;
-  satis_fiyati_kg_ambalajli: number;
+  birim_satis_fiyati: number;
   kg_bulk_maliyet: number;
   adet_bulk_maliyet: number;
   ambalaj_maliyeti: number;
-  kg_ambalajli_maliyet: number;
   adet_ambalajli_maliyet: number;
 }
 
@@ -1883,15 +1882,12 @@ function MaliPerformansPage() {
                             </th>
                             <th className="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Reçete ID
-                          </th>
-                          <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              ML Bilgisi
-                          </th>
-                          <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Satış Fiyatı (Bulk)
                             </th>
                             <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Satış Fiyatı (Ambalajlı)
+                              ML Bilgisi
+                            </th>
+                            <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Birim Satış Fiyatı
                             </th>
                             <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Maliyet (Bulk, kg)
@@ -1903,11 +1899,8 @@ function MaliPerformansPage() {
                               Ambalaj Maliyeti
                             </th>
                             <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Maliyet (Ambalajlı, kg)
-                            </th>
-                            <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Maliyet (Ambalajlı, adet)
-                          </th>
+                            </th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
@@ -1926,10 +1919,7 @@ function MaliPerformansPage() {
                                 {recete.ml_bilgisi} ml
                               </td>
                               <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
-                                {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(recete.satis_fiyati_kg_bulk)}
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
-                                {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(recete.satis_fiyati_kg_ambalajli)}
+                                {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(recete.birim_satis_fiyati)}
                               </td>
                               <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
                                 {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(recete.kg_bulk_maliyet)}
@@ -1939,9 +1929,6 @@ function MaliPerformansPage() {
                               </td>
                               <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
                                 {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(recete.ambalaj_maliyeti)}
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
-                                {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(recete.kg_ambalajli_maliyet)}
                               </td>
                               <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
                                 {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(recete.adet_ambalajli_maliyet)}
