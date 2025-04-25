@@ -777,7 +777,7 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
           adet_ambalajli_maliyet: receteData?.adet_ambalajli_maliyet || null,
           
           // Hesaplanan değerler - ml dönüşümü ile
-          toplam_satis_degeri: ((miktar * (receteData?.ml_bilgisi || 0)) / 1000) * (receteData?.birim_satis_fiyati || 0),
+          toplam_satis_degeri: miktar * (receteData?.birim_satis_fiyati || 0),
           toplam_maliyet: miktar * (receteData?.adet_ambalajli_maliyet || 0),
           kar: miktar * ((receteData?.birim_satis_fiyati || 0) - (receteData?.adet_ambalajli_maliyet || 0)),
           
