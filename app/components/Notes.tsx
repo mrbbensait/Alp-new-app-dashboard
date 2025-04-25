@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
 import { Search, ChevronLeft, ChevronRight, Plus, X, Calendar, List, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
+import { supabase } from '@/app/lib/supabase';
 
 interface Note {
   id: number;

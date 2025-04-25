@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
 import { Plus, X, AlertCircle, CheckCircle, XCircle, Clock, Search, ChevronRight, Filter } from 'lucide-react';
+import { supabase } from '@/app/lib/supabase';
 
 interface Talep {
   id: number;

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { createPage } from '@/app/lib/createPage';
-import { supabase } from '@/app/lib/supabase';
+import { supabase, fetchAllFromTable } from '@/app/lib/supabase';
 import { format, subDays, parseISO, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import {
@@ -1082,12 +1082,7 @@ function MaliPerformansPage() {
   // Stok verilerini getir
   const getStokVerileri = async () => {
     try {
-      const { data, error } = await supabase
-        .from('Stok')
-        .select('*')
-        .order('Hammadde Adı', { ascending: true });
-      
-      if (error) throw error;
+      const data = await fetchAllFromTable('Stok', true);
       
       console.log('Stok verileri alındı:', data?.length || 0);
       

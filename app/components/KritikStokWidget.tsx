@@ -28,10 +28,7 @@ export default function KritikStokWidget() {
     const stokVerileriniGetir = async () => {
       setLoading(true);
       try {
-        const data = await fetchAllFromTable('Stok');
-        if (!data || !Array.isArray(data)) {
-          throw new Error('Stok verileri alınamadı veya doğru formatta değil.');
-        }
+        const data = await fetchAllFromTable('Stok', true);
         setStokVerileri(data as StokItem[]);
         setError(null);
       } catch (err) {
@@ -47,7 +44,7 @@ export default function KritikStokWidget() {
 
   // Rezerve edilmiş stokları filtrele
   const rezerveEdilmisUrunler = stokVerileri.filter(
-    (item) => (item && item['Rezerve Edildi'] && item['Rezerve Edildi'] > 0) || false
+    (item) => item['Rezerve Edildi'] > 0
   );
 
   // Sıralama fonksiyonu
@@ -57,15 +54,8 @@ export default function KritikStokWidget() {
     const normalItems: StokItem[] = [];
     
     items.forEach(item => {
-      if (!item) return; // null veya undefined kontrolü
-      
-      const mevcutStok = typeof item['Mevcut Stok'] === 'number' ? item['Mevcut Stok'] : 0;
-      const rezerveEdildi = typeof item['Rezerve Edildi'] === 'number' ? item['Rezerve Edildi'] : 0;
-      const kritikStok = typeof item['Kritik Stok'] === 'number' ? item['Kritik Stok'] : 0;
-      
-      const netStok = typeof item['Net Stok'] === 'number' ? item['Net Stok'] : (mevcutStok - rezerveEdildi);
-      
-      if (netStok < kritikStok) {
+      const netStok = item['Net Stok'] || (item['Mevcut Stok'] - (item['Rezerve Edildi'] || 0));
+      if (netStok < (item['Kritik Stok'] || 0)) {
         kritikItems.push(item);
       } else {
         normalItems.push(item);
@@ -74,20 +64,14 @@ export default function KritikStokWidget() {
     
     // Her bir grubu kendi içinde sırala
     const sortFunction = (a: StokItem, b: StokItem) => {
-      if (!a || !b) return 0; // null veya undefined kontrolü
-      
       if (sortField === 'Hammadde Adı') {
-        const aAdi = a['Hammadde Adı'] || '';
-        const bAdi = b['Hammadde Adı'] || '';
         return sortDirection === 'asc' 
-          ? aAdi.localeCompare(bAdi)
-          : bAdi.localeCompare(aAdi);
+          ? a['Hammadde Adı'].localeCompare(b['Hammadde Adı'])
+          : b['Hammadde Adı'].localeCompare(a['Hammadde Adı']);
       } else {
-        const aRezerve = typeof a['Rezerve Edildi'] === 'number' ? a['Rezerve Edildi'] : 0;
-        const bRezerve = typeof b['Rezerve Edildi'] === 'number' ? b['Rezerve Edildi'] : 0;
         return sortDirection === 'asc' 
-          ? aRezerve - bRezerve
-          : bRezerve - aRezerve;
+          ? a['Rezerve Edildi'] - b['Rezerve Edildi']
+          : b['Rezerve Edildi'] - a['Rezerve Edildi'];
       }
     };
     
@@ -168,43 +152,32 @@ export default function KritikStokWidget() {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {items.map((item, index) => {
-              if (!item || !item.id) return null; // null, undefined veya id kontrolü
-              
-              const mevcutStok = typeof item['Mevcut Stok'] === 'number' ? item['Mevcut Stok'] : 0;
-              const rezerveEdildi = typeof item['Rezerve Edildi'] === 'number' ? item['Rezerve Edildi'] : 0;
-              const kritikStok = typeof item['Kritik Stok'] === 'number' ? item['Kritik Stok'] : 0;
-              
-              const netStok = typeof item['Net Stok'] === 'number' ? item['Net Stok'] : (mevcutStok - rezerveEdildi);
-              const isKritik = netStok < kritikStok;
+              const netStok = item['Net Stok'] || (item['Mevcut Stok'] - (item['Rezerve Edildi'] || 0));
+              const isKritik = netStok < (item['Kritik Stok'] || 0);
               
               // Kritik ürünler grubu ile normal ürünler grubu arasına boşluk ekle
-              const nextItem = index + 1 < items.length ? items[index + 1] : null;
-              const nextItemMevcutStok = nextItem && typeof nextItem['Mevcut Stok'] === 'number' ? nextItem['Mevcut Stok'] : 0;
-              const nextItemRezerveEdildi = nextItem && typeof nextItem['Rezerve Edildi'] === 'number' ? nextItem['Rezerve Edildi'] : 0;
-              const nextItemKritikStok = nextItem && typeof nextItem['Kritik Stok'] === 'number' ? nextItem['Kritik Stok'] : 0;
-              
-              const isLastKritik = isKritik && nextItem && 
-                !((nextItemMevcutStok - nextItemRezerveEdildi) < nextItemKritikStok);
+              const isLastKritik = isKritik && 
+                (index + 1 < items.length && !(items[index + 1]['Mevcut Stok'] - items[index + 1]['Rezerve Edildi'] < items[index + 1]['Kritik Stok']));
               
               return [
                 <tr key={`row-${item.id}`} className={isKritik ? 'bg-red-50' : ''}>
                   <td className={`px-3 py-2 whitespace-nowrap text-sm font-medium ${isKritik ? 'text-red-700' : ''}`}>
-                    {item['Hammadde Adı'] || ''}
+                    {item['Hammadde Adı']}
                   </td>
                   <td className={`px-3 py-2 whitespace-nowrap text-sm ${isKritik ? 'text-red-700' : ''}`}>
-                    {item['Birim'] || ''}
+                    {item['Birim']}
                   </td>
                   <td className={`px-3 py-2 whitespace-nowrap text-sm ${isKritik ? 'text-red-700' : ''}`}>
-                    {mevcutStok.toFixed(2)}
+                    {item['Mevcut Stok']?.toFixed(2) || '0.00'}
                   </td>
                   <td className={`px-3 py-2 whitespace-nowrap text-sm font-medium ${isKritik ? 'text-red-700' : 'text-blue-600'}`}>
-                    {rezerveEdildi.toFixed(2)}
+                    {item['Rezerve Edildi']?.toFixed(2) || '0.00'}
                   </td>
                   <td className={`px-3 py-2 whitespace-nowrap text-sm ${isKritik ? 'text-red-700' : ''}`}>
-                    {kritikStok.toFixed(2)}
+                    {item['Kritik Stok']?.toFixed(2) || '0.00'}
                   </td>
                   <td className={`px-3 py-2 whitespace-nowrap text-sm font-bold ${isKritik ? 'text-red-700' : ''}`}>
-                    {netStok.toFixed(2)}
+                    {netStok?.toFixed(2) || '0.00'}
                   </td>
                 </tr>,
                 isLastKritik && (

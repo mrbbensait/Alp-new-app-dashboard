@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { X, Search, ChevronDown, ChevronUp } from 'lucide-react';
 import Link from 'next/link';
+import { fetchAllFromTable } from '@/app/lib/supabase';
 
 interface SatinAlmaSiparisiEkleModalProps {
   isOpen: boolean;
@@ -91,12 +92,7 @@ const SatinAlmaSiparisiEkleModal: React.FC<SatinAlmaSiparisiEkleModalProps> = ({
 
   const fetchHammaddeListesi = async () => {
     try {
-      const { data, error } = await supabase
-        .from('Stok')
-        .select('*')
-        .order('Hammadde Adı', { ascending: true });
-
-      if (error) throw error;
+      const data = await fetchAllFromTable('Stok', true);
       setHammaddeListesi(data || []);
     } catch (error) {
       console.error('Hammadde listesi yüklenirken hata oluştu:', error);

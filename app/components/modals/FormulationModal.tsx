@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { fetchFilteredData, insertData, updateData, deleteData } from '../../lib/supabase';
+import { fetchFilteredData, insertData, updateData, deleteData, fetchAllFromTable } from '../../lib/supabase';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 import UretimEmriModal from './UretimEmriModal';
@@ -153,15 +153,12 @@ const FormulationModal: React.FC<FormulationModalProps> = ({
       }
 
       // Stok verilerini yükle
-      const { data: stockData, error: stockError } = await supabase
-        .from('Stok')
-        .select('*');
-
-      if (stockError) {
-        console.error('Stok verileri yüklenirken hata:', stockError);
-        setStockItems([]);
-      } else {
+      try {
+        const stockData = await fetchAllFromTable('Stok', true);
         setStockItems(stockData || []);
+      } catch (error) {
+        console.error('Stok verileri yüklenirken hata:', error);
+        setStockItems([]);
       }
     } catch (err) {
       console.error('Veri yüklenirken beklenmeyen hata:', err);
@@ -710,16 +707,5 @@ const FormulationModal: React.FC<FormulationModalProps> = ({
     </div>
   );
 };
-
-// Yardımcı fonksiyon: Tüm stok verilerini çeken fonksiyon
-async function fetchAllFromTable(tableName: string) {
-  try {
-    const data = await fetchFilteredData(tableName, 'id', 'id', true);
-    return data;
-  } catch (error) {
-    console.error(`Stok verileri alınırken hata oluştu:`, error);
-    return [];
-  }
-}
 
 export default FormulationModal; 

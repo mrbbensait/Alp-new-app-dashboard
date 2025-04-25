@@ -53,35 +53,33 @@ export async function fetchAllFromTable(tableName: string, bypassCache = false) 
   if (!isCacheEnabled || bypassCache || !cache[cacheKey] || (Date.now() - cache[cacheKey].timestamp) > CACHE_DURATION) {
     try {
       console.log(`[API] ${tableName} tablosu API'den çekiliyor`);
+      // Stok tablosu için özel işlem - her zaman taze veri çek
+      if (tableName === 'Stok') {
+        bypassCache = true;
+      }
+      
       const { data, error } = await supabase
         .from(tableName)
         .select('*');
       
       if (error) throw error;
       
-      // Veriyi önbelleğe kaydet (önbellek aktifse)
-      if (data && isCacheEnabled) {
+      // Veriyi önbelleğe kaydet (önbellek aktifse ve bypass yapılmıyorsa)
+      if (data && isCacheEnabled && !bypassCache) {
         cache[cacheKey] = {
           data,
           timestamp: Date.now()
         };
       }
       
-      // Boş veri kontrolü ekle
-      if (!data) {
-        console.warn(`${tableName} tablosundan veri döndürülmedi.`);
-        return [];
-      }
-      
-      return data;
+      return data || [];
     } catch (error) {
       console.error(`Tablo verisi çekilirken hata oluştu (${tableName}):`, error);
       return [];
     }
   } else {
     console.log(`[Cache] ${tableName} tablosu önbellekten okunuyor`);
-    // Önbellekten okunan veri için de boş veri kontrolü ekle
-    return cache[cacheKey]?.data || [];
+    return cache[cacheKey].data;
   }
 }
 
@@ -108,21 +106,14 @@ export async function fetchFilteredData(tableName: string, column: string, value
         };
       }
       
-      // Boş veri kontrolü ekle
-      if (!data) {
-        console.warn(`${tableName} tablosunda ${column}=${value} kriteri için veri döndürülmedi.`);
-        return [];
-      }
-      
-      return data;
+      return data || [];
     } catch (error) {
       console.error(`Filtrelenmiş veri çekilirken hata oluştu (${tableName}):`, error);
       return [];
     }
   } else {
     console.log(`[Cache] ${tableName} filtrelenmiş veri önbellekten okunuyor`);
-    // Önbellekten okunan veri için de boş veri kontrolü ekle
-    return cache[cacheKey]?.data || [];
+    return cache[cacheKey].data;
   }
 }
 
