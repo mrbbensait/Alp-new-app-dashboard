@@ -328,8 +328,8 @@ export default function ReceteKaydiPage() {
     const formData = {
       receteAdi,
       marka,
-      satis_fiyati: satisFiyati,
-      satis_fiyati_ambalajli: satisAmbalajliFiyati,
+      satis_fiyati: satisFiyati.trim() === '' ? '0' : satisFiyati,
+      satis_fiyati_ambalajli: satisAmbalajliFiyati.trim() === '' ? '0' : satisAmbalajliFiyati,
       ml_bilgisi: mlBilgisi,
       kg_bulk_maliyet: calculateKgBulkCost(),
       bir_adet_bulk_maliyet: calculateBirAdetBulkMaliyet(),
@@ -348,35 +348,42 @@ export default function ReceteKaydiPage() {
     
     try {
       console.log("N8N'e gönderilecek veri:", formData);
-      setIsLoading(true); // İstek sırasında yükleme göster
+      setIsLoading(true);
       
       try {
-        // İlk yöntem: Doğrudan webhook'a istek
+        // Webhook URL'si
+        const webhookUrl = 'https://alpleo.app.n8n.cloud/webhook/4f15a278-a5c9-49f3-8324-18038dccb076';
         let response;
         
+        // Proxy üzerinden istek gönderme (öncelikli yöntem - Vercel için)
         try {
-          // Önce doğrudan webhook'a istekte bulunmayı deneyelim
-          response = await fetch('https://alpleo.app.n8n.cloud/webhook/4f15a278-a5c9-49f3-8324-18038dccb076', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-            },
-            body: JSON.stringify(formData),
-          });
-        } catch (directError) {
-          console.error('Doğrudan webhook isteği başarısız oldu, proxy kullanılıyor:', directError);
-          
-          // Doğrudan istek başarısız olursa, proxy API üzerinden deneyelim
+          console.log('Proxy üzerinden webhook isteği gönderiliyor...');
           response = await fetch('/api/webhook-forwarder', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              url: 'https://alpleo.app.n8n.cloud/webhook/4f15a278-a5c9-49f3-8324-18038dccb076',
+              url: webhookUrl,
               data: formData
             }),
+          });
+          
+          if (!response.ok) {
+            throw new Error(`Proxy webhook yanıtı başarısız: ${response.status} ${response.statusText}`);
+          }
+        } catch (proxyError) {
+          // Proxy üzerinden istek başarısız olursa, doğrudan deneme yap
+          console.error('Proxy üzerinden webhook isteği başarısız oldu:', proxyError);
+          console.log('Doğrudan webhook isteği deneniyor...');
+          
+          response = await fetch(webhookUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify(formData),
           });
         }
         
