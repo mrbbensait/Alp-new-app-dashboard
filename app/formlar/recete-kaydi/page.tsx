@@ -834,17 +834,17 @@ export default function ReceteKaydiPage() {
                       <div className="text-sm font-semibold text-gray-900">{ambalajMaliyeti.toFixed(4)} €</div>
                     </div>
                     
-                    <div>
+                    <div className="p-2 mt-2 bg-blue-50 border border-blue-100 rounded-md">
                       <div className="flex justify-between items-center">
-                        <div className="text-xs font-medium text-gray-500">1 Adet Ambalajlı Maliyet:</div>
+                        <div className="text-sm font-bold text-blue-700">1 Adet Ambalajlı Maliyet:</div>
                         {satisFiyati && birAdetAmbalajliMaliyet > 0 && (
                           <div className="text-xs text-green-600 whitespace-nowrap">
                             Kar: %{birAdetAmbalajliKarYuzdesi.toFixed(1)}
                           </div>
                         )}
                       </div>
-                      <div className="text-sm font-semibold text-gray-900">
-                        {birAdetAmbalajliMaliyet.toFixed(4)} € ({mlBilgisi}ml)
+                      <div className="text-base font-bold text-blue-900">
+                        {birAdetAmbalajliMaliyet.toFixed(4)} € <span className="text-sm font-normal">({mlBilgisi}ml)</span>
                       </div>
                     </div>
                   </div>
