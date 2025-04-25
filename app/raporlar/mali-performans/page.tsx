@@ -1264,6 +1264,13 @@ function MaliPerformansPage() {
     
     // Sonra sıralama uygula
     filtrelenmisVeriler.sort((a, b) => {
+      // Stok Değeri için özel hesaplama
+      if (stokSiralama === 'stok_degeri') {
+        const valueA = a['Mevcut Stok'] * a['kg_fiyat'] || 0;
+        const valueB = b['Mevcut Stok'] * b['kg_fiyat'] || 0;
+        return stokSiralamaYonu === 'asc' ? valueA - valueB : valueB - valueA;
+      }
+
       let valueA = a[stokSiralama];
       let valueB = b[stokSiralama];
       
@@ -2200,9 +2207,13 @@ function MaliPerformansPage() {
                               )}
                             </th>
                             <th 
-                              className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-green-50 text-green-600"
+                              className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-green-50 text-green-600 cursor-pointer hover:bg-green-100"
+                              onClick={() => handleStokSiralama('stok_degeri')}
                             >
                               Stok Değeri (EUR)
+                              {stokSiralama === 'stok_degeri' && (
+                                <span className="ml-1">{stokSiralamaYonu === 'asc' ? '↑' : '↓'}</span>
+                              )}
                             </th>
                           </tr>
                         </thead>
