@@ -770,18 +770,16 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
           
           // Reçeteler tablosundan alınan bilgiler
           ml_bilgisi: receteData?.ml_bilgisi || null,
-          satis_fiyati_kg_bulk: receteData?.satis_fiyati_kg_bulk || null,
-          satis_fiyati_kg_ambalajli: receteData?.satis_fiyati_kg_ambalajli || null,
+          birim_satis_fiyati: receteData?.birim_satis_fiyati || null,
           kg_bulk_maliyet: receteData?.kg_bulk_maliyet || null,
           adet_bulk_maliyet: receteData?.adet_bulk_maliyet || null,
           ambalaj_maliyeti: receteData?.ambalaj_maliyeti || null,
-          kg_ambalajli_maliyet: receteData?.kg_ambalajli_maliyet || null,
           adet_ambalajli_maliyet: receteData?.adet_ambalajli_maliyet || null,
           
           // Hesaplanan değerler - ml dönüşümü ile
-          toplam_satis_degeri: ((miktar * (receteData?.ml_bilgisi || 0)) / 1000) * (receteData?.satis_fiyati_kg_ambalajli || 0),
-          toplam_maliyet: ((miktar * (receteData?.ml_bilgisi || 0)) / 1000) * (receteData?.kg_ambalajli_maliyet || 0),
-          kar: ((miktar * (receteData?.ml_bilgisi || 0)) / 1000) * ((receteData?.satis_fiyati_kg_ambalajli || 0) - (receteData?.kg_ambalajli_maliyet || 0)),
+          toplam_satis_degeri: ((miktar * (receteData?.ml_bilgisi || 0)) / 1000) * (receteData?.birim_satis_fiyati || 0),
+          toplam_maliyet: miktar * (receteData?.adet_ambalajli_maliyet || 0),
+          kar: miktar * ((receteData?.birim_satis_fiyati || 0) - (receteData?.adet_ambalajli_maliyet || 0)),
           
           // Kullanıcı bilgisi
           kullanici: user?.kullanici_adi || 'Bilinmiyor'
