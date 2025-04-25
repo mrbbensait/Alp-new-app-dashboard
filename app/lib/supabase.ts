@@ -67,14 +67,21 @@ export async function fetchAllFromTable(tableName: string, bypassCache = false) 
         };
       }
       
-      return data || [];
+      // Boş veri kontrolü ekle
+      if (!data) {
+        console.warn(`${tableName} tablosundan veri döndürülmedi.`);
+        return [];
+      }
+      
+      return data;
     } catch (error) {
       console.error(`Tablo verisi çekilirken hata oluştu (${tableName}):`, error);
       return [];
     }
   } else {
     console.log(`[Cache] ${tableName} tablosu önbellekten okunuyor`);
-    return cache[cacheKey].data;
+    // Önbellekten okunan veri için de boş veri kontrolü ekle
+    return cache[cacheKey]?.data || [];
   }
 }
 
@@ -101,14 +108,21 @@ export async function fetchFilteredData(tableName: string, column: string, value
         };
       }
       
-      return data || [];
+      // Boş veri kontrolü ekle
+      if (!data) {
+        console.warn(`${tableName} tablosunda ${column}=${value} kriteri için veri döndürülmedi.`);
+        return [];
+      }
+      
+      return data;
     } catch (error) {
       console.error(`Filtrelenmiş veri çekilirken hata oluştu (${tableName}):`, error);
       return [];
     }
   } else {
     console.log(`[Cache] ${tableName} filtrelenmiş veri önbellekten okunuyor`);
-    return cache[cacheKey].data;
+    // Önbellekten okunan veri için de boş veri kontrolü ekle
+    return cache[cacheKey]?.data || [];
   }
 }
 

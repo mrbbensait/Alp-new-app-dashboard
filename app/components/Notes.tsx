@@ -1,14 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
 import { Search, ChevronLeft, ChevronRight, Plus, X, Calendar, List, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
-
-// Supabase client kurulumu
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 interface Note {
   id: number;
