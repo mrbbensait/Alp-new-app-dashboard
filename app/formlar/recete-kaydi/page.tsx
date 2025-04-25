@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '../../components/DashboardLayout';
 import { FileText, Plus, Trash2, Search } from 'lucide-react';
@@ -53,6 +53,9 @@ export default function ReceteKaydiPage() {
   const [filteredStokItems, setFilteredStokItems] = useState<StokItem[]>([]);
   const [bilesenSearchTerm, setBilesenSearchTerm] = useState('');
   const [activeDropdownIndex, setActiveDropdownIndex] = useState<number | null>(null);
+  
+  // Bileşen arama kutusu için ref
+  const bilesenSearchInputRef = useRef<HTMLInputElement>(null);
   
   // API durumu için state
   const [isLoading, setIsLoading] = useState(true);
@@ -221,6 +224,15 @@ export default function ReceteKaydiPage() {
     setBilesenSearchTerm('');
     setFilteredStokItems(stokItems);
   };
+
+  // Dropdown açıldığında arama kutusuna otomatik odaklanma
+  useEffect(() => {
+    if (activeDropdownIndex !== null && bilesenSearchInputRef.current) {
+      setTimeout(() => {
+        bilesenSearchInputRef.current?.focus();
+      }, 50);
+    }
+  }, [activeDropdownIndex]);
 
   // Bileşen arama
   const handleBilesenSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -618,6 +630,7 @@ export default function ReceteKaydiPage() {
                               <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-sm overflow-auto border border-gray-300">
                                 <div className="sticky top-0 p-2 bg-white border-b">
                                   <input
+                                    ref={bilesenSearchInputRef}
                                     type="text"
                                     className="w-full px-2 py-1.5 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                                     placeholder="Ara..."
