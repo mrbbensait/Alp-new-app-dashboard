@@ -218,6 +218,14 @@ function MaliPerformansPage() {
   const [yeniFiyat, setYeniFiyat] = useState<string>('');
   const [fiyatGuncellemeLoading, setFiyatGuncellemeLoading] = useState<boolean>(false);
   
+  // Reçete fiyatı güncelleme modal değişkenleri
+  const [showReceteFiyatModal, setShowReceteFiyatModal] = useState<boolean>(false);
+  const [receteModalArama, setReceteModalArama] = useState<string>('');
+  const [filtrelenmisModalReceteler, setFiltrelenmisModalReceteler] = useState<Recete[]>([]);
+  const [secilenRecete, setSecilenRecete] = useState<Recete | null>(null);
+  const [yeniReceteFiyati, setYeniReceteFiyati] = useState<string>('');
+  const [receteFiyatGuncellemeLoading, setReceteFiyatGuncellemeLoading] = useState<boolean>(false);
+  
   // İşletme giderleri modalı için durum değişkenleri
   const [showIsletmeGideriModal, setShowIsletmeGideriModal] = useState(false);
   const [duzenlenecekGider, setDuzenlenecekGider] = useState<IsletmeGideri | null>(null);
@@ -1324,6 +1332,54 @@ function MaliPerformansPage() {
     }
   };
 
+  // Reçete seçimi
+  const handleReceteSecim = (recete: Recete) => {
+    setSecilenRecete(recete);
+    setYeniReceteFiyati(recete.birim_satis_fiyati.toString());
+  };
+
+  // Reçete fiyatını güncelleme
+  const handleReceteFiyatiGuncelle = async () => {
+    if (!secilenRecete) {
+      toast.error('Lütfen bir reçete seçiniz!');
+      return;
+    }
+
+    const yeniFiyatSayi = parseFloat(yeniReceteFiyati);
+    if (isNaN(yeniFiyatSayi) || yeniFiyatSayi <= 0) {
+      toast.error('Lütfen geçerli bir fiyat giriniz!');
+      return;
+    }
+
+    try {
+      setReceteFiyatGuncellemeLoading(true);
+
+      // Supabase'te reçete fiyatını güncelle
+      const { error } = await supabase
+        .from('Reçeteler')
+        .update({ birim_satis_fiyati: yeniFiyatSayi })
+        .eq('id', secilenRecete.id);
+      
+      if (error) throw error;
+
+      // Reçete verilerini güncelle
+      verileriGetir();
+      
+      toast.success('Reçete birim satış fiyatı başarıyla güncellendi!');
+      
+      // Modalı kapat ve durumu sıfırla
+      setShowReceteFiyatModal(false);
+      setSecilenRecete(null);
+      setYeniReceteFiyati('');
+      setReceteModalArama('');
+    } catch (error) {
+      console.error('Reçete fiyatı güncellenirken hata:', error);
+      toast.error('Reçete fiyatı güncellenirken bir hata oluştu!');
+    } finally {
+      setReceteFiyatGuncellemeLoading(false);
+    }
+  };
+
   // Modal için stok araması
   useEffect(() => {
     if (!showStokFiyatModal) return;
@@ -1343,6 +1399,26 @@ function MaliPerformansPage() {
     
     setFiltrelenmisModalStoklar(filtrelenmisStoklar);
   }, [stokModalArama, showStokFiyatModal, stokVerileri]);
+  
+  // Modal için reçete araması
+  useEffect(() => {
+    if (!showReceteFiyatModal) return;
+    
+    // Reçete arama
+    const filtrelenmisReceteler = receteler.filter(item => {
+      if (!receteModalArama) return true;
+      
+      const aramaMetni = receteModalArama.toLowerCase();
+      
+      return (
+        item['Reçete Adı']?.toLowerCase().includes(aramaMetni) ||
+        item['Reçete ID']?.toLowerCase().includes(aramaMetni) ||
+        item['Marka']?.toLowerCase().includes(aramaMetni)
+      );
+    });
+    
+    setFiltrelenmisModalReceteler(filtrelenmisReceteler);
+  }, [receteModalArama, showReceteFiyatModal, receteler]);
   
   return (
     <DashboardLayout>
@@ -1813,6 +1889,13 @@ function MaliPerformansPage() {
                       className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-md text-sm"
                     >
                       Filtreleri Temizle
+                    </button>
+                    <button
+                      onClick={() => setShowReceteFiyatModal(true)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md text-sm flex items-center space-x-1"
+                    >
+                      <TrendingUp size={14} />
+                      <span>Reçete Birim Satış Fiyatı Güncelle</span>
                     </button>
                     <button
                       onClick={() => handleExcelExport(filtrelenmisReceteler, 'Recete_Detaylari')}
@@ -2554,6 +2637,173 @@ function MaliPerformansPage() {
             ) : (
               <div className="text-center text-gray-500 py-4">
                 Fiyatını güncellemek istediğiniz stoğu listeden seçiniz.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Reçete Birim Satış Fiyatı Güncelleme Modalı */}
+      {showReceteFiyatModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Reçete Birim Satış Fiyatı Güncelle</h3>
+              <button
+                onClick={() => {
+                  setShowReceteFiyatModal(false);
+                  setSecilenRecete(null);
+                  setYeniReceteFiyati('');
+                  setReceteModalArama('');
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            {/* Reçete Arama */}
+            <div className="mb-4">
+              <label htmlFor="receteModalArama" className="block text-sm font-medium text-gray-700 mb-1">
+                Reçete Ara
+              </label>
+              <div className="relative">
+                <input
+                  id="receteModalArama"
+                  type="text"
+                  value={receteModalArama}
+                  onChange={(e) => setReceteModalArama(e.target.value)}
+                  placeholder="Reçete adı, ID veya marka ara..."
+                  className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <div className="absolute left-3 top-2.5 text-gray-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            
+            {/* Reçete Listesi */}
+            <div className="mb-6 overflow-auto max-h-48 border border-gray-200 rounded-lg">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50 sticky top-0">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Reçete ID
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Reçete Adı
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Marka
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      ML Bilgisi
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Mevcut Birim Satış Fiyatı (EUR)
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filtrelenmisModalReceteler.map((recete) => (
+                    <tr 
+                      key={recete.id}
+                      onClick={() => handleReceteSecim(recete)} 
+                      className={`hover:bg-gray-100 cursor-pointer ${secilenRecete?.id === recete.id ? 'bg-blue-50' : ''}`}
+                    >
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
+                        {recete['Reçete ID']}
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {recete['Reçete Adı']}
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
+                        {recete['Marka']}
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
+                        {recete.ml_bilgisi} ml
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
+                        {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(recete.birim_satis_fiyati)}
+                      </td>
+                    </tr>
+                  ))}
+                  {filtrelenmisModalReceteler.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-2 text-center text-sm text-gray-500">
+                        {receteModalArama ? 'Arama kriterlerine uygun reçete bulunamadı.' : 'Reçete bulunamadı.'}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            
+            {/* Seçilen Reçete ve Fiyat Güncelleme */}
+            {secilenRecete ? (
+              <div className="border-t border-gray-200 pt-4">
+                <h4 className="text-md font-semibold text-gray-700 mb-3">Seçilen Reçete: {secilenRecete['Reçete Adı']}</h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Mevcut Birim Satış Fiyatı
+                    </label>
+                    <div className="px-3 py-2 bg-gray-100 rounded-md border border-gray-300 text-gray-700">
+                      {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(secilenRecete.birim_satis_fiyati)}
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor="yeniReceteFiyati" className="block text-sm font-medium text-gray-700 mb-1">
+                      Yeni Birim Satış Fiyatı (EUR)
+                    </label>
+                    <input
+                      id="yeniReceteFiyati"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={yeniReceteFiyati}
+                      onChange={(e) => setYeniReceteFiyati(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Yeni fiyatı giriniz..."
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex justify-end space-x-2">
+                  <button
+                    onClick={() => {
+                      setShowReceteFiyatModal(false);
+                      setSecilenRecete(null);
+                      setYeniReceteFiyati('');
+                      setReceteModalArama('');
+                    }}
+                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                    disabled={receteFiyatGuncellemeLoading}
+                  >
+                    İptal
+                  </button>
+                  <button
+                    onClick={handleReceteFiyatiGuncelle}
+                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    disabled={receteFiyatGuncellemeLoading}
+                  >
+                    {receteFiyatGuncellemeLoading ? (
+                      <>
+                        <span className="animate-spin inline-block h-4 w-4 border-t-2 border-b-2 border-white rounded-full mr-2"></span>
+                        Güncelleniyor...
+                      </>
+                    ) : (
+                      'Fiyatı Güncelle'
+                    )}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center text-gray-500 py-4">
+                Birim satış fiyatını güncellemek istediğiniz reçeteyi listeden seçiniz.
               </div>
             )}
           </div>
