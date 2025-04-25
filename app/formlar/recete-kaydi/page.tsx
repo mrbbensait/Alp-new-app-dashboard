@@ -500,86 +500,89 @@ export default function ReceteKaydiPage() {
           {/* Sol Taraf - Form */}
           <div className={`${userRolBilgileri?.recete_satis_bilgisi || userRolBilgileri?.recete_maliyet_bilgisi ? 'w-3/4' : 'w-3/4'} pr-6`}>
             {/* Başlık */}
-            <div className="mb-6">
-              <h1 className="text-2xl font-bold text-gray-800 flex items-center">
-                <FileText className="mr-2" size={24} />
+            <div className="mb-3">
+              <h1 className="text-xl font-bold text-gray-800 flex items-center">
+                <FileText className="mr-2" size={20} />
                 Reçete ve Formülasyon Kaydı
               </h1>
-              <p className="text-gray-600">
+              <p className="text-sm text-gray-600">
                 Yeni reçete ve formülasyonlarınızı kaydetmek için bu formu kullanabilirsiniz.
               </p>
             </div>
             
             {/* Form */}
-            <div className="bg-white shadow-md rounded-lg p-6">
+            <div className="bg-white shadow-md rounded-lg p-4">
               <form onSubmit={handleSubmit}>
-                {/* Reçete Adı */}
-                <div className="mb-4">
-                  <label htmlFor="receteAdi" className="block text-sm font-medium text-gray-700 mb-1">
-                    Reçete Adı
-                  </label>
-                  <input
-                    type="text"
-                    id="receteAdi"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="Reçete adını giriniz"
-                    value={receteAdi}
-                    onChange={(e) => setReceteAdi(e.target.value)}
-                  />
-                </div>
-                
-                {/* Marka Seçimi */}
-                <div className="mb-4">
-                  <label htmlFor="marka" className="block text-sm font-medium text-gray-700 mb-1">
-                    Marka
-                  </label>
-                  <div className="marka-dropdown-container relative">
-                    <button
-                      type="button"
-                      className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-left focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 flex justify-between items-center"
-                      onClick={toggleMarkaDropdown}
-                    >
-                      <span>{marka || "Marka seçiniz"}</span>
-                      <Search size={16} className="text-gray-400" />
-                    </button>
-                    
-                    {showMarkaDropdown && (
-                      <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-sm overflow-auto border border-gray-300">
-                        <div className="sticky top-0 p-2 bg-white border-b">
-                          <input
-                            type="text"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                            placeholder="Marka veya müşteri adı ile ara..."
-                            value={markaSearchTerm}
-                            onChange={handleMarkaSearch}
-                          />
-                        </div>
-                        
-                        {filteredMarkalar.length > 0 ? (
-                          filteredMarkalar.map((item, idx) => (
-                            <div
-                              key={idx}
-                              className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                              onClick={() => selectMarka(item)}
-                            >
-                              <div className="font-medium">{item['Marka']}</div>
-                              <div className="text-xs text-gray-500">{item['Müşteri Firma']}</div>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="px-3 py-2 text-gray-500 italic text-center">
-                            Sonuç bulunamadı
+                {/* Form üst kısmı - Reçete Adı ve Marka yan yana */}
+                <div className="flex flex-col md:flex-row gap-3 mb-3">
+                  {/* Reçete Adı */}
+                  <div className="flex-1">
+                    <label htmlFor="receteAdi" className="block text-sm font-medium text-gray-700 mb-1">
+                      Reçete Adı
+                    </label>
+                    <input
+                      type="text"
+                      id="receteAdi"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                      placeholder="Reçete adını giriniz"
+                      value={receteAdi}
+                      onChange={(e) => setReceteAdi(e.target.value)}
+                    />
+                  </div>
+                  
+                  {/* Marka Seçimi */}
+                  <div className="flex-1">
+                    <label htmlFor="marka" className="block text-sm font-medium text-gray-700 mb-1">
+                      Marka
+                    </label>
+                    <div className="marka-dropdown-container relative">
+                      <button
+                        type="button"
+                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-left focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 flex justify-between items-center"
+                        onClick={toggleMarkaDropdown}
+                      >
+                        <span>{marka || "Marka seçiniz"}</span>
+                        <Search size={16} className="text-gray-400" />
+                      </button>
+                      
+                      {showMarkaDropdown && (
+                        <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-sm overflow-auto border border-gray-300">
+                          <div className="sticky top-0 p-2 bg-white border-b">
+                            <input
+                              type="text"
+                              className="w-full px-3 py-1.5 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                              placeholder="Marka veya müşteri adı ile ara..."
+                              value={markaSearchTerm}
+                              onChange={handleMarkaSearch}
+                            />
                           </div>
-                        )}
-                      </div>
-                    )}
+                          
+                          {filteredMarkalar.length > 0 ? (
+                            filteredMarkalar.map((item, idx) => (
+                              <div
+                                key={idx}
+                                className="px-3 py-1.5 hover:bg-gray-100 cursor-pointer"
+                                onClick={() => selectMarka(item)}
+                              >
+                                <div className="font-medium">{item['Marka']}</div>
+                                <div className="text-xs text-gray-500">{item['Müşteri Firma']}</div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="px-3 py-2 text-gray-500 italic text-center">
+                              Sonuç bulunamadı
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
                 
-                {/* Bileşenler Başlık */}
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-medium text-gray-900">Bileşenler</h3>
-                  <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                {/* Bileşenler Başlık ve Toplam */}
+                <div className="flex items-center justify-between mb-2 mt-3">
+                  <h3 className="text-base font-medium text-gray-900">Bileşenler</h3>
+                  <div className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                     Math.abs(totalPercentage - 100) < 0.01 
                       ? 'bg-green-100 text-green-800' 
                       : 'bg-yellow-100 text-yellow-800'
@@ -589,23 +592,23 @@ export default function ReceteKaydiPage() {
                 </div>
                 
                 {/* Bileşenler Listesi */}
-                <div className="space-y-3 mb-6">
+                <div className="space-y-2 mb-3">
                   {bilesenler.length === 0 ? (
-                    <div className="text-center py-4 text-gray-500 bg-gray-50 rounded-md">
+                    <div className="text-center py-2 text-sm text-gray-500 bg-gray-50 rounded-md">
                       Henüz bileşen eklenmedi. Aşağıdaki buton ile bileşen ekleyebilirsiniz.
                     </div>
                   ) : (
                     bilesenler.map((bilesen, index) => (
-                      <div key={index} className="flex flex-col md:flex-row gap-3 p-3 bg-gray-50 rounded-md">
+                      <div key={index} className="flex flex-col md:flex-row gap-2 p-2 bg-gray-50 rounded-md">
                         {/* Ürün Seçimi */}
                         <div className="flex-grow">
-                          <label className="block text-xs font-medium text-gray-500 mb-1">
+                          <label className="block text-xs font-medium text-gray-500 mb-0.5">
                             Bileşen
                           </label>
                           <div className="bilesen-dropdown-container relative">
                             <button
                               type="button"
-                              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-left focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                              className="w-full px-2 py-1.5 bg-white border border-gray-300 rounded-md shadow-sm text-left focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                               onClick={() => toggleDropdown(index)}
                             >
                               {bilesen.adi || "Bileşen seçiniz"}
@@ -616,7 +619,7 @@ export default function ReceteKaydiPage() {
                                 <div className="sticky top-0 p-2 bg-white border-b">
                                   <input
                                     type="text"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                    className="w-full px-2 py-1.5 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                                     placeholder="Ara..."
                                     value={bilesenSearchTerm}
                                     onChange={handleBilesenSearch}
@@ -627,7 +630,7 @@ export default function ReceteKaydiPage() {
                                   filteredStokItems.map((item, itemIndex) => (
                                     <div
                                       key={itemIndex}
-                                      className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                                      className="px-2 py-1.5 hover:bg-gray-100 cursor-pointer"
                                       onClick={() => selectBilesen(index, item)}
                                     >
                                       <div className="font-medium">{item['Hammadde Adı']}</div>
@@ -648,32 +651,32 @@ export default function ReceteKaydiPage() {
                         
                         {/* Kategori Gösterimi */}
                         <div className="w-full md:w-1/5">
-                          <label className="block text-xs font-medium text-gray-500 mb-1">
+                          <label className="block text-xs font-medium text-gray-500 mb-0.5">
                             Kategori
                           </label>
-                          <div className="px-3 py-2 bg-gray-100 border border-gray-200 rounded-md text-sm">
+                          <div className="px-2 py-1.5 bg-gray-100 border border-gray-200 rounded-md text-sm">
                             {bilesen.kategori || "Kategori"}
                           </div>
                         </div>
                         
                         {/* Birim Gösterimi */}
                         <div className="w-full md:w-1/6">
-                          <label className="block text-xs font-medium text-gray-500 mb-1">
+                          <label className="block text-xs font-medium text-gray-500 mb-0.5">
                             Birim
                           </label>
-                          <div className="px-3 py-2 bg-gray-100 border border-gray-200 rounded-md text-sm">
+                          <div className="px-2 py-1.5 bg-gray-100 border border-gray-200 rounded-md text-sm">
                             {bilesen.birim || "Otomatik"}
                           </div>
                         </div>
                         
                         {/* Oran Girişi */}
                         <div className="w-full md:w-1/5">
-                          <label className="block text-xs font-medium text-gray-500 mb-1">
+                          <label className="block text-xs font-medium text-gray-500 mb-0.5">
                             Oran (%)
                           </label>
                           <input
                             type="number"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                             placeholder="Oran"
                             min="0"
                             max="100"
@@ -687,10 +690,10 @@ export default function ReceteKaydiPage() {
                         <div className="flex items-end md:w-auto">
                           <button
                             type="button"
-                            className="w-full md:w-auto px-3 py-2 bg-red-50 text-red-700 rounded-md hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors"
+                            className="w-full md:w-auto px-2 py-1.5 bg-red-50 text-red-700 rounded-md hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors"
                             onClick={() => removeComponent(index)}
                           >
-                            <Trash2 size={18} />
+                            <Trash2 size={16} />
                           </button>
                         </div>
                       </div>
@@ -699,13 +702,13 @@ export default function ReceteKaydiPage() {
                 </div>
                 
                 {/* Bileşen Ekle Butonu */}
-                <div className="mb-6">
+                <div className="mb-4">
                   <button
                     type="button"
-                    className="flex items-center px-4 py-2 bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                    className="flex items-center px-3 py-1.5 bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-sm"
                     onClick={addComponent}
                   >
-                    <Plus size={18} className="mr-2" />
+                    <Plus size={16} className="mr-1" />
                     Bileşen Ekle
                   </button>
                 </div>
@@ -714,7 +717,7 @@ export default function ReceteKaydiPage() {
                 <div className="flex justify-center">
                   <button
                     type="submit"
-                    className="px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors font-medium"
+                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors font-medium text-sm"
                   >
                     Formu Gönder
                   </button>
