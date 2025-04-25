@@ -855,7 +855,7 @@ export default function ReceteKaydiPage() {
           </div>
           
           {/* Bildirim */}
-          <div className={`fixed top-4 right-4 max-w-sm bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded shadow-md transition-opacity duration-300 ${
+          <div className={`fixed top-16 right-4 max-w-sm bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded shadow-md transition-opacity duration-300 z-50 ${
             showNotification ? 'opacity-100' : 'opacity-0 pointer-events-none'
           }`}>
             <div className="flex items-center">
