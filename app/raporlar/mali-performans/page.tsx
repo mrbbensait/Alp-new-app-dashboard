@@ -2199,6 +2199,11 @@ function MaliPerformansPage() {
                                 <span className="ml-1">{stokSiralamaYonu === 'asc' ? '↑' : '↓'}</span>
                               )}
                             </th>
+                            <th 
+                              className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-green-50 text-green-600"
+                            >
+                              Stok Değeri (EUR)
+                            </th>
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
@@ -2234,11 +2239,14 @@ function MaliPerformansPage() {
                               <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
                                 {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(stok['kg_fiyat'])}
                               </td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right font-medium text-green-600 bg-green-50">
+                                {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(stok['Mevcut Stok'] * stok['kg_fiyat'])}
+                              </td>
                             </tr>
                           ))}
                           {filtrelenmisStokVerileri.length === 0 && (
                             <tr>
-                              <td colSpan={10} className="px-4 py-4 text-center text-sm text-gray-500">
+                              <td colSpan={11} className="px-4 py-4 text-center text-sm text-gray-500">
                                 Bu kriterlere uygun stok kaydı bulunamadı. {stokVerileri.length > 0 ? `Filtreleme öncesi ${stokVerileri.length} kayıt mevcut.` : 'Hiç kayıt bulunamadı.'}
                               </td>
                             </tr>
