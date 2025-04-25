@@ -2240,7 +2240,7 @@ function MaliPerformansPage() {
                               {gider.gider_adi}
                               </td>
                               <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
-                                  {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(gider.aylik_gider_tl / SABIT_IS_GUNU_SAYISI)}
+                                  {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(gider.aylik_gider_tl)}
                               </td>
                               <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
                                   {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(gider.aylik_gider_tl / SABIT_IS_GUNU_SAYISI)}
