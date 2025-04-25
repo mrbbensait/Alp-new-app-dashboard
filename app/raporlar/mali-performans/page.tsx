@@ -757,12 +757,19 @@ function MaliPerformansPage() {
         bitis: ambalajlamaBitisTarihi
       });
       
+      // Başlangıç ve bitiş tarihlerini ISO formatına çevir
+      const baslangicISO = new Date(ambalajlamaBaslangicTarihi);
+      baslangicISO.setHours(0, 0, 0, 0);
+      
+      const bitisISO = new Date(ambalajlamaBitisTarihi);
+      bitisISO.setHours(23, 59, 59, 999);
+      
       // Ambalajlama kayıtlarını çek
       const { data, error } = await supabase
         .from('AmbalajlamaKayitlari')
         .select('*')
-        .gte('ambalajlama_tarihi', `${ambalajlamaBaslangicTarihi}T00:00:00.000Z`)  // ISO formatında tarih sorgulama
-        .lte('ambalajlama_tarihi', `${ambalajlamaBitisTarihi}T23:59:59.999Z`)
+        .gte('ambalajlama_tarihi', baslangicISO.toISOString())
+        .lte('ambalajlama_tarihi', bitisISO.toISOString())
         .order('ambalajlama_tarihi', { ascending: false });
       
       if (error) throw error;
