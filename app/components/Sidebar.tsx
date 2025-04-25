@@ -124,12 +124,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
       icon: <Home size={18} />,
       kategori: 'admin'
     },
-    { 
-      name: 'Stok ve Üretim Müdürü', 
-      path: '/stok-uretim-muduru-beyni', 
-      icon: <Brain size={18} />,
-      kategori: 'admin'
-    },
     
     // Personel sayfaları
     { 

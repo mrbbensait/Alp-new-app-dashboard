@@ -35,8 +35,46 @@ export default function ReportsPage() {
   ];
 
   return (
-    <PageGuard sayfaYolu="/raporlar">
+    <PageGuard sayfaYolu="/raporlar/genel-raporlar">
       <DashboardLayout>
+        {/* Geliştirilmiş Bilgilendirme/Uyarı Kartı */}
+        <div className="mb-8 relative overflow-hidden bg-gradient-to-r from-blue-600 to-indigo-700 rounded-lg shadow-xl border border-blue-500/30">
+          <div className="px-6 py-6 relative z-10">
+            <div className="flex items-center">
+              <div className="flex-shrink-0 bg-white/90 p-3 rounded-full shadow-md">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+              </div>
+              <div className="ml-5">
+                <h3 className="text-xl font-bold text-white tracking-wide">Geliştirme Aşamasında</h3>
+                <div className="mt-2 text-white/90">
+                  <p className="text-md">
+                    Bu modül şu anda aktif geliştirme sürecindedir. Butonlar ve raporlar yakında kullanıma sunulacaktır.
+                  </p>
+                </div>
+                <div className="mt-4 flex space-x-3">
+                  <span className="inline-flex items-center px-3.5 py-1 rounded-full text-sm font-medium bg-white text-blue-700 shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    Yakında Kullanıma Açılacak
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Dekoratif Daire - Sağ Üst */}
+          <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-blue-500/20 -mt-20 -mr-20"></div>
+          
+          {/* Dekoratif Daire - Sol Alt */}
+          <div className="absolute bottom-0 left-0 w-24 h-24 rounded-full bg-indigo-500/30 -mb-10 -ml-10"></div>
+        </div>
+
         <div className="mb-8">
           <h1 className="text-2xl font-semibold text-gray-900">Raporlar</h1>
           <p className="mt-1 text-sm text-gray-600">

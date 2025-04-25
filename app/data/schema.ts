@@ -453,7 +453,7 @@ export const tables: TableSchema[] = tableNames.map(tableName => {
     'suppliers': ['Tedarikçi ID', 'Notlar', 'createdTime'],
     'Reçeteler': ['Notlar', 'id'],
     'SatınAlma siparişleri': ['ID', 'Hammadde ID', 'Tedarikçi ID', 'id'],
-    'Stok': ['Hammadde ID', 'Notlar', 'CreatedTime', 'ID'],
+    'Stok': ['Hammadde ID', 'Notlar', 'CreatedTime', 'ID', 'kg_fiyat'],
     'Üretim Kuyruğu': ['Reçete ID', 'id'],
     'Bitmiş Ürün Stoğu': ['Teslimat Tarihi', 'ID', 'Reçete ID', 'Paketlendiği Tarih', 'id'],
   };

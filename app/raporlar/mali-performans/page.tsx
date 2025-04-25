@@ -135,6 +135,24 @@ interface AmbalajlamaKaydi {
   kullanici: string;
 }
 
+// Stok Item türü
+interface StokItem {
+  ID: number;
+  "Hammadde Adı": string;
+  "Mevcut Stok": number;
+  "Rezerve Edildi": number;
+  "Net Stok": number;
+  "Birim": string;
+  "Stok Kategori": string;
+  "Kritik Stok": number;
+  "Hammadde ID": string;
+  "Notlar": string;
+  "CreatedTime": string;
+  "kategori_detay": string;
+  "kg_fiyat": number;
+  [key: string]: any; // Dizin erişimi için
+}
+
 function MaliPerformansPage() {
   // Durum değişkenleri
   const [isLoading, setIsLoading] = useState(true);
@@ -180,7 +198,28 @@ function MaliPerformansPage() {
   const [uretimKuyrugu, setUretimKuyrugu] = useState<UretimKuyrugu[]>([]);
   const [teslimatGecmisi, setTeslimatGecmisi] = useState<TeslimatGecmisi[]>([]);
   const [bitmisUrunStogu, setBitmisUrunStogu] = useState<BitmisUrunStogu[]>([]);
-  // const [filtrelenmisUrunStogu, setFiltrelenmisUrunStogu] = useState<BitmisUrunStogu[]>([]);
+  const [stokVerileri, setStokVerileri] = useState<StokItem[]>([]);
+  const [filtrelenmisStokVerileri, setFiltrelenmisStokVerileri] = useState<StokItem[]>([]);
+  const [filtreStokKategori, setFiltreStokKategori] = useState<string>('');
+  const [filtreHammaddeAdi, setFiltreHammaddeAdi] = useState<string>('');
+  const [stokArama, setStokArama] = useState<string>('');
+  const [stokSiralama, setStokSiralama] = useState<string>('Hammadde Adı');
+  const [stokSiralamaYonu, setStokSiralamaYonu] = useState<'asc' | 'desc'>('asc');
+  
+  // Stok değerleri için state'ler
+  const [toplamMevcutStokDegeri, setToplamMevcutStokDegeri] = useState<number>(0);
+  const [toplamNetStokDegeri, setToplamNetStokDegeri] = useState<number>(0);
+  const [ambalajStokDegeri, setAmbalajStokDegeri] = useState<number>(0);
+  const [hammaddeStokDegeri, setHammaddeStokDegeri] = useState<number>(0);
+  const [filtrelenmisNetStokDegeri, setFiltrelenmisNetStokDegeri] = useState<number>(0);
+  
+  // Stok fiyatı güncelleme modal değişkenleri
+  const [showStokFiyatModal, setShowStokFiyatModal] = useState<boolean>(false);
+  const [stokModalArama, setStokModalArama] = useState<string>('');
+  const [filtrelenmisModalStoklar, setFiltrelenmisModalStoklar] = useState<StokItem[]>([]);
+  const [secilenStok, setSecilenStok] = useState<StokItem | null>(null);
+  const [yeniFiyat, setYeniFiyat] = useState<string>('');
+  const [fiyatGuncellemeLoading, setFiyatGuncellemeLoading] = useState<boolean>(false);
   
   // İşletme giderleri modalı için durum değişkenleri
   const [showIsletmeGideriModal, setShowIsletmeGideriModal] = useState(false);
@@ -281,6 +320,9 @@ function MaliPerformansPage() {
           
           // Bitmiş Ürün Stoğu verilerini getir
           getBitmisUrunStogu();
+          
+          // Stok verilerini getir
+          getStokVerileri();
         } else {
           throw new Error('Veri alınırken bir hata oluştu');
         }
@@ -490,6 +532,27 @@ function MaliPerformansPage() {
           'Maliyet (Amb., adet)': recete.adet_ambalajli_maliyet
         }));
       }
+      // Stok_Verileri için veri formatı
+      else if (dosyaAdi === 'Stok_Verileri') {
+        excelData = data.map(stok => ({
+          'Hammadde ID': stok['Hammadde ID'],
+          'Hammadde Adı': stok['Hammadde Adı'],
+          'Stok Kategori': stok['Stok Kategori'],
+          'Kategori Detay': stok['kategori_detay'],
+          'Mevcut Stok': stok['Mevcut Stok'],
+          'Rezerve Edildi': stok['Rezerve Edildi'],
+          'Net Stok': stok['Net Stok'],
+          'Birim': stok['Birim'],
+          'Kritik Stok': stok['Kritik Stok'],
+          'Kg veya Adet Fiyat (EUR)': stok['kg_fiyat']
+        }));
+      }
+      
+      // Veri yoksa işlemi durdur
+      if (excelData.length === 0) {
+        toast.error('Aktarılacak veri bulunamadı!');
+        return;
+      }
       
       // Excel çalışma kitabı oluştur
       const workbook = XLSX.utils.book_new();
@@ -509,7 +572,7 @@ function MaliPerformansPage() {
       toast.success('Excel dosyası başarıyla indirildi');
     } catch (error) {
       console.error('Excel dışa aktarımı sırasında hata:', error);
-      alert('Excel aktarımı sırasında bir hata oluştu');
+      toast.error('Excel aktarımı sırasında bir hata oluştu');
     }
   };
   
@@ -1015,6 +1078,279 @@ function MaliPerformansPage() {
     
     return hesaplaIsGunuSayisi(ayBaslangic, ayBitis);
   };
+  
+  // Stok verilerini getir
+  const getStokVerileri = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('Stok')
+        .select('*')
+        .order('Hammadde Adı', { ascending: true });
+      
+      if (error) throw error;
+      
+      console.log('Stok verileri alındı:', data?.length || 0);
+      
+      setStokVerileri(data || []);
+      setFiltrelenmisStokVerileri(data || []);
+      
+      // Stok değerlerini hesapla
+      hesaplaStokDegerleri(data || []);
+    } catch (error) {
+      console.error('Stok verileri getirilirken hata:', error);
+    }
+  };
+  
+  // Stok değerlerini hesaplama fonksiyonu
+  const hesaplaStokDegerleri = (stokData: StokItem[]) => {
+    // Toplam Mevcut Stok Değeri
+    const mevcutStokDegeri = stokData.reduce((toplam, stok) => {
+      return toplam + (stok['Mevcut Stok'] * stok['kg_fiyat'] || 0);
+    }, 0);
+    
+    // Toplam Net Stok Değeri
+    const netStokDegeri = stokData.reduce((toplam, stok) => {
+      return toplam + (stok['Net Stok'] * stok['kg_fiyat'] || 0);
+    }, 0);
+    
+    // Ambalaj Stoğu Net Değeri
+    const ambalajDegeri = stokData
+      .filter(stok => stok['Stok Kategori']?.toLowerCase() === 'ambalaj')
+      .reduce((toplam, stok) => {
+        return toplam + (stok['Net Stok'] * stok['kg_fiyat'] || 0);
+      }, 0);
+    
+    // Hammadde Stoğu Net Değeri
+    const hammaddeDegeri = stokData
+      .filter(stok => stok['Stok Kategori']?.toLowerCase() === 'hammadde')
+      .reduce((toplam, stok) => {
+        return toplam + (stok['Net Stok'] * stok['kg_fiyat'] || 0);
+      }, 0);
+    
+    setToplamMevcutStokDegeri(mevcutStokDegeri);
+    setToplamNetStokDegeri(netStokDegeri);
+    setAmbalajStokDegeri(ambalajDegeri);
+    setHammaddeStokDegeri(hammaddeDegeri);
+  };
+
+  // Stok filtrelerini temizle
+  const handleStokFiltreleriTemizle = () => {
+    setFiltreStokKategori('');
+    setFiltreHammaddeAdi('');
+    setStokArama('');
+    setFiltrelenmisStokVerileri(stokVerileri);
+  };
+  
+  // Stok tablosu sıralama fonksiyonu
+  const handleStokSiralama = (sutun: string) => {
+    // Aynı sütun seçildiğinde sıralama yönünü değiştir
+    if (stokSiralama === sutun) {
+      setStokSiralamaYonu(stokSiralamaYonu === 'asc' ? 'desc' : 'asc');
+    } else {
+      setStokSiralama(sutun);
+      setStokSiralamaYonu('asc');
+    }
+  };
+  
+  // Verileri getir
+  const verileriGetir = async () => {
+    try {
+      setIsLoading(true);
+      setHata('');
+      
+      try {
+        // Mali performans API'dan verileri getir
+        const response = await fetch(`/api/mali-performans?baslangic_tarihi=${baslangicTarihi}&bitis_tarihi=${bitisTarihi}`);
+        
+        if (!response.ok) {
+          throw new Error('Mali performans verileri alınamadı');
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          const performansData = data.data;
+          
+          // Günlük kar-zarar verilerini güncelle
+          const karZararVerileri: {[key: string]: number} = {};
+          Object.keys(performansData.gunlukVeriler).forEach(tarih => {
+            karZararVerileri[tarih] = performansData.gunlukVeriler[tarih].kar;
+          });
+          
+          setGunlukKarZararVerileri(karZararVerileri);
+          setToplamGelir(performansData.toplamGelir);
+          setToplamGider(performansData.toplamGider);
+          setNetKarZarar(performansData.netKarZarar);
+          setSatisAdetleri(performansData.toplamTeslimatAdedi);
+          setIsletmeGiderleri(performansData.isletmeGiderleri);
+          
+          // İşletme giderlerinden toplam aylık ve günlük maliyetleri hesapla
+          const isletmeGiderleriVerisi = performansData.isletmeGiderleri || [];
+          const toplamAylik = isletmeGiderleriVerisi.reduce((toplam: number, gider: IsletmeGideri) => 
+            toplam + gider.aylik_gider_tl, 0);
+          const toplamGunluk = isletmeGiderleriVerisi.reduce((toplam: number, gider: IsletmeGideri) => 
+            toplam + (gider.aylik_gider_tl / SABIT_IS_GUNU_SAYISI), 0); // 22 iş günü
+          
+          setToplamAylikIsletmeGideri(toplamAylik);
+          setToplamGunlukIsletmeGideri(toplamGunluk);
+          
+          // Reçete verisini ayarla
+          if (performansData.receteler) {
+            setReceteler(performansData.receteler);
+          }
+          
+          // Bitmiş Ürün Stoğu verilerini getir
+          getBitmisUrunStogu();
+          
+          // Stok verilerini getir
+          getStokVerileri();
+        } else {
+          throw new Error('Veri alınırken bir hata oluştu');
+        }
+      } catch (error) {
+        console.error('Veri alınırken hata:', error);
+        setHata('Veriler alınırken bir hata oluştu. Lütfen sayfayı yenileyiniz.');
+      } finally {
+        setIsLoading(false);
+      }
+    } catch (error) {
+      console.error('Veri alınırken hata:', error);
+      setHata('Veriler alınırken bir hata oluştu. Lütfen sayfayı yenileyiniz.');
+    }
+  };
+  
+  // Sayfa yüklendiğinde verileri getir
+  useEffect(() => {
+    verileriGetir();
+    getAmbalajlamaKayitlari();
+    getDovizKuru();
+  }, []);
+  
+  // Stok filtrelerinin değişimini izle ve filtreleme yap
+  useEffect(() => {
+    if (stokVerileri.length === 0) return;
+    
+    // Önce arama filtresi uygula
+    let filtrelenmisVeriler = stokVerileri.filter(item => {
+      if (!stokArama) return true;
+      
+      const aramaMetni = stokArama.toLowerCase();
+      
+      // Metin alanlarında arama
+      const metinAramaEslesti =
+        item['Hammadde Adı']?.toLowerCase().includes(aramaMetni) ||
+        item['Hammadde ID']?.toLowerCase().includes(aramaMetni) ||
+        item['Stok Kategori']?.toLowerCase().includes(aramaMetni) ||
+        item['kategori_detay']?.toLowerCase().includes(aramaMetni) ||
+        item['Birim']?.toLowerCase().includes(aramaMetni);
+      
+      // Sayısal alanlarda arama
+      const sayisalAramaEslesti =
+        item['kg_fiyat']?.toString().includes(aramaMetni) ||
+        item['Mevcut Stok']?.toString().includes(aramaMetni) ||
+        item['Rezerve Edildi']?.toString().includes(aramaMetni) ||
+        item['Net Stok']?.toString().includes(aramaMetni) ||
+        item['Kritik Stok']?.toString().includes(aramaMetni);
+      
+      return metinAramaEslesti || sayisalAramaEslesti;
+    });
+    
+    // Sonra sıralama uygula
+    filtrelenmisVeriler.sort((a, b) => {
+      let valueA = a[stokSiralama];
+      let valueB = b[stokSiralama];
+      
+      // Sayısal değerler için sıralama
+      if (typeof valueA === 'number' && typeof valueB === 'number') {
+        return stokSiralamaYonu === 'asc' ? valueA - valueB : valueB - valueA;
+      }
+      
+      // Metin değerleri için sıralama
+      valueA = String(valueA || '').toLowerCase();
+      valueB = String(valueB || '').toLowerCase();
+      
+      if (valueA < valueB) return stokSiralamaYonu === 'asc' ? -1 : 1;
+      if (valueA > valueB) return stokSiralamaYonu === 'asc' ? 1 : -1;
+      return 0;
+    });
+    
+    setFiltrelenmisStokVerileri(filtrelenmisVeriler);
+    
+    // Filtrelenmiş verilerin Net Stok Değerini hesapla
+    const netStokDeger = filtrelenmisVeriler.reduce((toplam, stok) => {
+      return toplam + (stok['Net Stok'] * stok['kg_fiyat'] || 0);
+    }, 0);
+    
+    setFiltrelenmisNetStokDegeri(netStokDeger);
+  }, [stokArama, stokSiralama, stokSiralamaYonu, stokVerileri]);
+  
+  // Stok fiyatı güncelleme modalında stoğu değiştirme
+  const handleStokSecim = (stok: StokItem) => {
+    setSecilenStok(stok);
+    setYeniFiyat(stok.kg_fiyat.toString());
+  };
+
+  // Stok fiyatını güncelleme
+  const handleStokFiyatiGuncelle = async () => {
+    if (!secilenStok) {
+      toast.error('Lütfen bir stok seçiniz!');
+      return;
+    }
+
+    const yeniFiyatSayi = parseFloat(yeniFiyat);
+    if (isNaN(yeniFiyatSayi) || yeniFiyatSayi <= 0) {
+      toast.error('Lütfen geçerli bir fiyat giriniz!');
+      return;
+    }
+
+    try {
+      setFiyatGuncellemeLoading(true);
+
+      // Supabase'te fiyatı güncelle
+      const { error } = await supabase
+        .from('Stok')
+        .update({ kg_fiyat: yeniFiyatSayi })
+        .eq('ID', secilenStok.ID);
+      
+      if (error) throw error;
+
+      // Stok verilerini güncelle
+      getStokVerileri();
+      
+      toast.success('Stok fiyatı başarıyla güncellendi!');
+      
+      // Modalı kapat ve durumu sıfırla
+      setShowStokFiyatModal(false);
+      setSecilenStok(null);
+      setYeniFiyat('');
+      setStokModalArama('');
+    } catch (error) {
+      console.error('Stok fiyatı güncellenirken hata:', error);
+      toast.error('Stok fiyatı güncellenirken bir hata oluştu!');
+    } finally {
+      setFiyatGuncellemeLoading(false);
+    }
+  };
+
+  // Modal için stok araması
+  useEffect(() => {
+    if (!showStokFiyatModal) return;
+    
+    // Stok arama
+    const filtrelenmisStoklar = stokVerileri.filter(item => {
+      if (!stokModalArama) return true;
+      
+      const aramaMetni = stokModalArama.toLowerCase();
+      
+      return (
+        item['Hammadde Adı']?.toLowerCase().includes(aramaMetni) ||
+        item['Hammadde ID']?.toLowerCase().includes(aramaMetni) ||
+        item['Stok Kategori']?.toLowerCase().includes(aramaMetni)
+      );
+    });
+    
+    setFiltrelenmisModalStoklar(filtrelenmisStoklar);
+  }, [stokModalArama, showStokFiyatModal, stokVerileri]);
   
   return (
     <DashboardLayout>
@@ -1560,7 +1896,7 @@ function MaliPerformansPage() {
                               Satış Fiyatı (Bulk)
                             </th>
                             <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Satış Fiyatı (Amb.)
+                              Satış Fiyatı (Ambalajlı)
                             </th>
                             <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Maliyet (Bulk, kg)
@@ -1572,10 +1908,10 @@ function MaliPerformansPage() {
                               Ambalaj Maliyeti
                             </th>
                             <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Maliyet (Amb., kg)
+                              Maliyet (Ambalajlı, kg)
                             </th>
                             <th className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Maliyet (Amb., adet)
+                              Maliyet (Ambalajlı, adet)
                           </th>
                         </tr>
                       </thead>
@@ -1628,6 +1964,243 @@ function MaliPerformansPage() {
                 </div>
               </div>
               
+              {/* Stok Tablosu */}
+              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mt-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold text-gray-800">Stok Tablosu</h3>
+                  <div className="flex items-center space-x-2">
+                    <div className="relative w-48">
+                      <input
+                        type="text"
+                        value={stokArama}
+                        onChange={(e) => setStokArama(e.target.value)}
+                        placeholder="Arama..."
+                        className="w-full px-3 py-1.5 pl-8 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <div className="absolute left-2 top-2 text-gray-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={handleStokFiltreleriTemizle}
+                      className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-md text-sm"
+                    >
+                      Filtreleri Temizle
+                    </button>
+                    <button
+                      onClick={() => setShowStokFiyatModal(true)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-sm flex items-center space-x-1"
+                    >
+                      <TrendingUp size={14} />
+                      <span>Stok Fiyatı Güncelle</span>
+                    </button>
+                    <button
+                      onClick={() => handleExcelExport(filtrelenmisStokVerileri, 'Stok_Verileri')}
+                      className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-sm flex items-center space-x-1"
+                    >
+                      <Download size={14} />
+                      <span>Excel'e Aktar</span>
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Stok Değerleri Bilgi Kutuları */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                  {/* Toplam Mevcut Stok Değeri */}
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                    <p className="text-sm font-medium text-gray-600">Mevcut Stok Değeri</p>
+                    <h4 className="text-xl font-bold text-blue-700 mt-1">
+                      {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(toplamMevcutStokDegeri)}
+                    </h4>
+                    <p className="text-xs text-gray-500 mt-1">Tüm stokların değeri</p>
+                  </div>
+                  
+                  {/* Toplam Net Stok Değeri */}
+                  <div className="bg-green-50 p-4 rounded-lg border border-green-100">
+                    <p className="text-sm font-medium text-gray-600">Net Stok Değeri</p>
+                    <h4 className="text-xl font-bold text-green-700 mt-1">
+                      {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(toplamNetStokDegeri)}
+                    </h4>
+                    <p className="text-xs text-gray-500 mt-1">Rezerve düşülmüş stok değeri</p>
+                  </div>
+                  
+                  {/* Ambalaj Stoğu Net Değeri */}
+                  <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
+                    <p className="text-sm font-medium text-gray-600">Ambalaj Stoğu Net Değeri</p>
+                    <h4 className="text-xl font-bold text-purple-700 mt-1">
+                      {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(ambalajStokDegeri)}
+                    </h4>
+                    <p className="text-xs text-gray-500 mt-1">Sadece ambalaj kategorisindeki stoklar</p>
+                  </div>
+                  
+                  {/* Hammadde Stoğu Net Değeri */}
+                  <div className="bg-amber-50 p-4 rounded-lg border border-amber-100">
+                    <p className="text-sm font-medium text-gray-600">Hammadde Stoğu Net Değeri</p>
+                    <h4 className="text-xl font-bold text-amber-700 mt-1">
+                      {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(hammaddeStokDegeri)}
+                    </h4>
+                    <p className="text-xs text-gray-500 mt-1">Sadece hammadde kategorisindeki stoklar</p>
+                  </div>
+                </div>
+                
+                <div className="overflow-x-auto max-w-full">
+                  <div className="inline-block min-w-full shadow-sm border border-gray-200 rounded-lg overflow-hidden">
+                    <div className="overflow-x-auto" style={{ maxHeight: '600px' }}>
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50 sticky top-0">
+                          <tr>
+                            <th 
+                              className="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                              onClick={() => handleStokSiralama('Hammadde ID')}
+                            >
+                              Hammadde ID
+                              {stokSiralama === 'Hammadde ID' && (
+                                <span className="ml-1">{stokSiralamaYonu === 'asc' ? '↑' : '↓'}</span>
+                              )}
+                            </th>
+                            <th 
+                              className="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                              onClick={() => handleStokSiralama('Hammadde Adı')}
+                            >
+                              Hammadde Adı
+                              {stokSiralama === 'Hammadde Adı' && (
+                                <span className="ml-1">{stokSiralamaYonu === 'asc' ? '↑' : '↓'}</span>
+                              )}
+                            </th>
+                            <th 
+                              className="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                              onClick={() => handleStokSiralama('Stok Kategori')}
+                            >
+                              Stok Kategori
+                              {stokSiralama === 'Stok Kategori' && (
+                                <span className="ml-1">{stokSiralamaYonu === 'asc' ? '↑' : '↓'}</span>
+                              )}
+                            </th>
+                            <th 
+                              className="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                              onClick={() => handleStokSiralama('kategori_detay')}
+                            >
+                              Kategori Detay
+                              {stokSiralama === 'kategori_detay' && (
+                                <span className="ml-1">{stokSiralamaYonu === 'asc' ? '↑' : '↓'}</span>
+                              )}
+                            </th>
+                            <th 
+                              className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                              onClick={() => handleStokSiralama('Mevcut Stok')}
+                            >
+                              Mevcut Stok
+                              {stokSiralama === 'Mevcut Stok' && (
+                                <span className="ml-1">{stokSiralamaYonu === 'asc' ? '↑' : '↓'}</span>
+                              )}
+                            </th>
+                            <th 
+                              className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                              onClick={() => handleStokSiralama('Rezerve Edildi')}
+                            >
+                              Rezerve Edildi
+                              {stokSiralama === 'Rezerve Edildi' && (
+                                <span className="ml-1">{stokSiralamaYonu === 'asc' ? '↑' : '↓'}</span>
+                              )}
+                            </th>
+                            <th 
+                              className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                              onClick={() => handleStokSiralama('Net Stok')}
+                            >
+                              Net Stok
+                              {stokSiralama === 'Net Stok' && (
+                                <span className="ml-1">{stokSiralamaYonu === 'asc' ? '↑' : '↓'}</span>
+                              )}
+                            </th>
+                            <th 
+                              className="px-4 py-3 bg-gray-50 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                              onClick={() => handleStokSiralama('Birim')}
+                            >
+                              Birim
+                              {stokSiralama === 'Birim' && (
+                                <span className="ml-1">{stokSiralamaYonu === 'asc' ? '↑' : '↓'}</span>
+                              )}
+                            </th>
+                            <th 
+                              className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                              onClick={() => handleStokSiralama('Kritik Stok')}
+                            >
+                              Kritik Stok
+                              {stokSiralama === 'Kritik Stok' && (
+                                <span className="ml-1">{stokSiralamaYonu === 'asc' ? '↑' : '↓'}</span>
+                              )}
+                            </th>
+                            <th 
+                              className="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                              onClick={() => handleStokSiralama('kg_fiyat')}
+                            >
+                              Kg veya Adet Fiyat
+                              {stokSiralama === 'kg_fiyat' && (
+                                <span className="ml-1">{stokSiralamaYonu === 'asc' ? '↑' : '↓'}</span>
+                              )}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {filtrelenmisStokVerileri.map((stok, index) => (
+                            <tr key={index} className="hover:bg-gray-50">
+                              <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
+                                {stok['Hammadde ID']}
+                              </td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                                {stok['Hammadde Adı']}
+                              </td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
+                                {stok['Stok Kategori']}
+                              </td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
+                                {stok['kategori_detay']}
+                              </td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
+                                {stok['Mevcut Stok']}
+                              </td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
+                                {stok['Rezerve Edildi']}
+                              </td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
+                                {stok['Net Stok']}
+                              </td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm text-center text-gray-700">
+                                {stok['Birim']}
+                              </td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
+                                {stok['Kritik Stok']}
+                              </td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
+                                {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(stok['kg_fiyat'])}
+                              </td>
+                            </tr>
+                          ))}
+                          {filtrelenmisStokVerileri.length === 0 && (
+                            <tr>
+                              <td colSpan={10} className="px-4 py-4 text-center text-sm text-gray-500">
+                                Bu kriterlere uygun stok kaydı bulunamadı. {stokVerileri.length > 0 ? `Filtreleme öncesi ${stokVerileri.length} kayıt mevcut.` : 'Hiç kayıt bulunamadı.'}
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="mt-4 text-sm text-gray-500 flex justify-between items-center">
+                  <div>
+                    Toplam {filtrelenmisStokVerileri.length} stok kaydı görüntüleniyor ({stokVerileri.length} toplam)
+                  </div>
+                  <div className="font-medium text-right">
+                    <span className="text-blue-600">Filtrelenmiş Net Stok Değeri:</span> {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(filtrelenmisNetStokDegeri)}
+                  </div>
+                </div>
+              </div>
+              
               {/* İşletme Giderleri Tablosu */}
               <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
                 <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4">
@@ -1665,8 +2238,8 @@ function MaliPerformansPage() {
                     <tbody className="bg-white divide-y divide-gray-200">
                       {isletmeGiderleri.map((gider, index) => {
                         const oran = toplamGider > 0 ? (gider.aylik_gider_tl / toplamGider) * 100 : 0;
-                        
-                        return (
+  
+  return (
                           <tr key={index} className="hover:bg-gray-50">
                             <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
                               {gider.gider_adi}
@@ -1857,6 +2430,167 @@ function MaliPerformansPage() {
           </div>
         )}
       </div>
+      
+      {/* Stok Fiyatı Güncelleme Modalı */}
+      {showStokFiyatModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Stok Fiyatı Güncelle</h3>
+              <button
+                onClick={() => {
+                  setShowStokFiyatModal(false);
+                  setSecilenStok(null);
+                  setYeniFiyat('');
+                  setStokModalArama('');
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            {/* Stok Arama */}
+            <div className="mb-4">
+              <label htmlFor="stokModalArama" className="block text-sm font-medium text-gray-700 mb-1">
+                Stok Ara
+              </label>
+              <div className="relative">
+                <input
+                  id="stokModalArama"
+                  type="text"
+                  value={stokModalArama}
+                  onChange={(e) => setStokModalArama(e.target.value)}
+                  placeholder="Hammadde adı, ID veya kategori ara..."
+                  className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <div className="absolute left-3 top-2.5 text-gray-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            
+            {/* Stok Listesi */}
+            <div className="mb-6 overflow-auto max-h-48 border border-gray-200 rounded-lg">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50 sticky top-0">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Hammadde ID
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Hammadde Adı
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Kategori
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Mevcut Fiyat (EUR)
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filtrelenmisModalStoklar.map((stok) => (
+                    <tr 
+                      key={stok.ID}
+                      onClick={() => handleStokSecim(stok)} 
+                      className={`hover:bg-gray-100 cursor-pointer ${secilenStok?.ID === stok.ID ? 'bg-blue-50' : ''}`}
+                    >
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
+                        {stok['Hammadde ID']}
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {stok['Hammadde Adı']}
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
+                        {stok['Stok Kategori']}
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-700">
+                        {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(stok['kg_fiyat'])}
+                      </td>
+                    </tr>
+                  ))}
+                  {filtrelenmisModalStoklar.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-2 text-center text-sm text-gray-500">
+                        {stokModalArama ? 'Arama kriterlerine uygun stok bulunamadı.' : 'Stok bulunamadı.'}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            
+            {/* Seçilen Stok ve Fiyat Güncelleme */}
+            {secilenStok ? (
+              <div className="border-t border-gray-200 pt-4">
+                <h4 className="text-md font-semibold text-gray-700 mb-3">Seçilen Stok: {secilenStok['Hammadde Adı']}</h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Mevcut Fiyat
+                    </label>
+                    <div className="px-3 py-2 bg-gray-100 rounded-md border border-gray-300 text-gray-700">
+                      {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(secilenStok['kg_fiyat'])}
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor="yeniFiyat" className="block text-sm font-medium text-gray-700 mb-1">
+                      Yeni Fiyat (EUR)
+                    </label>
+                    <input
+                      id="yeniFiyat"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={yeniFiyat}
+                      onChange={(e) => setYeniFiyat(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Yeni fiyatı giriniz..."
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex justify-end space-x-2">
+                  <button
+                    onClick={() => {
+                      setShowStokFiyatModal(false);
+                      setSecilenStok(null);
+                      setYeniFiyat('');
+                      setStokModalArama('');
+                    }}
+                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                    disabled={fiyatGuncellemeLoading}
+                  >
+                    İptal
+                  </button>
+                  <button
+                    onClick={handleStokFiyatiGuncelle}
+                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    disabled={fiyatGuncellemeLoading}
+                  >
+                    {fiyatGuncellemeLoading ? (
+                      <>
+                        <span className="animate-spin inline-block h-4 w-4 border-t-2 border-b-2 border-white rounded-full mr-2"></span>
+                        Güncelleniyor...
+                      </>
+                    ) : (
+                      'Fiyatı Güncelle'
+                    )}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center text-gray-500 py-4">
+                Fiyatını güncellemek istediğiniz stoğu listeden seçiniz.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }
