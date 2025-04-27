@@ -2374,7 +2374,7 @@ function MaliPerformansPage() {
           <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-auto">
               <div className="flex justify-between items-center p-6 border-b">
-                <h2 className="text-xl font-semibold text-gray-800">Gelir Detayları</h2>
+                <h2 className="text-xl font-semibold text-gray-800">Toplam Satış Değeri Detayları</h2>
                 <button 
                   className="text-gray-500 hover:text-gray-700" 
                   onClick={() => setShowGelirDetay(false)}
@@ -2383,20 +2383,80 @@ function MaliPerformansPage() {
                 </button>
               </div>
               <div className="p-6">
-                <div className="mb-4">
-                  <p className="text-sm text-gray-600 mb-2">Seçilen tarih aralığı: <span className="font-medium">{baslangicTarihi} - {bitisTarihi}</span></p>
-                  <p className="text-sm text-gray-600 mb-4">Toplam gelir, seçilen tarih aralığında teslimat geçmişindeki faturalandırılmış ürünlerin satış fiyatları toplamıdır.</p>
+                <div className="mb-6">
+                  <p className="text-sm text-gray-600 mb-2">Seçilen tarih aralığı: <span className="font-medium">{ambalajlamaBaslangicTarihi} - {ambalajlamaBitisTarihi}</span></p>
+                  <p className="text-sm text-gray-600 mb-4">Toplam satış değeri, seçilen tarih aralığında ambalajlanan ürünlerin potansiyel satış değerlerinin toplamıdır.</p>
                   
                   <div className="bg-green-50 p-4 rounded-lg border border-green-100 mb-6">
-                    <h3 className="text-lg font-semibold text-green-700">Toplam Gelir</h3>
+                    <h3 className="text-lg font-semibold text-green-700">Toplam Satış Değeri</h3>
                     <p className="text-2xl font-bold text-green-600 mt-1">
-                        {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(toplamGelir)}
-                      </p>
+                      {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0, minimumFractionDigits: 0 }).format(ambalajlamaToplamSatisDegeri)}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">Tüm ambalajlama kayıtlarındaki satış değerlerinin toplamı</p>
                   </div>
                   
-                  <h3 className="font-medium text-gray-800 mb-3">Gelir Hesaplama Formülü:</h3>
-                  <div className="bg-gray-50 p-3 rounded border border-gray-200 text-sm text-gray-700">
-                    <p>Reçetenin satış fiyatı (EUR/kg) × Ambalaj miktarı (ml) × 0.001 (kg dönüşümü) × Teslimat adedi</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                      <h3 className="text-lg font-semibold text-blue-700">Toplam Ambalajlanan Adet</h3>
+                      <p className="text-2xl font-bold text-blue-600 mt-1">
+                        {new Intl.NumberFormat('tr-TR').format(ambalajlamaToplamAdet)} adet
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">Seçili dönemdeki toplam ürün sayısı</p>
+                    </div>
+                    
+                    <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+                      <h3 className="text-lg font-semibold text-indigo-700">Ortalama Birim Satış Fiyatı</h3>
+                      <p className="text-2xl font-bold text-indigo-600 mt-1">
+                        {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(ambalajlamaToplamAdet > 0 ? ambalajlamaToplamSatisDegeri / ambalajlamaToplamAdet : 0)}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">Adet başına düşen ortalama satış değeri</p>
+                    </div>
+                  </div>
+                  
+                  <h3 className="font-medium text-gray-800 mb-3">Satış Değeri Hesaplama Formülü:</h3>
+                  <div className="bg-gray-50 p-3 rounded border border-gray-200 text-sm text-gray-700 space-y-2">
+                    <p><strong>Adet Başına Satış Değeri</strong> = Birim Satış Fiyatı (EUR) × Ambalaj Miktarı (ml) × 0.001 (kg dönüşümü)</p>
+                    <p><strong>Toplam Satış Değeri</strong> = Adet Başına Satış Değeri × Ambalajlanan Adet</p>
+                  </div>
+                </div>
+                
+                <div className="border-t border-gray-200 pt-4">
+                  <h3 className="font-medium text-gray-800 mb-3">En Yüksek Satış Değerine Sahip Ürünler:</h3>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ürün</th>
+                          <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Marka</th>
+                          <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Müşteri</th>
+                          <th scope="col" className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Adet</th>
+                          <th scope="col" className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Birim Satış F.</th>
+                          <th scope="col" className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Toplam Satış D.</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {filtrelenmisAmbalajlamaKayitlari
+                          .sort((a, b) => b.toplam_satis_degeri - a.toplam_satis_degeri)
+                          .slice(0, 5)
+                          .map((kayit, index) => (
+                            <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">{kayit.recete_adi}</td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">{kayit.marka}</td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">{kayit.musteri}</td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-900">{new Intl.NumberFormat('tr-TR').format(kayit.ambalajlanan_adet)}</td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-700">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.birim_satis_fiyati)}</td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-medium text-green-600">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.toplam_satis_degeri)}</td>
+                            </tr>
+                          ))}
+                        {filtrelenmisAmbalajlamaKayitlari.length === 0 && (
+                          <tr>
+                            <td colSpan={6} className="px-3 py-4 text-center text-sm text-gray-500">
+                              Bu dönemde ambalajlama kaydı bulunamadı.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>
@@ -2409,7 +2469,7 @@ function MaliPerformansPage() {
           <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-auto">
               <div className="flex justify-between items-center p-6 border-b">
-                <h2 className="text-xl font-semibold text-gray-800">Gider Detayları</h2>
+                <h2 className="text-xl font-semibold text-gray-800">Toplam Maliyet Detayları</h2>
                 <button 
                   className="text-gray-500 hover:text-gray-700" 
                   onClick={() => setShowGiderDetay(false)}
@@ -2418,20 +2478,84 @@ function MaliPerformansPage() {
                 </button>
               </div>
               <div className="p-6">
-                <div className="mb-4">
-                  <p className="text-sm text-gray-600 mb-2">Seçilen tarih aralığı: <span className="font-medium">{baslangicTarihi} - {bitisTarihi}</span></p>
-                  <p className="text-sm text-gray-600 mb-4">Toplam gider, işletme giderleri tablosundaki aylık giderlerin toplamıdır. Bu değer seçilen tarih aralığına göre orantılı olarak hesaplanır.</p>
+                <div className="mb-6">
+                  <p className="text-sm text-gray-600 mb-2">Seçilen tarih aralığı: <span className="font-medium">{ambalajlamaBaslangicTarihi} - {ambalajlamaBitisTarihi}</span></p>
+                  <p className="text-sm text-gray-600 mb-4">Toplam maliyet, seçilen tarih aralığında ambalajlanan ürünlerin maliyetlerinin toplamıdır. Maliyet, bulk üretim (hammadde) ve ambalaj maliyetlerinin toplamından oluşur.</p>
                   
                   <div className="bg-red-50 p-4 rounded-lg border border-red-100 mb-6">
-                    <h3 className="text-lg font-semibold text-red-700">Toplam Gider</h3>
+                    <h3 className="text-lg font-semibold text-red-700">Toplam Maliyet</h3>
                     <p className="text-2xl font-bold text-red-600 mt-1">
-                      {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(toplamGider)}
+                      {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0, minimumFractionDigits: 0 }).format(ambalajlamaToplamMaliyet)}
                     </p>
+                    <p className="text-xs text-gray-500 mt-1">Tüm ambalajlama kayıtlarındaki maliyetlerin toplamı</p>
                   </div>
                   
-                  <h3 className="font-medium text-gray-800 mb-3">Satış Verilerinin Kaynağı:</h3>
-                  <div className="bg-gray-50 p-3 rounded border border-gray-200 text-sm text-gray-700">
-                    <p>Teslimat Geçmişi tablosundaki teslimat_miktari değerlerinin toplamı</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div className="bg-amber-50 p-4 rounded-lg border border-amber-100">
+                      <h3 className="text-lg font-semibold text-amber-700">Ortalama Adet Maliyeti</h3>
+                      <p className="text-2xl font-bold text-amber-600 mt-1">
+                        {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(ambalajlamaToplamAdet > 0 ? ambalajlamaToplamMaliyet / ambalajlamaToplamAdet : 0)}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">Adet başına düşen ortalama maliyet</p>
+                    </div>
+                    
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                      <h3 className="text-lg font-semibold text-blue-700">Maliyet Oranı</h3>
+                      <p className="text-2xl font-bold text-blue-600 mt-1">
+                        {new Intl.NumberFormat('tr-TR', { 
+                          style: 'percent', 
+                          minimumFractionDigits: 1,
+                          maximumFractionDigits: 1
+                        }).format(ambalajlamaToplamSatisDegeri > 0 ? ambalajlamaToplamMaliyet / ambalajlamaToplamSatisDegeri : 0)}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">Toplam Maliyet ÷ Toplam Satış Değeri</p>
+                    </div>
+                  </div>
+                  
+                  <h3 className="font-medium text-gray-800 mb-3">Maliyet Hesaplama Formülü:</h3>
+                  <div className="bg-gray-50 p-3 rounded border border-gray-200 text-sm text-gray-700 space-y-2">
+                    <p><strong>Adet Bulk Maliyeti</strong> = (kg_bulk_maliyet × Ambalaj Miktarı (ml) × 0.001)</p>
+                    <p><strong>Adet Ambalajlı Maliyeti</strong> = Adet Bulk Maliyeti + Ambalaj Maliyeti</p>
+                    <p><strong>Toplam Maliyet</strong> = Adet Ambalajlı Maliyeti × Ambalajlanan Adet</p>
+                  </div>
+                </div>
+                
+                <div className="border-t border-gray-200 pt-4">
+                  <h3 className="font-medium text-gray-800 mb-3">En Yüksek Maliyetli Ürünler:</h3>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ürün</th>
+                          <th scope="col" className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Adet</th>
+                          <th scope="col" className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Bulk Maliyet</th>
+                          <th scope="col" className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ambalaj Maliyet</th>
+                          <th scope="col" className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Birim Maliyet</th>
+                          <th scope="col" className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Toplam Maliyet</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {filtrelenmisAmbalajlamaKayitlari
+                          .sort((a, b) => b.toplam_maliyet - a.toplam_maliyet)
+                          .slice(0, 5)
+                          .map((kayit, index) => (
+                            <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">{kayit.recete_adi}</td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-900">{new Intl.NumberFormat('tr-TR').format(kayit.ambalajlanan_adet)}</td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-500">{kayit.ml_bilgisi}</td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-green-600">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.toplam_satis_degeri)}</td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-red-600">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.toplam_maliyet)}</td>
+                            </tr>
+                          ))}
+                        {filtrelenmisAmbalajlamaKayitlari.length === 0 && (
+                          <tr>
+                            <td colSpan={6} className="px-3 py-4 text-center text-sm text-gray-500">
+                              Bu dönemde ambalajlama kaydı bulunamadı.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>
@@ -2501,6 +2625,178 @@ function MaliPerformansPage() {
                   >
                     Kaydet
                   </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Kar/Zarar Detay Modalı */}
+        {showKarZararDetay && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-auto">
+              <div className="flex justify-between items-center p-6 border-b">
+                <h2 className="text-xl font-semibold text-gray-800">Kar/Zarar Detayları</h2>
+                <button 
+                  className="text-gray-500 hover:text-gray-700" 
+                  onClick={() => setShowKarZararDetay(false)}
+                >
+                  <X size={24} />
+                </button>
+              </div>
+              <div className="p-6">
+                <div className="mb-6">
+                  <p className="text-sm text-gray-600 mb-2">Seçilen tarih aralığı: <span className="font-medium">{baslangicTarihi} - {bitisTarihi}</span></p>
+                  <p className="text-sm text-gray-600 mb-4">Toplam kar, ambalajlama kayıtlarındaki satış değerlerinden maliyetleri çıkararak hesaplanır. Net kar ise bu değerden işletme giderleri düşülerek elde edilir.</p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div className={`p-4 rounded-lg border ${ambalajlamaToplamKar >= 0 ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100'}`}>
+                      <h3 className="text-lg font-semibold text-gray-800">Toplam Kar (Brüt)</h3>
+                      <p className={`text-2xl font-bold mt-1 ${ambalajlamaToplamKar >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(ambalajlamaToplamKar)}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">İşletme giderleri düşülmeden önceki kar</p>
+                    </div>
+                    
+                    <div className={`p-4 rounded-lg border ${gercekNetKarZarar >= 0 ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100'}`}>
+                      <h3 className="text-lg font-semibold text-gray-800">Net Kar/Zarar</h3>
+                      <p className={`text-2xl font-bold mt-1 ${gercekNetKarZarar >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(gercekNetKarZarar)}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">İşletme giderleri düşüldükten sonraki kar</p>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-100 mb-6">
+                    <h3 className="text-lg font-semibold text-gray-800">İşletme Giderleri (Bu Dönem)</h3>
+                    <p className="text-2xl font-bold text-amber-600 mt-1">
+                      {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format((toplamAylikIsletmeGideri / SABIT_IS_GUNU_SAYISI) * dovizKuru * isGunuSayisi)}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">Seçili dönem için hesaplanan işletme giderleri ({isGunuSayisi} iş günü)</p>
+                  </div>
+                  
+                  <h3 className="font-medium text-gray-800 mb-3">Kar Hesaplama Formülü:</h3>
+                  <div className="bg-gray-50 p-3 rounded border border-gray-200 text-sm text-gray-700 space-y-2">
+                    <p><strong>Toplam Kar</strong> = Toplam Satış Değeri - Toplam Maliyet</p>
+                    <p><strong>Net Kar/Zarar</strong> = Toplam Kar - İşletme Giderleri</p>
+                    <p><strong>İşletme Giderleri (Bu Dönem)</strong> = (Aylık İşletme Gideri / Standart İş Günü) × Döviz Kuru × Seçili Dönemdeki İş Günü Sayısı</p>
+                  </div>
+                </div>
+                
+                <div className="border-t border-gray-200 pt-4">
+                  <h3 className="font-medium text-gray-800 mb-3">Kar Marjı Analizi:</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-gray-50 p-3 rounded border border-gray-200">
+                      <p className="text-sm font-medium text-gray-700">Brüt Kar Marjı</p>
+                      <p className="text-xl font-bold text-blue-600 mt-1">
+                        {new Intl.NumberFormat('tr-TR', { 
+                          style: 'percent', 
+                          minimumFractionDigits: 1,
+                          maximumFractionDigits: 1
+                        }).format(ambalajlamaToplamSatisDegeri > 0 ? ambalajlamaToplamKar / ambalajlamaToplamSatisDegeri : 0)}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">Toplam Kar ÷ Toplam Satış Değeri</p>
+                    </div>
+                    
+                    <div className="bg-gray-50 p-3 rounded border border-gray-200">
+                      <p className="text-sm font-medium text-gray-700">Net Kar Marjı</p>
+                      <p className="text-xl font-bold text-blue-600 mt-1">
+                        {new Intl.NumberFormat('tr-TR', { 
+                          style: 'percent', 
+                          minimumFractionDigits: 1,
+                          maximumFractionDigits: 1
+                        }).format(ambalajlamaToplamSatisDegeri > 0 ? gercekNetKarZarar / ambalajlamaToplamSatisDegeri : 0)}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">Net Kar ÷ Toplam Satış Değeri</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Satış Detay Modalı */}
+        {showSatisDetay && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-auto">
+              <div className="flex justify-between items-center p-6 border-b">
+                <h2 className="text-xl font-semibold text-gray-800">Ambalajlama Detayları</h2>
+                <button 
+                  className="text-gray-500 hover:text-gray-700" 
+                  onClick={() => setShowSatisDetay(false)}
+                >
+                  <X size={24} />
+                </button>
+              </div>
+              <div className="p-6">
+                <div className="mb-4">
+                  <p className="text-sm text-gray-600 mb-2">Seçilen tarih aralığı: <span className="font-medium">{ambalajlamaBaslangicTarihi} - {ambalajlamaBitisTarihi}</span></p>
+                  <p className="text-sm text-gray-600 mb-4">Ambalajlama verileri, seçili dönemde üretilen ve paketlenen ürünlerin adetlerini ve mali değerlerini göstermektedir.</p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                      <h3 className="text-lg font-semibold text-blue-700">Toplam Ambalajlanan</h3>
+                      <p className="text-2xl font-bold text-blue-600 mt-1">
+                        {new Intl.NumberFormat('tr-TR').format(ambalajlamaToplamAdet)} adet
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">Seçili dönemde ambalajlanan toplam ürün adedi</p>
+                    </div>
+                    
+                    <div className="bg-green-50 p-4 rounded-lg border border-green-100">
+                      <h3 className="text-lg font-semibold text-green-700">Ortalama Satış Fiyatı</h3>
+                      <p className="text-2xl font-bold text-green-600 mt-1">
+                        {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(ambalajlamaToplamAdet > 0 ? ambalajlamaToplamSatisDegeri / ambalajlamaToplamAdet : 0)}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">Adet başına ortalama satış değeri</p>
+                    </div>
+                    
+                    <div className="bg-amber-50 p-4 rounded-lg border border-amber-100">
+                      <h3 className="text-lg font-semibold text-amber-700">Ortalama Maliyet</h3>
+                      <p className="text-2xl font-bold text-amber-600 mt-1">
+                        {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(ambalajlamaToplamAdet > 0 ? ambalajlamaToplamMaliyet / ambalajlamaToplamAdet : 0)}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">Adet başına ortalama maliyet</p>
+                    </div>
+                  </div>
+                  
+                  <h3 className="font-medium text-gray-800 mb-3">En Çok Ambalajlanan Ürünler:</h3>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ürün</th>
+                          <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Marka</th>
+                          <th scope="col" className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Adet</th>
+                          <th scope="col" className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">ML</th>
+                          <th scope="col" className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Satış Değeri</th>
+                          <th scope="col" className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Maliyet</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {filtrelenmisAmbalajlamaKayitlari
+                          .sort((a, b) => b.ambalajlanan_adet - a.ambalajlanan_adet)
+                          .slice(0, 5)
+                          .map((kayit, index) => (
+                            <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">{kayit.recete_adi}</td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">{kayit.marka}</td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-900">{new Intl.NumberFormat('tr-TR').format(kayit.ambalajlanan_adet)}</td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-500">{kayit.ml_bilgisi}</td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-green-600">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.toplam_satis_degeri)}</td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-red-600">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format(kayit.toplam_maliyet)}</td>
+                            </tr>
+                          ))}
+                        {filtrelenmisAmbalajlamaKayitlari.length === 0 && (
+                          <tr>
+                            <td colSpan={6} className="px-3 py-4 text-center text-sm text-gray-500">
+                              Bu dönemde ambalajlama kaydı bulunamadı.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>

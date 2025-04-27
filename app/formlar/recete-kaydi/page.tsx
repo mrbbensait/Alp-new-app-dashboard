@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '../../components/DashboardLayout';
 import { FileText, Plus, Trash2, Search } from 'lucide-react';
-import { fetchAllFromTable } from '../../lib/supabase';
+import { fetchAllFromTable, insertData } from '../../lib/supabase';
 import PageGuard from '../../components/PageGuard';
 import { useAuth } from '@/app/lib/AuthContext';
 import { supabase } from '@/app/lib/supabase';
@@ -360,103 +360,77 @@ export default function ReceteKaydiPage() {
       return;
     }
     
-    // Form verilerini topla
-    const formData = {
-      receteAdi,
-      marka,
-      satis_fiyati: satisFiyati.trim() === '' ? '0' : satisFiyati,
-      ml_bilgisi: mlBilgisi,
-      kg_bulk_maliyet: calculateKgBulkCost(),
-      bir_adet_bulk_maliyet: calculateBirAdetBulkMaliyet(),
-      ambalaj_maliyeti: calculateAmbalajMaliyeti(),
-      kg_ambalajli_maliyet: calculateKgAmbalajliMaliyet(),
-      bir_adet_ambalajli_maliyet: calculateBirAdetAmbalajliMaliyet(),
-      bilesenler: bilesenler.map(b => ({
-        adi: b.adi,
-        kategori: b.kategori,
-        oran: b.oran,
-        hammaddeId: b.hammaddeId,
-        birim: b.birim || 'Kg'
-      })),
-      kayitTarihi: new Date().toISOString()
-    };
-    
     try {
-      console.log("N8N'e gönderilecek veri:", formData);
+      console.log("Verileri Supabase'e kaydetmeye başlanıyor...");
       setIsLoading(true);
       
       try {
-        // Webhook URL'si
-        const webhookUrl = 'https://alpleo.app.n8n.cloud/webhook/4f15a278-a5c9-49f3-8324-18038dccb076';
-        let response;
+        // Reçete verileri - Reçeteler tablosuna kaydedilecek
+        const receteVerileri = {
+          'Reçete Adı': receteAdi,
+          'Marka': marka,
+          'ml_bilgisi': mlBilgisi,
+          'birim_satis_fiyati': satisFiyati.trim() === '' ? 0 : parseFloat(satisFiyati),
+          'Notlar': ''
+        };
         
-        // Proxy üzerinden istek gönderme (öncelikli yöntem - Vercel için)
+        console.log("Kaydedilecek Reçete verileri:", receteVerileri);
+        
+        // 1. Adım: Reçeteler tablosuna kayıt ekle ve eklenen kaydın bilgilerini al
         try {
-          console.log('Proxy üzerinden webhook isteği gönderiliyor...');
-          response = await fetch('/api/webhook-forwarder', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              url: webhookUrl,
-              data: formData
-            }),
-          });
+          const receteSonuc = await insertData('Reçeteler', receteVerileri);
+          console.log("insertData cevabı:", receteSonuc);
           
-          if (!response.ok) {
-            throw new Error(`Proxy webhook yanıtı başarısız: ${response.status} ${response.statusText}`);
+          if (!receteSonuc || receteSonuc.length === 0) {
+            throw new Error('Reçete kaydı eklendi ancak eklenen kayıt bilgisine erişilemedi.');
           }
-        } catch (proxyError) {
-          // Proxy üzerinden istek başarısız olursa, doğrudan deneme yap
-          console.error('Proxy üzerinden webhook isteği başarısız oldu:', proxyError);
-          console.log('Doğrudan webhook isteği deneniyor...');
           
-          response = await fetch(webhookUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-            },
-            body: JSON.stringify(formData),
-          });
-        }
-        
-        console.log("Webhook yanıtı:", response.status, response.statusText);
-        
-        if (!response.ok) {
-          let errorDetail = '';
+          const eklenenRecete = receteSonuc[0];
+          console.log("Reçete kaydı başarıyla eklendi:", eklenenRecete);
+          
+          // 2. Adım: Eklenen reçetenin ID'si ve diğer bilgileriyle Formülasyonlar tablosuna kayıtlar ekle
           try {
-            const errorData = await response.json();
-            errorDetail = JSON.stringify(errorData);
-          } catch (e) {
-            errorDetail = await response.text();
+            const receteId = eklenenRecete['Reçete ID'] || eklenenRecete.id.toString();
+            console.log("Kullanılacak Reçete ID:", receteId);
+            
+            const formulasyonKayitlari = bilesenler.map(bilesen => ({
+              'Reçete Adı': receteAdi,
+              'Reçete ID': receteId,
+              'Marka': marka,
+              'Hammadde Adı': bilesen.adi,
+              'Oran(100Kg)': parseFloat(bilesen.oran) || 0,
+              'Birim': bilesen.birim || 'Kg',
+              'Stok Kategori': bilesen.kategori || ''
+            }));
+            
+            console.log("Kaydedilecek Formülasyon kayıtları:", formulasyonKayitlari);
+            
+            // Formülasyonlar tablosuna tüm bileşenleri ekle - sırayla ekleyelim
+            for (const kayit of formulasyonKayitlari) {
+              console.log("Formülasyon kaydı ekleniyor:", kayit);
+              await insertData('Formülasyonlar', kayit);
+            }
+            
+            console.log("Formülasyon kayıtları başarıyla eklendi");
+            
+            // Başarılı işlem
+            setShowNotification(true);
+            setTimeout(() => setShowNotification(false), 3000);
+            
+            // Formu sıfırla
+            setReceteAdi('');
+            setMarka('');
+            setSatisFiyati('');
+            setMlBilgisi('');
+            setBilesenler([]);
+          } catch (formulasyonError: any) {
+            console.error('Formülasyon kayıtları eklenirken hata:', formulasyonError);
+            throw new Error(`Formülasyonlar tablosuna kayıt eklenirken hata: ${formulasyonError.message}`);
           }
-          console.error('Webhook yanıt detayı:', errorDetail);
-          throw new Error(`Webhook yanıtı başarısız: ${response.status} ${response.statusText} - ${errorDetail}`);
+        } catch (receteError: any) {
+          console.error('Reçete kaydı eklenirken hata:', receteError);
+          throw new Error(`Reçeteler tablosuna kayıt eklenirken hata: ${receteError.message}`);
         }
-        
-        // Yanıtı al
-        let responseData;
-        try {
-          responseData = await response.json();
-          console.log("Webhook başarılı yanıt:", responseData);
-        } catch (e) {
-          const textResponse = await response.text();
-          console.log("Webhook yanıtı JSON olarak ayrıştırılamadı, ham yanıt:", textResponse);
-          responseData = { message: "Yanıt alındı, ancak JSON formatında değil" };
-        }
-        
-        // Başarılı işlem
-        setShowNotification(true);
-        setTimeout(() => setShowNotification(false), 3000);
-        
-        // Formu sıfırla
-        setReceteAdi('');
-        setMarka('');
-        setSatisFiyati('');
-        setMlBilgisi('');
-        setBilesenler([]);
       } finally {
         setIsLoading(false);
       }
@@ -825,13 +799,13 @@ export default function ReceteKaydiPage() {
                     <div>
                       <div className="text-xs font-medium text-gray-500">1 Adet Bulk Maliyet:</div>
                       <div className="text-sm font-semibold text-gray-900">
-                        {birAdetBulkMaliyet.toFixed(4)} € ({mlBilgisi}ml)
+                        {birAdetBulkMaliyet.toFixed(2)} € ({mlBilgisi}ml)
                       </div>
                     </div>
                     
                     <div className="pt-1 border-t">
                       <div className="text-xs font-medium text-gray-500">1 Adet Ambalaj Maliyeti:</div>
-                      <div className="text-sm font-semibold text-gray-900">{ambalajMaliyeti.toFixed(4)} €</div>
+                      <div className="text-sm font-semibold text-gray-900">{ambalajMaliyeti.toFixed(2)} €</div>
                     </div>
                     
                     <div className="p-2 mt-2 bg-blue-50 border border-blue-100 rounded-md">
@@ -844,7 +818,7 @@ export default function ReceteKaydiPage() {
                         )}
                       </div>
                       <div className="text-base font-bold text-blue-900">
-                        {birAdetAmbalajliMaliyet.toFixed(4)} € <span className="text-sm font-normal">({mlBilgisi}ml)</span>
+                        {birAdetAmbalajliMaliyet.toFixed(2)} € <span className="text-sm font-normal">({mlBilgisi}ml)</span>
                       </div>
                     </div>
                   </div>
