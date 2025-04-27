@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import DashboardLayout from '../../components/DashboardLayout';
 import DataTable from '../../components/DataTable';
 import { tables } from '../../data/schema';
@@ -26,6 +26,38 @@ import UretimGirModal from '../../components/modals/UretimGirModal';
 import BulkSifirlamaModal from '../../components/modals/BulkSifirlamaModal';
 import UretimSilModal from '../../components/modals/UretimSilModal';
 import { supabase } from '@/app/lib/supabase';
+import { Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { format } from 'date-fns';
+import { toast } from 'react-hot-toast';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useUser } from '@/context/UserContext';
+import decodeURI from '@/utils/decodeURI';
+import Link from 'next/link';
+import { TableSchema } from '@/types/Table';
+import TableUI from '@/components/TableUI';
+import { IoMdAdd } from 'react-icons/io';
+
+// Özel animasyon stili
+const pulseAnimationStyle = `
+  @keyframes neon-pulse {
+    0% {
+      text-shadow: 0 0 4px rgba(255, 0, 0, 0.7), 0 0 8px rgba(255, 0, 0, 0.5);
+      box-shadow: 0 0 5px rgba(255, 0, 0, 0.5) inset;
+    }
+    50% {
+      text-shadow: 0 0 8px rgba(255, 0, 0, 0.9), 0 0 12px rgba(255, 0, 0, 0.7);
+      box-shadow: 0 0 10px rgba(255, 0, 0, 0.7) inset;
+    }
+    100% {
+      text-shadow: 0 0 4px rgba(255, 0, 0, 0.7), 0 0 8px rgba(255, 0, 0, 0.5);
+      box-shadow: 0 0 5px rgba(255, 0, 0, 0.5) inset;
+    }
+  }
+  .animate-neon-pulse {
+    animation: neon-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+`;
 
 export default function TablePage() {
   const { tableName } = useParams<{ tableName: string }>();
@@ -63,6 +95,10 @@ export default function TablePage() {
   const [uretimSilModalOpen, setUretimSilModalOpen] = useState(false);
   const [selectedUretimKuyrugu, setSelectedUretimKuyrugu] = useState<{id: number, receteAdi: string} | null>(null);
   const { user } = useAuth();
+  
+  // Kritik stok filtrelemeleri için state'ler
+  const [showKritikStok, setShowKritikStok] = useState(false);
+  const [kritikStokKategori, setKritikStokKategori] = useState<'hepsi' | 'hammadde' | 'ambalaj'>('hepsi');
   
   // Kullanıcının rol bilgilerini tutacak state
   const [userRolBilgileri, setUserRolBilgileri] = useState<any>(null);
@@ -148,47 +184,85 @@ export default function TablePage() {
   
   // Arama fonksiyonu
   const filterData = (query: string, data = tableData) => {
-    if (!query.trim()) {
+    if (!query.trim() && !showKritikStok) {
       setFilteredData(data);
       return;
     }
     
-    const lowercaseQuery = query.toLowerCase().trim();
+    let filtered = data;
     
-    // Tablonun tüm sütunlarında arama yap
-    const filtered = data.filter(row => {
-      // Tüm sütunlarda ara
-      return Object.keys(row).some(key => {
-        const value = row[key];
-        // null veya undefined değerler için kontrol
-        if (value === null || value === undefined) return false;
-        
-        // Değer türüne göre arama yap
-        if (typeof value === 'string') {
-          return value.toLowerCase().includes(lowercaseQuery);
-        } else if (typeof value === 'number' || typeof value === 'boolean') {
-          return value.toString().toLowerCase().includes(lowercaseQuery);
-        } else if (value instanceof Date) {
-          return value.toLocaleDateString('tr-TR').includes(lowercaseQuery);
-        } else if (typeof value === 'object') {
-          // JSON veya nesne değerleri için
-          try {
-            return JSON.stringify(value).toLowerCase().includes(lowercaseQuery);
-          } catch {
-            return false;
+    // Arama sorgusu varsa filtrele
+    if (query.trim()) {
+      const lowercaseQuery = query.toLowerCase().trim();
+      
+      // Tablonun tüm sütunlarında arama yap
+      filtered = filtered.filter(row => {
+        // Tüm sütunlarda ara
+        return Object.keys(row).some(key => {
+          const value = row[key];
+          // null veya undefined değerler için kontrol
+          if (value === null || value === undefined) return false;
+          
+          // Değer türüne göre arama yap
+          if (typeof value === 'string') {
+            return value.toLowerCase().includes(lowercaseQuery);
+          } else if (typeof value === 'number' || typeof value === 'boolean') {
+            return value.toString().toLowerCase().includes(lowercaseQuery);
+          } else if (value instanceof Date) {
+            return value.toLocaleDateString('tr-TR').includes(lowercaseQuery);
+          } else if (typeof value === 'object') {
+            // JSON veya nesne değerleri için
+            try {
+              return JSON.stringify(value).toLowerCase().includes(lowercaseQuery);
+            } catch {
+              return false;
+            }
           }
-        }
-        return false;
+          return false;
+        });
       });
-    });
+    }
+    
+    // Kritik stok filtresi aktifse uygula
+    if (showKritikStok) {
+      filtered = filtered.filter(item => {
+        const netStok = item['Net Stok'] || (item['Mevcut Stok'] - (item['Rezerve Edildi'] || 0));
+        const isKritik = netStok < (item['Kritik Stok'] || 0);
+        
+        // Sadece kritik stok miktarının altındakileri göster
+        if (!isKritik) return false;
+        
+        // Kategori filtreleme
+        if (kritikStokKategori === 'hepsi') {
+          return true;
+        } else if (kritikStokKategori === 'hammadde') {
+          return item['Stok Kategori'] === 'Hammadde';
+        } else if (kritikStokKategori === 'ambalaj') {
+          return item['Stok Kategori'] === 'Ambalaj';
+        }
+        
+        return true;
+      });
+    }
     
     setFilteredData(filtered);
   };
 
-  // Arama kutusundan gelen değişiklikleri izle
+  // Kritik stok filtrelemesini aç/kapat
+  const toggleKritikStok = useCallback(() => {
+    setShowKritikStok(prev => !prev);
+    setKritikStokKategori('hepsi');
+  }, []);
+
+  // Kritik stok kategori filtrelemesi
+  const handleKritikStokKategori = useCallback((kategori: 'hepsi' | 'hammadde' | 'ambalaj') => {
+    setKritikStokKategori(kategori);
+  }, []);
+
+  // Arama ve filtreleme değişikliklerini izle
   useEffect(() => {
     filterData(searchQuery);
-  }, [searchQuery, tableData]);
+  }, [searchQuery, tableData, showKritikStok, kritikStokKategori]);
   
   // Reçete adına tıklandığında teslimat geçmişi modalını aç (Bitmiş Ürün Stoğu tablosu için)
   const handleReceteClick = (receteAdi: string, urunId: number) => {
@@ -295,6 +369,56 @@ export default function TablePage() {
     fetchRolBilgileri();
   }, [user]);
   
+  // Excel'e verileri aktar
+  const handleExcelExport = () => {
+    try {
+      // Aktarılacak veriyi belirle
+      const dataToExport = filteredData.length > 0 ? filteredData : tableData;
+      
+      if (dataToExport.length === 0) {
+        toast.error('Aktarılacak veri bulunamadı!');
+        return;
+      }
+      
+      // Excel verisi için boş dizi oluştur
+      let excelData: Record<string, any>[] = [];
+      
+      // Tüm tablolar için tek bir yaklaşım kullan - sadece tabloda görünen sütunları aktar
+      excelData = dataToExport.map(item => {
+        const row: Record<string, any> = {};
+        
+        // Tablonun tüm sütunlarını al
+        tableSchema?.columns.forEach(column => {
+          // Özel karakterlerden kaçınmak ve okunabilirliği artırmak için sütun adını düzenle
+          const columnName = (column as any).header || column.name;
+          row[columnName] = item[column.name] !== undefined ? item[column.name] : '';
+        });
+        
+        return row;
+      });
+      
+      // Excel çalışma kitabı oluştur
+      const workbook = XLSX.utils.book_new();
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+      
+      // Sütun genişliklerini ayarla
+      const wscols = Array(Object.keys(excelData[0] || {}).length).fill({ wch: 18 });
+      worksheet['!cols'] = wscols;
+      
+      // Excel dosyasını oluştur
+      XLSX.utils.book_append_sheet(workbook, worksheet, decodedTableName);
+      
+      // Excel dosyasını indir
+      const excelFileName = `${decodedTableName}_${format(new Date(), 'dd-MM-yyyy')}.xlsx`;
+      XLSX.writeFile(workbook, excelFileName);
+      
+      toast.success('Excel dosyası başarıyla indirildi');
+    } catch (error) {
+      console.error('Excel dışa aktarımı sırasında hata:', error);
+      toast.error('Excel aktarımı sırasında bir hata oluştu');
+    }
+  };
+  
   if (!tableSchema) {
     return (
       <PageGuard sayfaYolu={`/tablo/${decodedTableName}`}>
@@ -323,6 +447,9 @@ export default function TablePage() {
   return (
     <PageGuard sayfaYolu={`/tablo/${decodedTableName}`}>
       <DashboardLayout>
+        {/* Özel animasyon stilini sayfaya ekle */}
+        <style dangerouslySetInnerHTML={{ __html: pulseAnimationStyle }} />
+        
         <div className="mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-center">
           <div className="mb-4 sm:mb-0">
             <h1 className="text-2xl font-semibold text-gray-900 whitespace-normal sm:whitespace-nowrap">{displayTableName}</h1>
@@ -368,6 +495,32 @@ export default function TablePage() {
                 </svg>
                 Yenile
               </button>
+              
+              {/* Kritik Stok Tablosu Butonu - Sadece Stok tablosu için göster */}
+              {decodedTableName === 'Stok' && (
+                <button
+                  onClick={toggleKritikStok}
+                  className={`flex items-center justify-center px-4 h-10 border border-transparent text-sm font-medium rounded-md shadow-sm text-white ${showKritikStok ? 'bg-amber-600 hover:bg-amber-700' : 'bg-blue-600 hover:bg-blue-700'} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 w-full sm:w-auto`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M12 3a1 1 0 01.117 1.993L12 5H8a1 1 0 01-.117-1.993L8 3h4zm-6 2a3 3 0 00-3 3v8a3 3 0 003 3h8a3 3 0 003-3V8a3 3 0 00-3-3H6zm2 5a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1zm0 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clipRule="evenodd" />
+                  </svg>
+                  Kritik Stok Tablosu
+                </button>
+              )}
+              
+              {/* Excel'e Aktar Butonu - Sadece Stok tablosu için göster */}
+              {decodedTableName === 'Stok' && (
+                <button
+                  onClick={handleExcelExport}
+                  className="flex items-center justify-center px-4 h-10 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 w-full sm:w-auto"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                  Excel'e Aktar
+                </button>
+              )}
               
               {/* Yeni Müşteri Ekle Butonu - Sadece Müşteriler tablosu için göster */}
               {decodedTableName === 'Müşteriler' && (
@@ -482,7 +635,7 @@ export default function TablePage() {
                       className="flex items-center justify-center px-4 h-10 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 w-full sm:w-auto"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 010 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+                        <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 010 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 101.414 1.414l-3 3a1 1 0 00-1.414 0l-3-3a1 1 0 000-1.414z" clipRule="evenodd" />
                       </svg>
                       Kalan Bulk Sıfırla
                     </button>
@@ -510,6 +663,63 @@ export default function TablePage() {
         {searchQuery && (
           <div className="mb-4 text-sm text-gray-500">
             Arama sonucu: {filteredData.length} kayıt bulundu
+          </div>
+        )}
+        
+        {/* Kritik stok filtre düğmeleri */}
+        {decodedTableName === 'Stok' && showKritikStok && (
+          <div className="mb-4">
+            <div className="mb-2 p-3 rounded bg-red-50 border border-red-300 animate-neon-pulse">
+              <p className="text-sm font-semibold text-red-600 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 mr-2 text-red-600">
+                  <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
+                </svg>
+                {kritikStokKategori === 'hepsi' 
+                  ? 'Net Stok miktarı kritik stok miktarının altına düşmüş olanları görüyorsunuz!' 
+                  : kritikStokKategori === 'hammadde'
+                    ? 'Kritik Stoğun altında düşmüş HAMMADDELER!'
+                    : 'Kritik stoğun altına düşmüş AMBALAJLAR!'}
+              </p>
+            </div>
+            <p className="text-sm text-gray-700 mb-2">Kategori Filtresi:</p>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => handleKritikStokKategori('hepsi')}
+                className={`px-3 py-1 text-xs font-medium rounded ${
+                  kritikStokKategori === 'hepsi' 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                Tümünü Göster
+              </button>
+              <button
+                onClick={() => handleKritikStokKategori('hammadde')}
+                className={`px-3 py-1 text-xs font-medium rounded ${
+                  kritikStokKategori === 'hammadde'
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                Hammadde Göster
+              </button>
+              <button
+                onClick={() => handleKritikStokKategori('ambalaj')}
+                className={`px-3 py-1 text-xs font-medium rounded ${
+                  kritikStokKategori === 'ambalaj' 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                Ambalaj Göster
+              </button>
+              <button
+                onClick={() => setShowKritikStok(false)}
+                className="px-3 py-1 text-xs font-medium rounded bg-gray-700 text-white hover:bg-gray-800"
+              >
+                Normal Tabloya Dön
+              </button>
+            </div>
           </div>
         )}
         

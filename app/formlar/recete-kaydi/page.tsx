@@ -251,12 +251,13 @@ export default function ReceteKaydiPage() {
 
   // Bileşen arama
   const handleBilesenSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const term = e.target.value.toLowerCase();
+    const term = e.target.value;
     setBilesenSearchTerm(term);
     
     if (term) {
+      const searchTerm = term.toLowerCase();
       const filtered = stokItems.filter(
-        item => item['Hammadde Adı'].toLowerCase().includes(term)
+        item => item['Hammadde Adı'].toLowerCase().includes(searchTerm)
       );
       setFilteredStokItems(filtered);
     } else {
@@ -266,13 +267,14 @@ export default function ReceteKaydiPage() {
 
   // Marka arama
   const handleMarkaSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const term = e.target.value.toLowerCase();
+    const term = e.target.value;
     setMarkaSearchTerm(term);
     
     if (term) {
+      const searchTerm = term.toLowerCase();
       const filtered = markalar.filter(
-        item => item['Marka'].toLowerCase().includes(term) || 
-                item['Müşteri Firma'].toLowerCase().includes(term)
+        item => item['Marka'].toLowerCase().includes(searchTerm) || 
+                item['Müşteri Firma'].toLowerCase().includes(searchTerm)
       );
       setFilteredMarkalar(filtered);
     } else {
