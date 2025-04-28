@@ -211,7 +211,7 @@ export default function Home() {
                 <div className="px-4 py-3 border-b border-gray-200">
                   <h2 className="text-lg font-semibold text-gray-900">Stok Durumu</h2>
                   <p className="mt-1 text-sm text-gray-600">
-                    Rezerve edilmiş stoklar ve kritik seviyedeki ürünler
+                    Üretim Kuyruğuna alınmış ürünlere ait detaylı bilgiler. Kırmızı renkte olanlar Kritik stok seviyesinin altında olanlar, devamındakiler de sadece rezere edildiğini gösteren bilgilerdir.
                   </p>
                 </div>
               </div>
