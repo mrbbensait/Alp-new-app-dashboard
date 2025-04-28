@@ -8,9 +8,12 @@ import GrafikTurSecici, { GrafikTuru } from '@/app/components/personel-performan
 import PerformansGrafikleri from '@/app/components/personel-performans/PerformansGrafikleri';
 import { 
   getSonHaftaTarihAraligi, 
-  formatDateTR 
+  formatDateTR,
+  getBugununTarihi,
+  getTarihAraligi
 } from '@/app/utils/date-utils';
 import PageGuard from '@/app/components/PageGuard';
+import { usePerformans } from '@/app/lib/PerformansContext';
 
 export default function PersonelPerformansPage() {
   // Durum değişkenleri
@@ -49,8 +52,15 @@ export default function PersonelPerformansPage() {
     toplamEtiketleme: 0,
     toplamKutulama: 0,
     toplamSelefon: 0,
-    toplamIslem: 0
+    toplamIslem: 0,
+    dunkuPerformans: 0,
+    bugunPerformans: 0,
+    haftaPerformans: 0,
+    gecenHaftaPerformans: 0,
+    gecenAyPerformans: 0
   });
+  
+  const { updatePerformansVerileri } = usePerformans();
   
   // Sayfa yüklendiğinde varsayılan tarih aralığı (son 7 gün) için verileri getir
   useEffect(() => {
@@ -101,8 +111,18 @@ export default function PersonelPerformansPage() {
       toplamEtiketleme: 0,
       toplamKutulama: 0,
       toplamSelefon: 0,
-      toplamIslem: 0
+      toplamIslem: 0,
+      dunkuPerformans: 0,
+      bugunPerformans: 0,
+      haftaPerformans: 0,
+      gecenHaftaPerformans: 0,
+      gecenAyPerformans: 0
     };
+    
+    if (raporlar.length === 0) {
+      setPerformansOzeti(ozet);
+      return;
+    }
     
     // Toplam değerleri hesapla
     raporlar.forEach(rapor => {
@@ -115,7 +135,159 @@ export default function PersonelPerformansPage() {
     // Toplam işlem sayısını hesapla
     ozet.toplamIslem = ozet.toplamDolum + ozet.toplamEtiketleme + ozet.toplamKutulama + ozet.toplamSelefon;
     
+    // Bugün ve dün için tarih oluştur
+    const bugun = new Date();
+    bugun.setHours(0, 0, 0, 0);
+    
+    const dun = new Date(bugun);
+    dun.setDate(dun.getDate() - 1);
+    
+    // Bugünkü performans hesaplama
+    const bugunkuRaporlar = raporlar.filter(rapor => {
+      const raporTarihi = new Date(rapor.tarih);
+      raporTarihi.setHours(0, 0, 0, 0);
+      return raporTarihi.getTime() === bugun.getTime();
+    });
+    
+    if (bugunkuRaporlar.length > 0) {
+      let bugunkuToplamIs = 0;
+      bugunkuRaporlar.forEach(rapor => {
+        bugunkuToplamIs += rapor.dolum + rapor.etiketleme + rapor.kutulama + rapor.selefon;
+      });
+      ozet.bugunPerformans = (bugunkuToplamIs / 12500) * 100; // 12500 = %100 performans
+    }
+    
+    // Dünkü performans hesaplama
+    // API'den gelen tarihleri Date nesnesine çevirip karşılaştırma yapmak daha güvenli
+    const dunkuRaporlar = raporlar.filter(rapor => {
+      const raporTarihi = new Date(rapor.tarih);
+      raporTarihi.setHours(0, 0, 0, 0);
+      return raporTarihi.getTime() === dun.getTime();
+    });
+    
+    if (dunkuRaporlar.length > 0) {
+      let dunkuToplamIs = 0;
+      dunkuRaporlar.forEach(rapor => {
+        dunkuToplamIs += rapor.dolum + rapor.etiketleme + rapor.kutulama + rapor.selefon;
+      });
+      ozet.dunkuPerformans = (dunkuToplamIs / 12500) * 100; // 12500 = %100 performans
+    }
+    
+    // Bu haftaki performans hesaplama (Pazartesi-Bugün arası)
+    // Pazartesi gününü hesapla
+    const bugunGun = bugun.getDay(); // 0: Pazar, 1: Pazartesi, ...
+    const pazartesiGunu = new Date(bugun);
+    const gunFarki = bugunGun === 0 ? 6 : bugunGun - 1; // Pazar günü için 6 gün geriye git, diğer günler için güncel gün - 1
+    pazartesiGunu.setDate(bugun.getDate() - gunFarki);
+    pazartesiGunu.setHours(0, 0, 0, 0);
+    
+    // Haftanın başlangıcından itibaren raporları filtreleme
+    const haftaRaporlari = raporlar.filter(rapor => {
+      const raporTarihi = new Date(rapor.tarih);
+      raporTarihi.setHours(0, 0, 0, 0);
+      return raporTarihi >= pazartesiGunu && raporTarihi <= bugun;
+    });
+    
+    if (haftaRaporlari.length > 0) {
+      // Günlük ortalama iş sayısı
+      const gunlukRaporlar = new Map<string, number>();
+      
+      haftaRaporlari.forEach(rapor => {
+        const gunlukToplam = rapor.dolum + rapor.etiketleme + rapor.kutulama + rapor.selefon;
+        gunlukRaporlar.set(rapor.tarih, gunlukToplam);
+      });
+      
+      // Her gün için toplam
+      let haftaToplamIs = 0;
+      gunlukRaporlar.forEach((toplamIs) => {
+        haftaToplamIs += toplamIs;
+      });
+      
+      // Haftalık ortalama
+      const gunSayisi = gunlukRaporlar.size;
+      const haftaOrtalamaIs = gunSayisi > 0 ? haftaToplamIs / gunSayisi : 0;
+      ozet.haftaPerformans = (haftaOrtalamaIs / 12500) * 100; // 12500 = %100 performans
+    }
+    
+    // Geçen haftanın performansını hesaplama
+    const gecenHaftaPazartesi = new Date(pazartesiGunu);
+    gecenHaftaPazartesi.setDate(gecenHaftaPazartesi.getDate() - 7);
+    
+    const gecenHaftaPazar = new Date(pazartesiGunu);
+    gecenHaftaPazar.setDate(gecenHaftaPazar.getDate() - 1);
+    
+    const gecenHaftaRaporlari = raporlar.filter(rapor => {
+      const raporTarihi = new Date(rapor.tarih);
+      raporTarihi.setHours(0, 0, 0, 0);
+      return raporTarihi >= gecenHaftaPazartesi && raporTarihi <= gecenHaftaPazar;
+    });
+    
+    if (gecenHaftaRaporlari.length > 0) {
+      const gunlukRaporlar = new Map<string, number>();
+      
+      gecenHaftaRaporlari.forEach(rapor => {
+        const gunlukToplam = rapor.dolum + rapor.etiketleme + rapor.kutulama + rapor.selefon;
+        gunlukRaporlar.set(rapor.tarih, gunlukToplam);
+      });
+      
+      let gecenHaftaToplamIs = 0;
+      gunlukRaporlar.forEach((toplamIs) => {
+        gecenHaftaToplamIs += toplamIs;
+      });
+      
+      const gunSayisi = gunlukRaporlar.size;
+      const gecenHaftaOrtalamaIs = gunSayisi > 0 ? gecenHaftaToplamIs / gunSayisi : 0;
+      ozet.gecenHaftaPerformans = (gecenHaftaOrtalamaIs / 12500) * 100;
+    }
+    
+    // Geçen ayın performansını hesaplama
+    const birAyOnce = new Date(bugun);
+    birAyOnce.setMonth(birAyOnce.getMonth() - 1);
+    
+    const gecenAyRaporlari = raporlar.filter(rapor => {
+      const raporTarihi = new Date(rapor.tarih);
+      raporTarihi.setHours(0, 0, 0, 0);
+      
+      // Aynı ay içindeki ve geçen aydaki raporları al
+      return (
+        raporTarihi.getMonth() === birAyOnce.getMonth() && 
+        raporTarihi.getFullYear() === birAyOnce.getFullYear()
+      );
+    });
+    
+    if (gecenAyRaporlari.length > 0) {
+      const gunlukRaporlar = new Map<string, number>();
+      
+      gecenAyRaporlari.forEach(rapor => {
+        const gunlukToplam = rapor.dolum + rapor.etiketleme + rapor.kutulama + rapor.selefon;
+        gunlukRaporlar.set(rapor.tarih, gunlukToplam);
+      });
+      
+      let gecenAyToplamIs = 0;
+      gunlukRaporlar.forEach((toplamIs) => {
+        gecenAyToplamIs += toplamIs;
+      });
+      
+      const gunSayisi = gunlukRaporlar.size;
+      const gecenAyOrtalamaIs = gunSayisi > 0 ? gecenAyToplamIs / gunSayisi : 0;
+      ozet.gecenAyPerformans = (gecenAyOrtalamaIs / 12500) * 100;
+    }
+    
+    // Context'i güncelle
+    updatePerformansVerileri({
+      dunkuPerformans: ozet.dunkuPerformans,
+      haftaPerformans: ozet.haftaPerformans
+    });
+    
     setPerformansOzeti(ozet);
+  };
+  
+  // Bir tarih ile ilgili fonksiyon
+  const formatDate = (date: Date): string => {
+    const yil = date.getFullYear();
+    const ay = String(date.getMonth() + 1).padStart(2, '0');
+    const gun = String(date.getDate()).padStart(2, '0');
+    return `${yil}-${ay}-${gun}`;
   };
   
   // Tarih aralığı değiştiğinde verileri güncelle
@@ -241,6 +413,83 @@ export default function PersonelPerformansPage() {
                       <p className="text-lg font-semibold text-gray-900">
                         {performansOzeti.toplamSelefon.toLocaleString()}
                       </p>
+                    </div>
+                  </div>
+                  
+                  {/* Performans Yüzde Bilgileri */}
+                  <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-4 rounded-lg mb-4 text-white shadow-md">
+                    <h3 className="text-lg font-bold mb-3">Performans Değerlendirmesi</h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-sm font-medium mb-1">Bugünkü Performans:</p>
+                        <div className="flex items-center">
+                          <p className="text-2xl font-bold">
+                            %{performansOzeti.bugunPerformans ? performansOzeti.bugunPerformans.toFixed(1) : '0.0'}
+                          </p>
+                          {performansOzeti.bugunPerformans > 0 && (
+                            <span className={`ml-2 px-2 py-1 rounded-md text-xs font-medium ${performansOzeti.bugunPerformans >= 100 ? 'bg-green-400 text-green-900' : 'bg-yellow-400 text-yellow-900'}`}>
+                              {performansOzeti.bugunPerformans >= 100 ? 'Hedef Tamamlandı!' : 'Devam Ediyor'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <p className="text-sm font-medium mb-1">Dünkü Performans:</p>
+                        <div className="flex items-center">
+                          <p className="text-2xl font-bold">
+                            %{performansOzeti.dunkuPerformans ? performansOzeti.dunkuPerformans.toFixed(1) : '0.0'}
+                          </p>
+                          {performansOzeti.dunkuPerformans > 0 && (
+                            <span className={`ml-2 px-2 py-1 rounded-md text-xs font-medium ${performansOzeti.dunkuPerformans >= 100 ? 'bg-green-400 text-green-900' : 'bg-yellow-400 text-yellow-900'}`}>
+                              {performansOzeti.dunkuPerformans >= 100 ? 'Tamamlandı' : 'Eksik'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <p className="text-sm font-medium mb-1">Bu Haftaki Performans:</p>
+                        <div className="flex items-center">
+                          <p className="text-2xl font-bold">
+                            %{performansOzeti.haftaPerformans ? performansOzeti.haftaPerformans.toFixed(1) : '0.0'}
+                          </p>
+                          {performansOzeti.haftaPerformans > 0 && (
+                            <span className={`ml-2 px-2 py-1 rounded-md text-xs font-medium ${performansOzeti.haftaPerformans >= 100 ? 'bg-green-400 text-green-900' : 'bg-yellow-400 text-yellow-900'}`}>
+                              {performansOzeti.haftaPerformans >= 100 ? 'Tamamlandı' : 'Devam Ediyor'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <p className="text-sm font-medium mb-1">Geçen Haftaki Performans:</p>
+                        <div className="flex items-center">
+                          <p className="text-2xl font-bold">
+                            %{performansOzeti.gecenHaftaPerformans ? performansOzeti.gecenHaftaPerformans.toFixed(1) : '0.0'}
+                          </p>
+                          {performansOzeti.gecenHaftaPerformans > 0 && (
+                            <span className={`ml-2 px-2 py-1 rounded-md text-xs font-medium ${performansOzeti.gecenHaftaPerformans >= 100 ? 'bg-green-400 text-green-900' : 'bg-yellow-400 text-yellow-900'}`}>
+                              {performansOzeti.gecenHaftaPerformans >= 100 ? 'Tamamlandı' : 'Eksik'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="md:col-span-2">
+                        <p className="text-sm font-medium mb-1">Geçen Ayki Performans:</p>
+                        <div className="flex items-center">
+                          <p className="text-2xl font-bold">
+                            %{performansOzeti.gecenAyPerformans ? performansOzeti.gecenAyPerformans.toFixed(1) : '0.0'}
+                          </p>
+                          {performansOzeti.gecenAyPerformans > 0 && (
+                            <span className={`ml-2 px-2 py-1 rounded-md text-xs font-medium ${performansOzeti.gecenAyPerformans >= 100 ? 'bg-green-400 text-green-900' : 'bg-yellow-400 text-yellow-900'}`}>
+                              {performansOzeti.gecenAyPerformans >= 100 ? 'Tamamlandı' : 'Eksik'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                   

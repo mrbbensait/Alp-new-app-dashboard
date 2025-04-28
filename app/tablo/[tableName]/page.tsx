@@ -134,23 +134,6 @@ export default function TablePage() {
   const [uretimKuyruguUpdateTimer, setUretimKuyruguUpdateTimer] =
     useState<NodeJS.Timeout | null>(null);
 
-  // Ses çalma için ref
-  const alarmAudioRef = React.useRef<HTMLAudioElement | null>(null);
-  
-  // Ses çalma fonksiyonu
-  const playAlarm = useCallback(() => {
-    try {
-      if (alarmAudioRef.current) {
-        alarmAudioRef.current.currentTime = 0; // Sesi başa sar
-        alarmAudioRef.current.play().catch(error => {
-          console.error("Alarm sesi çalınamadı:", error);
-        });
-      }
-    } catch (error) {
-      console.error("Alarm sesi çalınırken hata oluştu:", error);
-    }
-  }, []);
-
   // Verileri yeniden yükleme fonksiyonu
   const refreshData = useCallback(
     async (forceRefresh = false) => {
@@ -217,39 +200,27 @@ export default function TablePage() {
 
   // Üretim Kuyruğu güncellemelerini dinleme ve 5 saniye sonra yenileme yapma
   const handleUretimKuyruguUpdate = useCallback((isNewProduction: boolean) => {
-    // Üretim Kuyruğu sayfasında değilsek işlem yapma
-    if (decodedTableName !== "Üretim Kuyruğu") return;
+    // Sadece Üretim Kuyruğu sayfasında isek verileri yenile
+    if (decodedTableName === "Üretim Kuyruğu") {
+      console.log(
+        "Üretim Kuyruğu güncellemesi alındı, 5 saniye sonra yenilenecek..."
+      );
 
-    console.log(
-      "Üretim Kuyruğu güncellemesi alındı, 5 saniye sonra yenilenecek...",
-      isNewProduction ? "(Yeni Üretim)" : ""
-    );
-    
-    // Eğer yeni üretim eklenmişse alarm çal
-    if (isNewProduction) {
-      playAlarm();
-      // Bildirim göster
-      toast.success('Yeni üretim emri eklendi!', { 
-        duration: 5000,
-        position: 'top-center',
-        icon: '🔔'
-      });
+      // Önceki zamanlayıcıyı temizle
+      if (uretimKuyruguUpdateTimer) {
+        clearTimeout(uretimKuyruguUpdateTimer);
+      }
+
+      // 5 saniye sonra sayfayı yenile
+      const timer = setTimeout(() => {
+        console.log("Otomatik yenileme yapılıyor (5 saniye sonra)...");
+        refreshData(true); // Önbelleği bypass et
+        setUretimKuyruguUpdateTimer(null);
+      }, 5000);
+
+      setUretimKuyruguUpdateTimer(timer);
     }
-
-    // Önceki zamanlayıcıyı temizle
-    if (uretimKuyruguUpdateTimer) {
-      clearTimeout(uretimKuyruguUpdateTimer);
-    }
-
-    // 5 saniye sonra sayfayı yenile
-    const timer = setTimeout(() => {
-      console.log("Otomatik yenileme yapılıyor (5 saniye sonra)...");
-      refreshData(true); // Önbelleği bypass et
-      setUretimKuyruguUpdateTimer(null);
-    }, 5000);
-
-    setUretimKuyruguUpdateTimer(timer);
-  }, [decodedTableName, refreshData, uretimKuyruguUpdateTimer, playAlarm]);
+  }, [decodedTableName, refreshData, uretimKuyruguUpdateTimer]);
 
   useEffect(() => {
     // İlk yüklemede verileri çek
@@ -614,10 +585,6 @@ export default function TablePage() {
   return (
     <PageGuard sayfaYolu={`/tablo/${decodedTableName}`}>
       <style dangerouslySetInnerHTML={{ __html: pulseAnimationStyle }} />
-
-      <audio ref={alarmAudioRef} preload="auto">
-        <source src="/sounds/alarm.mp3" type="audio/mpeg" />
-      </audio>
 
       <DashboardLayout>
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">

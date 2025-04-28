@@ -1,16 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Sidebar from './Sidebar';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../lib/AuthContext';
-import { supabase } from '../lib/supabase';
+import { usePerformans } from '../lib/PerformansContext';
+import { supabase, subscribeToUretimKuyruguUpdates, unsubscribeFromChannel } from '../lib/supabase';
+import { toast } from 'react-hot-toast';
+
+// Performans verileri için tip tanımı
+interface PerformansProps {
+  dunkuPerformans?: number;
+  haftaPerformans?: number;
+}
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
   pageTitle?: string;
   pageSubtitle?: string;
+  performansVerileri?: PerformansProps;
 }
 
-const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, pageTitle, pageSubtitle }) => {
+const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, pageTitle, pageSubtitle, performansVerileri: sayfadanGelenPerformans }) => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [sidebarMode, setSidebarMode] = useState<'auto' | 'collapsed'>('auto');
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
@@ -18,7 +27,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, pageTitle, 
   const [showWarning, setShowWarning] = useState(false);
   const router = useRouter();
   const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const { performansVerileri: contextPerformans } = usePerformans();
   const [userRolAd, setUserRolAd] = useState('Kullanıcı');
+  
+  // Ses çalmak için ref
+  const alarmAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // Kullanıcı giriş yapmadıysa login sayfasına yönlendir
   useEffect(() => {
@@ -115,6 +128,49 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, pageTitle, 
     }
   };
 
+  // Ses çalma fonksiyonu
+  const playAlarm = useCallback(() => {
+    try {
+      if (alarmAudioRef.current) {
+        alarmAudioRef.current.currentTime = 0; // Sesi başa sar
+        alarmAudioRef.current.play().catch(error => {
+          console.error("Alarm sesi çalınamadı:", error);
+        });
+      }
+    } catch (error) {
+      console.error("Alarm sesi çalınırken hata oluştu:", error);
+    }
+  }, []);
+  
+  // Üretim Kuyruğu güncellemelerini dinle
+  useEffect(() => {
+    // Üretim kuyruğu güncellemeleri için abonelik oluştur
+    const uretimKuyruguSubscription = subscribeToUretimKuyruguUpdates(
+      (isNewProduction) => {
+        // Eğer yeni üretim eklenmişse alarm çal
+        if (isNewProduction) {
+          playAlarm();
+          // Bildirim göster
+          toast.success('Yeni üretim emri eklendi!', { 
+            duration: 5000,
+            position: 'top-center',
+            icon: '🔔'
+          });
+        }
+      }
+    );
+
+    // Component unmount olduğunda aboneliği kapat
+    return () => {
+      if (uretimKuyruguSubscription) {
+        unsubscribeFromChannel(uretimKuyruguSubscription);
+      }
+    };
+  }, [playAlarm]);
+
+  // Kullanılacak performans verilerini belirle (sayfadan gelen öncelikli)
+  const performansVerileri = sayfadanGelenPerformans || contextPerformans;
+
   // Kullanıcı kimliği doğrulanmadıysa veya yükleme devam ediyorsa içeriği gösterme
   if (isLoading || !isAuthenticated) {
     return (
@@ -140,6 +196,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, pageTitle, 
           box-shadow: 0 0 15px rgba(220, 38, 38, 0.5);
         }
       `}</style>
+      
+      <audio ref={alarmAudioRef} preload="auto">
+        <source src="/sounds/alarm.mp3" type="audio/mpeg" />
+      </audio>
       
       <Sidebar 
         isMobileSidebarOpen={isMobileSidebarOpen}
@@ -187,20 +247,63 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, pageTitle, 
             
             <div className="flex-1 md:ml-4"></div>
             
-            <div className="flex items-center space-x-4">
-              <div className="flex flex-col items-end">
-                <span className="text-sm font-medium text-gray-700">{user?.ad_soyad || user?.kullanici_adi || 'Kullanıcı'}</span>
-                <span className="text-xs text-gray-500">{userRolAd}</span>
+            <div className="flex items-center space-x-8">
+              {/* Performans Göstergeleri */}
+              {performansVerileri && (performansVerileri.dunkuPerformans || performansVerileri.haftaPerformans) && (
+                <div className="hidden md:flex space-x-6 pr-6 border-r border-gray-200">
+                  {performansVerileri.dunkuPerformans !== undefined && (
+                    <div className="flex flex-col items-center">
+                      <span className="text-xs font-medium text-gray-500">Dünkü Performans</span>
+                      <div className="flex items-center">
+                        <span className={`text-lg font-bold ${performansVerileri.dunkuPerformans >= 100 ? 'text-green-600' : 'text-red-600'}`}>
+                          %{performansVerileri.dunkuPerformans.toFixed(1)}
+                        </span>
+                        <span className={`ml-1.5 px-2 py-1 rounded text-xs font-bold shadow-sm ${
+                          performansVerileri.dunkuPerformans >= 100 
+                            ? 'bg-green-100 text-green-800 border border-green-300' 
+                            : 'bg-red-100 text-red-800 border border-red-300'
+                        }`}>
+                          {performansVerileri.dunkuPerformans >= 100 ? '✓' : 'DÜŞÜK'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {performansVerileri.haftaPerformans !== undefined && (
+                    <div className="flex flex-col items-center">
+                      <span className="text-xs font-medium text-gray-500">Haftalık Performans</span>
+                      <div className="flex items-center">
+                        <span className={`text-lg font-bold ${performansVerileri.haftaPerformans >= 100 ? 'text-green-600' : 'text-red-600'}`}>
+                          %{performansVerileri.haftaPerformans.toFixed(1)}
+                        </span>
+                        <span className={`ml-1.5 px-2 py-1 rounded text-xs font-bold shadow-sm ${
+                          performansVerileri.haftaPerformans >= 100 
+                            ? 'bg-green-100 text-green-800 border border-green-300' 
+                            : 'bg-red-100 text-red-800 border border-red-300'
+                        }`}>
+                          {performansVerileri.haftaPerformans >= 100 ? '✓' : 'DÜŞÜK'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              <div className="flex items-center space-x-4">
+                <div className="flex flex-col items-end">
+                  <span className="text-sm font-medium text-gray-700">{user?.ad_soyad || user?.kullanici_adi || 'Kullanıcı'}</span>
+                  <span className="text-xs text-gray-500">{userRolAd}</span>
+                </div>
+                <button 
+                  onClick={logout}
+                  className="flex items-center justify-center px-3 py-1.5 rounded-md text-sm font-medium text-gray-900 bg-red-100 hover:bg-red-200 border border-red-200 hover:text-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-300 transition-colors"
+                >
+                  <span className="hidden sm:inline-block">Çıkış</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                </button>
               </div>
-              <button 
-                onClick={logout}
-                className="flex items-center justify-center px-3 py-1.5 rounded-md text-sm font-medium text-gray-900 bg-red-100 hover:bg-red-200 border border-red-200 hover:text-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-300 transition-colors"
-              >
-                <span className="hidden sm:inline-block">Çıkış</span>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-              </button>
             </div>
           </div>
         </header>
