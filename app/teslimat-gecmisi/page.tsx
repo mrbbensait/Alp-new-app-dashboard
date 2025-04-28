@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { createPage } from '@/app/lib/createPage';
-import { useAuth } from '@/app/lib/AuthContext';
-import { supabase } from '@/app/lib/supabase';
+import { createPage } from '../lib/createPage';
+import { useAuth } from '../lib/AuthContext';
+import { supabase } from '../lib/supabase';
 import { format, subDays, parseISO, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import {
@@ -11,7 +11,7 @@ import {
   Edit, Save, Download, X
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import DashboardLayout from '@/app/components/DashboardLayout';
+import DashboardLayout from '../components/DashboardLayout';
 import * as XLSX from 'xlsx';
 
 // TeslimatGecmisi türü

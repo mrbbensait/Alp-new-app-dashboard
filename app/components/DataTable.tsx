@@ -1274,10 +1274,11 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
                     {(tableName === 'Bitmiş Ürün Stoğu' && onTeslimatClick && row['Kalan Adet'] > 0) ? (
                       <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
                         <button
-                          onClick={() => handleDeleteClick(row.id, row['Müşteri Firma'] || `ID: ${row.id}`)}
-                          className="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 py-1 px-3 rounded-md transition-colors duration-200"
+                          onClick={() => onTeslimatClick(row.id, row['Ürün Adı'] || `ID: ${row.id}`)}
+                          className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 py-1 px-3 rounded-md transition-colors duration-200 flex items-center justify-center gap-1"
                         >
-                          Sil
+                          <ArrowRight className="h-4 w-4" />
+                          Teslimat Gir
                         </button>
                       </td>
                     ) : null}
