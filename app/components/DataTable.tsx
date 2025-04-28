@@ -107,6 +107,119 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({ isOpen, productName, onConf
   );
 };
 
+// Hemen ConfirmModal bileşeninden sonra, yeni bir KritikStokModal bileşeni ekliyorum
+interface KritikStokModalProps {
+  isOpen: boolean;
+  receteAdi: string;
+  kritikUrunler: {
+    hammaddeAdi: string;
+    stokKategori: string;
+    mevcutStok: number;
+    kritikStok: number;
+    netStok: number;
+    birim: string;
+  }[];
+  onClose: () => void;
+  isLoading: boolean;
+}
+
+const KritikStokModal: React.FC<KritikStokModalProps> = ({ isOpen, receteAdi, kritikUrunler, onClose, isLoading }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+      <div className="relative bg-white rounded-lg max-w-2xl mx-auto p-6 shadow-xl">
+        <div className="flex justify-between items-center border-b pb-3 mb-4">
+          <h3 className="text-xl font-semibold text-red-600 flex items-center">
+            <AlertTriangle className="mr-2" />
+            Kritik Stok Uyarısı
+          </h3>
+          <button 
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-500"
+          >
+            <X size={20} />
+          </button>
+        </div>
+        
+        <div className="mb-4">
+          <p className="text-gray-700 mb-2">
+            <span className="font-semibold">{receteAdi}</span> reçetesinin üretimi için aşağıdaki hammaddelerin stok seviyeleri kritik durumda:
+          </p>
+        </div>
+        
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-10">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
+            <p className="mt-4 text-sm text-gray-600">Kritik stok verileri yükleniyor...</p>
+          </div>
+        ) : (
+          <div className="overflow-y-auto max-h-96">
+            {kritikUrunler.length > 0 ? (
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Hammadde Adı
+                    </th>
+                    <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Kategori
+                    </th>
+                    <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Mevcut Stok
+                    </th>
+                    <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Kritik Stok
+                    </th>
+                    <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Net Stok
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {kritikUrunler.map((urun, index) => (
+                    <tr key={index} className="bg-red-50">
+                      <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-red-700">
+                        {urun.hammaddeAdi}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-red-700">
+                        {urun.stokKategori}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-red-700">
+                        {urun.mevcutStok?.toFixed(2)} {urun.birim}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-red-700">
+                        {urun.kritikStok?.toFixed(2)} {urun.birim}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-sm font-bold text-red-700">
+                        {urun.netStok?.toFixed(2)} {urun.birim}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="text-center py-4 text-gray-500">
+                Kritik seviyede hammadde bulunamadı.
+              </div>
+            )}
+          </div>
+        )}
+        
+        <div className="mt-5 text-right">
+          <button
+            type="button"
+            className="mt-3 w-auto px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            onClick={onClose}
+          >
+            Kapat
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, onReceteClick, onTeslimatClick }) => {
   const [sortColumn, setSortColumn] = useState<string | null>('id');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -186,6 +299,20 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
   
   // Üretim durumu "Bitti" olan satırları gösterme durumu
   const [showFinishedProductions, setShowFinishedProductions] = useState(false);
+
+  // KritikStokModal için yeni state'ler ekleyelim (bunu DataTable komponenti içinde diğer statelerin olduğu yere ekleyin)
+  const [isKritikStokModalOpen, setIsKritikStokModalOpen] = useState(false);
+  const [selectedReceteAdi, setSelectedReceteAdi] = useState<string>('');
+  const [kritikUrunler, setKritikUrunler] = useState<{
+    hammaddeAdi: string;
+    stokKategori: string;
+    mevcutStok: number;
+    kritikStok: number;
+    netStok: number;
+    birim: string;
+  }[]>([]);
+  const [isKritikStokLoading, setIsKritikStokLoading] = useState(false);
+  const [clickedWarningIcon, setClickedWarningIcon] = useState<string | null>(null);
 
   // İlk veri değiştiğinde yerel veriye ayarla
   useEffect(() => {
@@ -635,18 +762,143 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
       // Rol bilgilerine göre reçete görüntüleme yetkisi kontrolü
       const kullaniciReceteGoruntulebilir = userRolBilgileri?.recete_goruntulebilir === true;
       
+      // Üretim yapılmadı mı kontrolü
+      const uretimYapilmadi = row['Üretim Yapıldı mı?'] !== true;
+      
+      // Eğer reçeteye ait bir kritik stok durumu varsa, ünlem ikonu göster
+      const [hasKritikStok, setHasKritikStok] = useState<boolean>(false);
+      
+      // Yanıp sönen animasyon için CSS stil tanımı
+      const pulseAnimation = `
+        @keyframes warning-pulse {
+          0% {
+            opacity: 1;
+            transform: scale(1);
+            filter: drop-shadow(0 0 0 rgba(239, 68, 68, 0.7));
+          }
+          50% {
+            opacity: 0.8;
+            transform: scale(1.1);
+            filter: drop-shadow(0 0 5px rgba(239, 68, 68, 0.9));
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1);
+            filter: drop-shadow(0 0 0 rgba(239, 68, 68, 0.7));
+          }
+        }
+        .warning-pulse {
+          animation: warning-pulse 1.5s ease-in-out infinite;
+        }
+      `;
+      
+      // Reçetenin içindeki malzemelerin kritik stok durumunu kontrol et
+      useEffect(() => {
+        if (uretimYapilmadi) {
+          const checkKritikStok = async () => {
+            try {
+              // Reçeteye ait formülasyon verilerini çek
+              const { data, error } = await supabase
+                .from('Formülasyonlar')
+                .select('*')
+                .eq('Reçete Adı', value);
+                
+              if (error) throw error;
+              
+              if (data && data.length > 0) {
+                // Her bir hammadde için stok durumunu kontrol et
+                for (const formulation of data) {
+                  const hammaddeAdi = formulation['Hammadde Adı'];
+                  
+                  // Hammaddenin stok durumunu çek
+                  const { data: stokData, error: stokError } = await supabase
+                    .from('Stok')
+                    .select('*')
+                    .eq('Hammadde Adı', hammaddeAdi)
+                    .maybeSingle();
+                    
+                  if (stokError) continue;
+                  
+                  if (stokData) {
+                    const netStok = stokData['Net Stok'] || (stokData['Mevcut Stok'] - (stokData['Rezerve Edildi'] || 0));
+                    const kritikStok = stokData['Kritik Stok'] || 0;
+                    
+                    // Eğer net stok kritik stok değerinin altındaysa
+                    if (netStok < kritikStok) {
+                      setHasKritikStok(true);
+                      break; // Bir tane kritik stok durumu bulmak yeterli
+                    }
+                  }
+                }
+              }
+            } catch (error) {
+              console.error('Kritik stok kontrolü yapılırken hata:', error);
+            }
+          };
+          
+          checkKritikStok();
+        }
+      }, [uretimYapilmadi, value]);
+      
       if (kullaniciReceteGoruntulebilir) {
         return (
-          <span 
-            className="cursor-pointer text-indigo-600 hover:text-indigo-900 hover:underline"
-            onClick={() => handleRecipeClick(value, row.id || '', '', row)}
-          >
-            {value}
-          </span>
+          <>
+            <style dangerouslySetInnerHTML={{ __html: pulseAnimation }} />
+            <div className="flex items-center">
+              <span 
+                className="cursor-pointer text-indigo-600 hover:text-indigo-900 hover:underline"
+                onClick={() => handleRecipeClick(value, row.id || '', '', row)}
+              >
+                {value}
+              </span>
+              {uretimYapilmadi && hasKritikStok && (
+                <div className="relative group">
+                  <AlertTriangle 
+                    size={22} 
+                    className={`ml-2 cursor-pointer transition-all duration-200 ${
+                      clickedWarningIcon === value 
+                        ? "text-gray-500 transform scale-110" // Tıklandığında efekt 
+                        : "text-red-500 warning-pulse"
+                    }`}
+                    onClick={(e) => {
+                      e.stopPropagation(); // Üst elementin onClick olayının tetiklenmesini önle
+                      handleShowKritikStokModal(value);
+                    }}
+                  />
+                  <div className="hidden group-hover:block absolute z-50 w-48 p-2 mt-1 text-xs text-white bg-gray-800 rounded-md">
+                    Kritik stok durumundaki ürünleri görmek için tıklayın
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
         );
       } else {
-        // Yetkisiz roller için normal metin olarak göster
-        return <span>{value}</span>;
+        // Yetkisiz roller için normal metin olarak göster, ama kritik stok ünlemi yine de göster
+        return (
+          <>
+            <style dangerouslySetInnerHTML={{ __html: pulseAnimation }} />
+            <div className="flex items-center">
+              <span>{value}</span>
+              {uretimYapilmadi && hasKritikStok && (
+                <div className="relative group">
+                  <AlertTriangle 
+                    size={22} 
+                    className={`ml-2 cursor-pointer transition-all duration-200 ${
+                      clickedWarningIcon === value 
+                        ? "text-gray-500 transform scale-110" // Tıklandığında efekt 
+                        : "text-red-500 warning-pulse"
+                    }`}
+                    onClick={() => handleShowKritikStokModal(value)}
+                  />
+                  <div className="hidden group-hover:block absolute z-50 w-48 p-2 mt-1 text-xs text-white bg-gray-800 rounded-md">
+                    Kritik stok durumundaki ürünleri görmek için tıklayın
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
+        );
       }
     }
     
@@ -860,6 +1112,79 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
     setSelectedDeleteRow(null);
   };
 
+  // Kritik stok ürünlerini getirme fonksiyonu (renderCellValue fonksiyonundan önce)
+  const handleShowKritikStokModal = async (receteAdi: string) => {
+    // Modalı hemen aç ve yükleniyor durumuna geç
+    setIsKritikStokLoading(true);
+    setSelectedReceteAdi(receteAdi);
+    setKritikUrunler([]); // Önceki verileri temizle
+    setIsKritikStokModalOpen(true);
+    
+    // Tıklanan warning ikonu için görsel geribildirim
+    setClickedWarningIcon(receteAdi);
+    
+    try {
+      // Reçeteye ait formülasyon verilerini çek
+      const { data: formulasyonData, error: formulasyonError } = await supabase
+        .from('Formülasyonlar')
+        .select('*')
+        .eq('Reçete Adı', receteAdi);
+      
+      if (formulasyonError) throw formulasyonError;
+      
+      // Kritik stok durumundaki ürünleri topla
+      const kritikStokUrunleri = [];
+      
+      if (formulasyonData && formulasyonData.length > 0) {
+        // Her bir hammadde için stok durumunu kontrol et
+        for (const formulation of formulasyonData) {
+          const hammaddeAdi = formulation['Hammadde Adı'];
+          
+          // Hammaddenin stok durumunu çek
+          const { data: stokData, error: stokError } = await supabase
+            .from('Stok')
+            .select('*')
+            .eq('Hammadde Adı', hammaddeAdi)
+            .maybeSingle();
+            
+          if (stokError) continue;
+          
+          if (stokData) {
+            const mevcutStok = stokData['Mevcut Stok'] || 0;
+            const rezerveEdildi = stokData['Rezerve Edildi'] || 0;
+            const netStok = stokData['Net Stok'] || (mevcutStok - rezerveEdildi);
+            const kritikStok = stokData['Kritik Stok'] || 0;
+            
+            // Eğer net stok kritik stok değerinin altındaysa
+            if (netStok < kritikStok) {
+              kritikStokUrunleri.push({
+                hammaddeAdi,
+                stokKategori: stokData['Stok Kategori'] || 'Belirtilmemiş',
+                mevcutStok,
+                kritikStok,
+                netStok,
+                birim: stokData['Birim'] || ''
+              });
+            }
+          }
+        }
+      }
+      
+      setKritikUrunler(kritikStokUrunleri);
+    } catch (error) {
+      console.error('Kritik stok bilgileri alınırken hata:', error);
+    } finally {
+      setIsKritikStokLoading(false);
+      setClickedWarningIcon(null); // İşlem tamamlandığında ikonu normal haline getir
+    }
+  };
+
+  // Modalı kapatma fonksiyonu
+  const handleCloseKritikStokModal = () => {
+    setIsKritikStokModalOpen(false);
+    setClickedWarningIcon(null);
+  };
+
   return (
     <div className="overflow-hidden shadow-sm border border-gray-200 rounded-lg">
       {/* Onay Modalı */}
@@ -869,6 +1194,15 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
         onConfirm={handleModalConfirm}
         onCancel={handleModalCancel}
         tableName={tableName}
+      />
+      
+      {/* Kritik Stok Modalı */}
+      <KritikStokModal
+        isOpen={isKritikStokModalOpen}
+        receteAdi={selectedReceteAdi}
+        kritikUrunler={kritikUrunler}
+        onClose={handleCloseKritikStokModal}
+        isLoading={isKritikStokLoading}
       />
       
       {/* Formülasyon Modalı */}
