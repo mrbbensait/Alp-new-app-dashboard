@@ -195,6 +195,24 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, pageTitle, 
           animation: warningPulse 2s ease-in-out infinite;
           box-shadow: 0 0 15px rgba(220, 38, 38, 0.5);
         }
+        
+        @keyframes performancePulse {
+          0% { opacity: 1; }
+          50% { opacity: 0.7; }
+          100% { opacity: 1; }
+        }
+        .performance-pulse {
+          animation: performancePulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes glowPulse {
+          0% { box-shadow: 0 0 5px rgba(239, 68, 68, 0.5); }
+          50% { box-shadow: 0 0 15px rgba(239, 68, 68, 0.8); }
+          100% { box-shadow: 0 0 5px rgba(239, 68, 68, 0.5); }
+        }
+        .glow-pulse {
+          animation: glowPulse 2s ease-in-out infinite;
+        }
       `}</style>
       
       <audio ref={alarmAudioRef} preload="auto">
@@ -250,25 +268,31 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, pageTitle, 
             <div className="flex items-center space-x-8">
               {/* Performans Göstergeleri */}
               {performansVerileri && (performansVerileri.dunkuPerformans || performansVerileri.haftaPerformans) && (
-                <div className="hidden md:flex space-x-6 pr-6 border-r border-gray-200">
+                <div className="hidden md:flex items-center justify-center space-x-8 pr-6 border-r border-gray-200">
+                  {/* Dünkü Performans - Tek satırda */}
                   {performansVerileri.dunkuPerformans !== undefined && (
-                    <div className="flex flex-col items-center">
-                      <span className="text-xs font-medium text-gray-500">Dünkü Performans</span>
-                      <div className="flex items-center">
-                        <span className={`text-lg font-bold ${performansVerileri.dunkuPerformans >= 100 ? 'text-green-600' : 'text-red-600'}`}>
-                          %{performansVerileri.dunkuPerformans.toFixed(1)}
-                        </span>
-                        <span className={`ml-1.5 px-2 py-1 rounded text-xs font-bold shadow-sm ${
-                          performansVerileri.dunkuPerformans >= 100 
-                            ? 'bg-green-100 text-green-800 border border-green-300' 
-                            : 'bg-red-100 text-red-800 border border-red-300'
-                        }`}>
-                          {performansVerileri.dunkuPerformans >= 100 ? '✓' : 'DÜŞÜK'}
-                        </span>
-                      </div>
+                    <div className="flex items-center">
+                      <span className={`text-lg font-semibold text-gray-700 mr-2 ${performansVerileri.dunkuPerformans < 100 ? 'performance-pulse' : ''}`}>
+                        Dünkü Performans:
+                      </span>
+                      <span className={`text-2xl font-bold ${
+                        performansVerileri.dunkuPerformans >= 100 
+                          ? 'text-green-600' 
+                          : 'text-red-600 performance-pulse'
+                      }`}>
+                        %{performansVerileri.dunkuPerformans.toFixed(1)}
+                      </span>
+                      <span className={`ml-2 px-3 py-1 rounded text-base font-bold ${
+                        performansVerileri.dunkuPerformans >= 100 
+                          ? 'bg-green-100 text-green-800 border border-green-300' 
+                          : 'bg-red-100 text-red-800 border border-red-300 glow-pulse'
+                      }`}>
+                        {performansVerileri.dunkuPerformans >= 100 ? 'BAŞARILI' : 'DÜŞÜK'}
+                      </span>
                     </div>
                   )}
                   
+                  {/* Haftalık Performans - Değişmedi */}
                   {performansVerileri.haftaPerformans !== undefined && (
                     <div className="flex flex-col items-center">
                       <span className="text-xs font-medium text-gray-500">Haftalık Performans</span>
