@@ -485,9 +485,9 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
   // Bitmiş Ürün Stoğu veya Üretim Kuyruğu için özel filtreleme
   const filteredByCompletionStatus = 
     tableName === 'Bitmiş Ürün Stoğu' 
-      ? (!showCompletedItems ? activeItems : [...activeItems, ...completedItems])
+      ? (showCompletedItems ? [...activeItems, ...completedItems] : activeItems)
       : tableName === 'Üretim Kuyruğu'
-        ? (!showFinishedProductions ? activeProductions : [...activeProductions, ...finishedProductions])
+        ? (showFinishedProductions ? [...activeProductions, ...finishedProductions] : activeProductions)
         : sortedData;
 
   // id sütunu içerip içermediğini kontrol et
@@ -1107,7 +1107,7 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
             {filteredByCompletionStatus.length > 0 ? (
               <>
                 {/* Önce aktif ürünleri göster */}
-                {(tableName === 'Bitmiş Ürün Stoğu' ? activeItems : (tableName === 'Üretim Kuyruğu' ? activeProductions : filteredByCompletionStatus)).map((row, rowIndex) => (
+                {filteredByCompletionStatus.map((row, rowIndex) => (
                   <tr 
                     key={`active-${rowIndex}`} 
                     className={`hover:bg-gray-50 ${
@@ -1317,7 +1317,7 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
               onClick={() => setShowCompletedItems(!showCompletedItems)}
               className="px-6 py-3 border border-indigo-300 rounded-md shadow-sm text-sm font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-300 transform hover:scale-105"
             >
-              {showCompletedItems ? 'SADECE TESLİMATI TAMAMLANMAMIŞ OLANLARI GÖSTER' : 'TESLİMATI TAMAMLANMIŞ OLANLARI GÖSTER'}
+              {showCompletedItems ? 'DİĞERLERİNİ GİZLE' : 'DİĞERLERİNİ GÖSTER'}
             </button>
           )}
           
@@ -1327,7 +1327,7 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
               onClick={() => setShowFinishedProductions(!showFinishedProductions)}
               className="px-6 py-3 border border-indigo-300 rounded-md shadow-sm text-sm font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-300 transform hover:scale-105"
             >
-              {showFinishedProductions ? 'SADECE ÜRETİM DURUMU BİTTİ OLANLARI GÖSTER' : 'ÜRETİM DURUMU "BİTTİ" OLANLARI GÖSTER'}
+              {showFinishedProductions ? 'DİĞERLERİNİ GİZLE' : 'DİĞERLERİNİ GÖSTER'}
             </button>
           )}
         </div>
