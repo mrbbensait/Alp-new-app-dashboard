@@ -18,7 +18,7 @@ const TedarikciEkleModal: React.FC<TedarikciEkleModalProps> = ({ isOpen, onClose
     'Notlar': ''
   });
   
-  const [kategoriTipi, setKategoriTipi] = useState<string>('Hammadde');
+  const [kategoriTipi, setKategoriTipi] = useState<string>('');
   const [digerKategori, setDigerKategori] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -95,7 +95,7 @@ const TedarikciEkleModal: React.FC<TedarikciEkleModalProps> = ({ isOpen, onClose
         'Tedarikçi Kategorisi': '',
         'Notlar': ''
       });
-      setKategoriTipi('Hammadde');
+      setKategoriTipi('');
       setDigerKategori('');
 
       // Başarılı ekleme durumunda

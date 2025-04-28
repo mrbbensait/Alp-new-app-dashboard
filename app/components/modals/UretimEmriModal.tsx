@@ -7,6 +7,7 @@ import {
   formatTarih
 } from '../../lib/formulasyonService';
 import UretimEmriPDF from '../UretimEmriPDF';
+import KaliteKontrolPDF from '../KaliteKontrolPDF';
 
 // UretimEmriPDF komponentinden Hammadde tipini kullanıyoruz
 interface Hammadde {
@@ -79,8 +80,10 @@ const UretimEmriModal: React.FC<UretimEmriModalProps> = ({
   // handlePrint fonksiyonu güncellendi
   const handlePrint = () => {
     const contentToPrint = document.getElementById('uretim-emri-pdf-content');
-    if (!contentToPrint) {
-      console.error('Yazdırılacak içerik (ID: uretim-emri-pdf-content) bulunamadı.');
+    const kaliteKontrolContent = document.getElementById('kalite-kontrol-pdf-content');
+    
+    if (!contentToPrint || !kaliteKontrolContent) {
+      console.error('Yazdırılacak içerik bulunamadı.');
       alert('Yazdırma işlemi başlatılamadı. Lütfen tekrar deneyin.');
       return;
     }
@@ -128,11 +131,21 @@ const UretimEmriModal: React.FC<UretimEmriModalProps> = ({
              page-break-inside: avoid;
              min-height: auto !important;
            }
+           /* İkinci sayfa için sayfa kırılımı */
+           .page-break {
+             page-break-before: always;
+           }
            ${document.getElementById('print-styles')?.innerHTML || ''} 
         </style>
       </head>
       <body>
-        ${contentToPrint.outerHTML} 
+        <div class="print-container">
+          ${contentToPrint.outerHTML}
+        </div>
+        <div class="page-break"></div>
+        <div class="print-container">
+          ${kaliteKontrolContent.outerHTML}
+        </div>
       </body>
       </html>
     `);
@@ -167,7 +180,7 @@ const UretimEmriModal: React.FC<UretimEmriModalProps> = ({
         className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto"
       >
         <div className="bg-white rounded-lg shadow-xl max-w-5xl w-full h-[95vh] flex flex-col">
-          <div className="flex justify-between items-center p-3 border-b no-print bg-gray-50 rounded-t-lg">
+          <div className="flex justify-between items-center p-3 border-b no-print bg-gray-50 rounded-t-lg sticky top-0 z-10">
             <h2 className="text-lg font-semibold text-gray-700">Üretim Emri - {receteAdi}</h2>
             <div className="flex items-center gap-3">
               <button 
@@ -190,14 +203,36 @@ const UretimEmriModal: React.FC<UretimEmriModalProps> = ({
           </div>
           
           <div className="flex-1 overflow-y-auto p-4 bg-gray-100">
-            <div className="flex justify-center">
-              <UretimEmriPDF 
-                receteAdi={receteAdi}
-                uretimNo={uretimNo}
-                uretimTarihi={uretimTarihi}
-                uretimMiktari={uretimMiktari}
-                hammaddeler={hammaddeler}
-              />
+            <div className="flex flex-col items-center gap-8">
+              {/* Üretim Emri Sayfası */}
+              <div className="border-b border-gray-300 pb-8 w-full flex justify-center">
+                <UretimEmriPDF 
+                  receteAdi={receteAdi}
+                  uretimNo={uretimNo}
+                  uretimTarihi={uretimTarihi}
+                  uretimMiktari={uretimMiktari}
+                  hammaddeler={hammaddeler}
+                />
+              </div>
+              
+              {/* Sayfa Ayrıcı */}
+              <div className="w-full flex items-center justify-center py-2">
+                <div className="flex items-center justify-center bg-gray-200 rounded-lg px-4 py-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                  </svg>
+                  <span className="text-sm font-medium text-gray-600">Kalite Kontrol Formu</span>
+                </div>
+              </div>
+              
+              {/* Kalite Kontrol Formu Sayfası */}
+              <div className="pt-4 w-full flex justify-center">
+                <KaliteKontrolPDF 
+                  urunAdi={receteAdi}
+                  uretimNo={uretimNo}
+                  uretimTarihi={uretimTarihi}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -206,10 +241,10 @@ const UretimEmriModal: React.FC<UretimEmriModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full">
-        <div className="flex justify-between items-center p-4 border-b">
-          <h2 className="text-xl font-bold">Üretim Emri Hazırla - {receteAdi}</h2>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto py-6">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full my-auto max-h-[90vh] flex flex-col">
+        <div className="flex justify-between items-center p-3 border-b sticky top-0 z-10 bg-white rounded-t-lg">
+          <h2 className="text-lg font-semibold">Üretim Emri Hazırla - {receteAdi}</h2>
           <button 
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700"
@@ -218,58 +253,58 @@ const UretimEmriModal: React.FC<UretimEmriModalProps> = ({
           </button>
         </div>
         
-        <div className="p-4">
+        <div className="p-4 overflow-y-auto flex-1">
           {loading ? (
             <div className="flex justify-center items-center p-8">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
             </div>
           ) : error ? (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded text-xs">
               {error}
             </div>
           ) : (
             <>
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Üretim No</label>
-                  <div className="mt-1 p-2 border border-gray-300 rounded-md bg-gray-50">
+                  <label className="block text-xs font-medium text-gray-700">Üretim No</label>
+                  <div className="mt-1 p-2 border border-gray-300 rounded-md bg-gray-50 text-xs">
                     {uretimNo}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Üretim Tarihi</label>
-                  <div className="mt-1 p-2 border border-gray-300 rounded-md bg-gray-50">
+                  <label className="block text-xs font-medium text-gray-700">Üretim Tarihi</label>
+                  <div className="mt-1 p-2 border border-gray-300 rounded-md bg-gray-50 text-xs">
                     {uretimTarihi}
                   </div>
                 </div>
               </div>
               
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700">Üretim Miktarı (kg)</label>
-                <div className="mt-1 p-2 border border-gray-300 rounded-md bg-gray-50">
+                <label className="block text-xs font-medium text-gray-700">Üretim Miktarı (kg)</label>
+                <div className="mt-1 p-2 border border-gray-300 rounded-md bg-gray-50 text-xs">
                   {uretimMiktari}
                 </div>
               </div>
               
-              <h3 className="font-medium text-lg mt-4 mb-2">Hammadde Listesi:</h3>
+              <h3 className="font-medium text-sm mt-4 mb-2">Hammadde Listesi:</h3>
               
               <div className="overflow-x-auto">
                 <table className="min-w-full border border-gray-300">
                   <thead>
                     <tr className="bg-gray-100">
-                      <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Hammadde Adı</th>
-                      <th className="px-4 py-2 text-center text-sm font-medium text-gray-700">Stok Kategori</th>
-                      <th className="px-4 py-2 text-right text-sm font-medium text-gray-700">Oran (100Kg)</th>
-                      <th className="px-4 py-2 text-right text-sm font-medium text-gray-700">Miktar</th>
+                      <th className="px-2 py-1 text-left text-xs font-medium text-gray-700">Hammadde Adı</th>
+                      <th className="px-2 py-1 text-center text-xs font-medium text-gray-700">Stok Kategori</th>
+                      <th className="px-2 py-1 text-right text-xs font-medium text-gray-700">Oran (100Kg)</th>
+                      <th className="px-2 py-1 text-right text-xs font-medium text-gray-700">Miktar</th>
                     </tr>
                   </thead>
                   <tbody>
                     {hammaddeler.map((hammadde, index) => (
                       <tr key={index} className="border-t border-gray-300">
-                        <td className="px-4 py-2 text-sm">{hammadde['Hammadde Adı']}</td>
-                        <td className="px-4 py-2 text-sm text-center">{hammadde['Stok Kategori'] || '-'}</td>
-                        <td className="px-4 py-2 text-sm text-right">{hammadde['Oran(100Kg)'].toFixed(2)}</td>
-                        <td className="px-4 py-2 text-sm text-right">{hammadde['Miktar'].toFixed(2)}</td>
+                        <td className="px-2 py-1 text-xs">{hammadde['Hammadde Adı']}</td>
+                        <td className="px-2 py-1 text-xs text-center">{hammadde['Stok Kategori'] || '-'}</td>
+                        <td className="px-2 py-1 text-xs text-right">{hammadde['Oran(100Kg)'].toFixed(2)}</td>
+                        <td className="px-2 py-1 text-xs text-right">{hammadde['Miktar'].toFixed(2)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -279,17 +314,17 @@ const UretimEmriModal: React.FC<UretimEmriModalProps> = ({
           )}
         </div>
         
-        <div className="bg-gray-50 px-4 py-3 flex justify-end gap-3 border-t">
+        <div className="bg-gray-50 px-4 py-2 flex justify-end gap-3 border-t sticky bottom-0 z-10 rounded-b-lg">
           <button
             onClick={onClose}
-            className="py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="py-1 px-3 border border-gray-300 rounded-md shadow-sm text-xs font-medium text-gray-700 hover:bg-gray-50"
           >
             Kapat
           </button>
           <button
             onClick={() => setShowPDF(true)}
             disabled={loading || !!error}
-            className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="py-1 px-3 border border-transparent rounded-md shadow-sm text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Üretim Emri Göster
           </button>
