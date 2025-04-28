@@ -869,7 +869,7 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
   // Reçete sütununu render etme
   const renderReceteColumn = (value: any, row: any) => {
     // Üretim kuyruğu tablosunda ve 'Üretim Yapıldı mı?' false olan satırlar için
-    if (tableName === 'Üretim Kuyruğu' && row && row['Üretim Yapıldı mı?'] === false) {
+    if (tableName === 'Üretim Kuyruğu' && row) {
       // Kritik stok durumu kontrolü
       const receteAdi = value;
       const uretimKuyrukId = row.id;
@@ -886,7 +886,10 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
       return (
         <div className="flex items-center">
           <button
-            onClick={() => onReceteClick && onReceteClick(receteAdi, uretimKuyrukId, marka, row)}
+            onClick={() => {
+              console.log('Reçete tıklandı (DataTable)', receteAdi, uretimKuyrukId, marka, row);
+              if (onReceteClick) onReceteClick(receteAdi, uretimKuyrukId, marka, row);
+            }}
             className="text-blue-600 hover:text-blue-800 hover:underline focus:outline-none text-left"
           >
             {receteAdi}
@@ -913,7 +916,10 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
       const marka = row['Marka'] || '';
       return (
         <button
-          onClick={() => onReceteClick(value, row.id, marka, row)}
+          onClick={() => {
+            console.log('Reçete tıklandı (genel)', value, row.id, marka, row);
+            onReceteClick(value, row.id, marka, row);
+          }}
           className="text-blue-600 hover:text-blue-800 hover:underline focus:outline-none text-left"
         >
           {value}

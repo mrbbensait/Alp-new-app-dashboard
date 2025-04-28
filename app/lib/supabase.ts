@@ -1,18 +1,18 @@
-import { createClient } from '@supabase/supabase-js';
-import { createBrowserClient } from '@supabase/ssr';
+import { createClient } from "@supabase/supabase-js";
+import { createBrowserClient } from "@supabase/ssr";
 // import { Database } from '@supabase/auth-helpers-nextjs';
 
 // Supabase URL ve anonim API anahtarı çevresel değişkenlerden alınır
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
 // Supabase istemcisini oluştur
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   realtime: {
     params: {
-      eventsPerSecond: 10
-    }
-  }
+      eventsPerSecond: 10,
+    },
+  },
 });
 
 // Basit önbellek mekanizması
@@ -39,42 +39,51 @@ export function isCacheActive(): boolean {
 
 // Tüm önbelleği temizle
 export function clearAllCache() {
-  Object.keys(cache).forEach(key => {
+  Object.keys(cache).forEach((key) => {
     delete cache[key];
   });
-  console.log('[Cache] Tüm önbellek temizlendi');
+  console.log("[Cache] Tüm önbellek temizlendi");
 }
 
 // Belirli bir tablodan tüm verileri çeker
-export async function fetchAllFromTable(tableName: string, bypassCache = false) {
+export async function fetchAllFromTable(
+  tableName: string,
+  bypassCache = false,
+) {
   const cacheKey = `table:${tableName}`;
-  
+
   // Eğer önbellek devre dışıysa veya bypass aktifse veya önbellekte geçerli veri yoksa API'den çek
-  if (!isCacheEnabled || bypassCache || !cache[cacheKey] || (Date.now() - cache[cacheKey].timestamp) > CACHE_DURATION) {
+  if (
+    !isCacheEnabled ||
+    bypassCache ||
+    !cache[cacheKey] ||
+    Date.now() - cache[cacheKey].timestamp > CACHE_DURATION
+  ) {
     try {
       console.log(`[API] ${tableName} tablosu API'den çekiliyor`);
       // Stok tablosu için özel işlem - her zaman taze veri çek
-      if (tableName === 'Stok') {
+      if (tableName === "Stok") {
         bypassCache = true;
       }
-      
-      const { data, error } = await supabase
-        .from(tableName)
-        .select('*');
-      
+
+      const { data, error } = await supabase.from(tableName).select("*");
+
       if (error) throw error;
-      
+
       // Veriyi önbelleğe kaydet (önbellek aktifse ve bypass yapılmıyorsa)
       if (data && isCacheEnabled && !bypassCache) {
         cache[cacheKey] = {
           data,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         };
       }
-      
+
       return data || [];
     } catch (error) {
-      console.error(`Tablo verisi çekilirken hata oluştu (${tableName}):`, error);
+      console.error(
+        `Tablo verisi çekilirken hata oluştu (${tableName}):`,
+        error,
+      );
       return [];
     }
   } else {
@@ -84,31 +93,44 @@ export async function fetchAllFromTable(tableName: string, bypassCache = false) 
 }
 
 // Belirli bir tablodan filtrelenmiş verileri çeker
-export async function fetchFilteredData(tableName: string, column: string, value: any, bypassCache = false) {
+export async function fetchFilteredData(
+  tableName: string,
+  column: string,
+  value: any,
+  bypassCache = false,
+) {
   const cacheKey = `table:${tableName}:${column}:${value}`;
-  
+
   // Eğer önbellek devre dışıysa veya bypass aktifse veya önbellekte geçerli veri yoksa API'den çek
-  if (!isCacheEnabled || bypassCache || !cache[cacheKey] || (Date.now() - cache[cacheKey].timestamp) > CACHE_DURATION) {
+  if (
+    !isCacheEnabled ||
+    bypassCache ||
+    !cache[cacheKey] ||
+    Date.now() - cache[cacheKey].timestamp > CACHE_DURATION
+  ) {
     try {
       console.log(`[API] ${tableName} filtrelenmiş veri API'den çekiliyor`);
       const { data, error } = await supabase
         .from(tableName)
-        .select('*')
+        .select("*")
         .eq(column, value);
-      
+
       if (error) throw error;
-      
+
       // Veriyi önbelleğe kaydet (önbellek aktifse)
       if (data && isCacheEnabled) {
         cache[cacheKey] = {
           data,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         };
       }
-      
+
       return data || [];
     } catch (error) {
-      console.error(`Filtrelenmiş veri çekilirken hata oluştu (${tableName}):`, error);
+      console.error(
+        `Filtrelenmiş veri çekilirken hata oluştu (${tableName}):`,
+        error,
+      );
       return [];
     }
   } else {
@@ -124,12 +146,12 @@ export async function insertData(tableName: string, data: any) {
       .from(tableName)
       .insert(data)
       .select();
-    
+
     if (error) throw error;
-    
+
     // Veri değiştiğinde önbelleği temizle
     invalidateTableCache(tableName);
-    
+
     return result;
   } catch (error) {
     console.error(`Veri eklenirken hata oluştu (${tableName}):`, error);
@@ -141,29 +163,35 @@ export async function insertData(tableName: string, data: any) {
 export async function updateData(tableName: string, id: number, data: any) {
   try {
     // Stok tablosu için ID sütununu, diğerleri için id sütununu kullan
-    const idColumn = tableName === 'Stok' ? 'ID' : 'id'; 
-    
-    console.log(`Güncelleniyor: Tablo=${tableName}, ID Sütunu=${idColumn}, ID=${id}, Veri=`, data);
-    
+    const idColumn = tableName === "Stok" ? "ID" : "id";
+
+    console.log(
+      `Güncelleniyor: Tablo=${tableName}, ID Sütunu=${idColumn}, ID=${id}, Veri=`,
+      data,
+    );
+
     const { data: result, error } = await supabase
       .from(tableName)
       .update(data)
       .eq(idColumn, id) // Dinamik ID sütunu kullan
       .select();
-    
+
     if (error) {
-      console.error('Supabase güncelleme hatası:', error);
+      console.error("Supabase güncelleme hatası:", error);
       throw error;
     }
-    
+
     // Veri değiştiğinde önbelleği temizle
     invalidateTableCache(tableName);
-    
-    console.log('Güncelleme başarılı:', result);
+
+    console.log("Güncelleme başarılı:", result);
     return result;
   } catch (error) {
     // Hatayı tekrar konsola yazdır, belki daha fazla detay verir
-    console.error(`Veri güncellenirken hata oluştu (${tableName}, ID: ${id}):`, error);
+    console.error(
+      `Veri güncellenirken hata oluştu (${tableName}, ID: ${id}):`,
+      error,
+    );
     throw error;
   }
 }
@@ -171,16 +199,13 @@ export async function updateData(tableName: string, id: number, data: any) {
 // Bir tablodaki veriyi siler
 export async function deleteData(tableName: string, id: number) {
   try {
-    const { error } = await supabase
-      .from(tableName)
-      .delete()
-      .eq('id', id);
-    
+    const { error } = await supabase.from(tableName).delete().eq("id", id);
+
     if (error) throw error;
-    
+
     // Veri değiştiğinde önbelleği temizle
     invalidateTableCache(tableName);
-    
+
     return true;
   } catch (error) {
     console.error(`Veri silinirken hata oluştu (${tableName}):`, error);
@@ -191,8 +216,8 @@ export async function deleteData(tableName: string, id: number) {
 // Belirtilen tablonun önbelleğini geçersiz kıl
 export function invalidateTableCache(tableName: string) {
   if (!isCacheEnabled) return;
-  
-  Object.keys(cache).forEach(key => {
+
+  Object.keys(cache).forEach((key) => {
     if (key.startsWith(`table:${tableName}`)) {
       delete cache[key];
     }
@@ -201,23 +226,27 @@ export function invalidateTableCache(tableName: string) {
 }
 
 // Realtime aboneliği oluşturur - anlık veri güncellemeleri için
-export function subscribeToTable(tableName: string, callback: (payload: any) => void) {
+export function subscribeToTable(
+  tableName: string,
+  callback: (payload: any) => void,
+) {
   // Supabase channel oluştur ve belirtilen tabloya abone ol
   const subscription = supabase
     .channel(`public:${tableName}`)
-    .on('postgres_changes', 
-      { 
-        event: '*',  // 'INSERT', 'UPDATE', 'DELETE' olaylarını dinle
-        schema: 'public', 
-        table: tableName 
-      }, 
+    .on(
+      "postgres_changes",
+      {
+        event: "*", // 'INSERT', 'UPDATE', 'DELETE' olaylarını dinle
+        schema: "public",
+        table: tableName,
+      },
       (payload) => {
         // Değişiklik olduğunda önbelleği temizle
         invalidateTableCache(tableName);
-        
+
         // Değişiklik olduğunda callback fonksiyonunu çağır
         callback(payload);
-      }
+      },
     )
     .subscribe();
 
@@ -244,29 +273,29 @@ export const createTeslimatGecmisi = async (
   urunId: number,
   teslimatMiktari: number,
   kullanici: string,
-  teslimatSekli: string = 'Elden'
+  teslimatSekli: string = "Elden",
 ) => {
   try {
     const { data, error } = await supabase
-      .from('TeslimatGecmisi')
+      .from("TeslimatGecmisi")
       .insert([
         {
           urun_id: urunId,
           teslimat_miktari: teslimatMiktari,
           kullanici: kullanici,
-          teslimat_sekli: teslimatSekli
-        }
+          teslimat_sekli: teslimatSekli,
+        },
       ])
       .select();
 
     if (error) {
-      console.error('Teslimat geçmişi eklenirken hata oluştu:', error);
+      console.error("Teslimat geçmişi eklenirken hata oluştu:", error);
       throw error;
     }
 
     return data;
   } catch (error) {
-    console.error('Teslimat geçmişi eklenirken beklenmeyen hata:', error);
+    console.error("Teslimat geçmişi eklenirken beklenmeyen hata:", error);
     throw error;
   }
 };
@@ -279,19 +308,55 @@ export const createTeslimatGecmisi = async (
 export const getTeslimatGecmisi = async (urunId: number) => {
   try {
     const { data, error } = await supabase
-      .from('TeslimatGecmisi')
-      .select('*')
-      .eq('urun_id', urunId)
-      .order('teslimat_tarihi', { ascending: false });
+      .from("TeslimatGecmisi")
+      .select("*")
+      .eq("urun_id", urunId)
+      .order("teslimat_tarihi", { ascending: false });
 
     if (error) {
-      console.error('Teslimat geçmişi getirilirken hata oluştu:', error);
+      console.error("Teslimat geçmişi getirilirken hata oluştu:", error);
       throw error;
     }
 
     return data || [];
   } catch (error) {
-    console.error('Teslimat geçmişi getirilirken beklenmeyen hata:', error);
+    console.error("Teslimat geçmişi getirilirken beklenmeyen hata:", error);
     throw error;
   }
-}; 
+};
+
+// Üretim Kuyruğu yeni kayıt güncellemesi için özel broadcast kanalı
+export function broadcastUretimKuyruguUpdate(isNewProduction = false) {
+  try {
+    // Tüm istemcilere bildirim göndermek için broadcast yap
+    supabase.channel("broadcast").send({
+      type: "broadcast",
+      event: "uretim-kuyrugu-update",
+      payload: { 
+        timestamp: Date.now(),
+        isNewProduction: isNewProduction // Yeni üretim emri girilip girilmediği bilgisi
+      },
+    });
+    
+    console.log('[Broadcast] Üretim Kuyruğu güncellemesi broadcast edildi' + (isNewProduction ? ' (Yeni Üretim)' : ''));
+    return true;
+  } catch (error) {
+    console.error("Broadcast gönderilirken hata oluştu:", error);
+    return false;
+  }
+}
+
+// Üretim Kuyruğu güncellemelerini dinlemek için abonelik
+export function subscribeToUretimKuyruguUpdates(callback: (isNewProduction: boolean) => void) {
+  const channel = supabase
+    .channel("broadcast")
+    .on("broadcast", { event: "uretim-kuyrugu-update" }, (payload) => {
+      console.log("[Broadcast] Üretim Kuyruğu güncellemesi alındı:", payload);
+      // isNewProduction değerini callback'e gönder (yoksa false)
+      const isNewProduction = payload.payload?.isNewProduction || false;
+      callback(isNewProduction);
+    })
+    .subscribe();
+  
+  return channel;
+}
