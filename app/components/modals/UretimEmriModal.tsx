@@ -107,9 +107,9 @@ const UretimEmriModal: React.FC<UretimEmriModalProps> = ({
 
     // Ana dokümandaki tüm stilleri ve linkleri al
     const headStyles = Array.from(document.head.querySelectorAll('style, link[rel="stylesheet"]'))
-                           .map(el => el.outerHTML)
-                           .join('\n');
-                           
+                         .map(el => el.outerHTML)
+                         .join('\n');
+                         
     iframeDoc.open();
     iframeDoc.write(`
       <!DOCTYPE html>
@@ -128,14 +128,32 @@ const UretimEmriModal: React.FC<UretimEmriModalProps> = ({
            }
            /* Sayfayı tek sayfada tutmak için */
            .print-container {
-             page-break-inside: avoid;
+             page-break-inside: avoid !important;
              min-height: auto !important;
            }
            /* İkinci sayfa için sayfa kırılımı */
            .page-break {
-             page-break-before: always;
+             page-break-before: always !important;
            }
-           ${document.getElementById('print-styles')?.innerHTML || ''} 
+           /* Her sayfanın kendi içinde tek sayfa olmasını sağla */
+           #uretim-emri-pdf-content, #kalite-kontrol-pdf-content {
+             width: 210mm !important;
+             max-height: 297mm !important;
+             overflow: hidden !important;
+           }
+           /* Yazdırma sırasında gizlenecek öğeler */
+           .no-print {
+             display: none !important;
+           }
+           /* Kalite Kontrol PDF'i için özel stiller */
+           #kalite-kontrol-pdf-content * {
+             font-size: 9pt !important;
+           }
+           #kalite-kontrol-pdf-content .text-xs {
+             font-size: 8pt !important;
+           }
+           ${document.getElementById('print-styles')?.innerHTML || ''}
+           ${document.getElementById('print-styles-kalite')?.innerHTML || ''} 
         </style>
       </head>
       <body>
