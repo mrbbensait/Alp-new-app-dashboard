@@ -1,14 +1,15 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { updateData, insertData, deleteData } from '../lib/supabase';
 import { supabase } from '../lib/supabase';
 import FormulationModal from './modals/FormulationModal';
 import { useAuth } from '../lib/AuthContext';
 import TeslimBilgisiModal from './modals/TeslimBilgisiModal';
-import { fetchAllFromTable } from '../lib/supabase';
+import { fetchAllFromTable, fetchFilteredData } from '../lib/supabase';
 import AmbalajlamaModal from './modals/AmbalajlamaModal';
 import UretimEmriModal from './modals/UretimEmriModal';
 import UretimUyariModal from './modals/UretimUyariModal';
 import StokHareketModal from './modals/StokHareketModal';
+import KritikHammaddeModal from './modals/KritikHammaddeModal';
 import { 
   Pencil, 
   Check, 
@@ -18,6 +19,7 @@ import {
   ArrowRight,
   Trash
 } from 'lucide-react';
+import { AdjustmentsVerticalIcon, ChevronDownIcon, ChevronUpIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 interface DataTableProps {
   columns: {
@@ -26,7 +28,7 @@ interface DataTableProps {
   }[];
   data?: any[];
   tableName: string;
-  onReceteClick?: (receteAdi: string, urunId: number) => void;
+  onReceteClick?: (receteAdi: string, urunId: number, marka: string, row?: any) => void;
   onTeslimatClick?: (rowId: number, recipeName: string) => void;
 }
 
@@ -177,6 +179,10 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
   // Üretim uyarı modalı için state
   const [isUretimUyariModalOpen, setIsUretimUyariModalOpen] = useState(false);
   const [uyariReceteAdi, setUyariReceteAdi] = useState<string>('');
+
+  // Kritik Hammadde modalı için state
+  const [isKritikHammaddeModalOpen, setIsKritikHammaddeModalOpen] = useState(false);
+  const [kritikHammaddeReceteAdi, setKritikHammaddeReceteAdi] = useState<string>('');
 
   // Stok Hareket modalı için state
   const [isStokHareketModalOpen, setIsStokHareketModalOpen] = useState(false);
@@ -623,7 +629,7 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
       return (
         <span 
           className="cursor-pointer text-indigo-600 hover:text-indigo-900 hover:underline"
-          onClick={() => onReceteClick(value, row.id)}
+          onClick={() => onReceteClick(value, row.id, row['Marka'] || '', row)}
         >
           {value}
         </span>
@@ -860,6 +866,131 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
     setSelectedDeleteRow(null);
   };
 
+  // Reçete sütununu render etme
+  const renderReceteColumn = (value: any, row: any) => {
+    // Üretim kuyruğu tablosunda ve 'Üretim Yapıldı mı?' false olan satırlar için
+    if (tableName === 'Üretim Kuyruğu' && row && row['Üretim Yapıldı mı?'] === false) {
+      // Kritik stok durumu kontrolü
+      const receteAdi = value;
+      const uretimKuyrukId = row.id;
+      const marka = row['Marka'] || '';
+      
+      // Kritik hammadde modalını açan fonksiyon
+      const handleKritikHammaddeClick = (e: React.MouseEvent) => {
+        e.stopPropagation(); // Tıklama olayının butonun üst elementlerine yayılmasını engelle
+        setKritikHammaddeReceteAdi(receteAdi);
+        setIsKritikHammaddeModalOpen(true);
+      };
+      
+      // Kritik stok durumu olan reçete için özel stil
+      return (
+        <div className="flex items-center">
+          <button
+            onClick={() => onReceteClick && onReceteClick(receteAdi, uretimKuyrukId, marka, row)}
+            className="text-blue-600 hover:text-blue-800 hover:underline focus:outline-none text-left"
+          >
+            {receteAdi}
+          </button>
+          
+          {/* Kritik stok kontrolü için ünlem işareti - useState değeri kullan */}
+          {row._hasKritikStok && (
+            <button 
+              onClick={handleKritikHammaddeClick}
+              className="ml-2 flex items-center justify-center p-1 hover:bg-red-100 rounded-full transition-colors duration-200"
+              title="Bu reçetede kritik stok seviyesinin altında olan hammaddeler var! (Detay için tıklayın)"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 text-red-600 animate-pulse" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    // Diğer durumlar için normal render
+    if (onReceteClick && row) {
+      const marka = row['Marka'] || '';
+      return (
+        <button
+          onClick={() => onReceteClick(value, row.id, marka, row)}
+          className="text-blue-600 hover:text-blue-800 hover:underline focus:outline-none text-left"
+        >
+          {value}
+        </button>
+      );
+    }
+    
+    return value;
+  };
+
+  // Üretim kuyruğu için kritik stok kontrolü
+  useEffect(() => {
+    // Sadece Üretim Kuyruğu tablosu ve data varsa işlem yap
+    if (tableName === 'Üretim Kuyruğu' && localData.length > 0) {
+      const checkKritikStok = async () => {
+        try {
+          // Tüm stok verileri
+          const stokVerileri = await fetchAllFromTable('Stok', true);
+          
+          // Her bir üretim kaydı için kritik stok kontrolü yap
+          const updatedData = await Promise.all(localData.map(async (item) => {
+            // Sadece üretimi yapılmamış kayıtlar için kontrol et
+            if (item['Üretim Yapıldı mı?'] === false) {
+              try {
+                // Formülasyon bilgilerini getir
+                const formulasyonlar = await fetchFilteredData('Formülasyonlar', 'Reçete Adı', item['Reçete Adı'], true);
+                
+                // Kritik stok durumu var mı kontrol et
+                const hasKritikStok = formulasyonlar.some((formul: any) => {
+                  const hammaddeAdi = formul['Hammadde Adı'];
+                  const stokItem = stokVerileri.find((s: any) => s['Hammadde Adı'] === hammaddeAdi);
+                  
+                  if (stokItem) {
+                    const netStok = stokItem['Net Stok'] || (stokItem['Mevcut Stok'] - (stokItem['Rezerve Edildi'] || 0));
+                    const kritikStok = stokItem['Kritik Stok'] || 0;
+                    
+                    // Net stok, kritik stok değerinin altındaysa true döndür
+                    return netStok < kritikStok;
+                  }
+                  return false;
+                });
+                
+                // Kritik stok durumunu kaydet
+                return { ...item, _hasKritikStok: hasKritikStok };
+              } catch (err) {
+                console.error('Formülasyon kontrolünde hata:', err);
+                return item;
+              }
+            }
+            return item;
+          }));
+          
+          setLocalData(updatedData);
+        } catch (err) {
+          console.error('Kritik stok kontrolünde hata:', err);
+        }
+      };
+      
+      checkKritikStok();
+    }
+  }, [tableName, data]);
+
+  // Sütunlara göre içeriği render etme - Reçete kontrolü ekle
+  const renderCellContent = (column: string, value: any, row: any) => {
+    // Reçete adı sütunu için özel render
+    if (column === 'Reçete Adı') {
+      return renderReceteColumn(value, row);
+    }
+    
+    // Var olan koşullu gösterim mantığı
+    if (column === 'Satış Fiyatı' && typeof value === 'number') {
+      return `${value.toFixed(2)} TL`;
+    }
+    
+    // ... existing code ...
+  };
+
   return (
     <div className="overflow-hidden shadow-sm border border-gray-200 rounded-lg">
       {/* Onay Modalı */}
@@ -894,6 +1025,13 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
         isOpen={isUretimUyariModalOpen}
         onClose={() => setIsUretimUyariModalOpen(false)}
         receteAdi={uyariReceteAdi}
+      />
+      
+      {/* Kritik Hammadde Modalı */}
+      <KritikHammaddeModal
+        isOpen={isKritikHammaddeModalOpen}
+        onClose={() => setIsKritikHammaddeModalOpen(false)}
+        receteAdi={kritikHammaddeReceteAdi}
       />
       
       {/* Ambalajlama Modalı */}
@@ -1024,6 +1162,18 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
                         }
                       }
                       
+                      // Üretim Kuyruğu tablosunda Reçete Adı sütunu için özel işlem
+                      if (tableName === 'Üretim Kuyruğu' && column.name === 'Reçete Adı') {
+                        return (
+                          <td 
+                            key={column.name} 
+                            className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500"
+                          >
+                            {renderReceteColumn(row[column.name], row)}
+                          </td>
+                        );
+                      }
+                      
                       return (
                         <td 
                           key={column.name} 
@@ -1035,7 +1185,9 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
                               undefined
                           }
                         >
-                          {(isTeslimColumn && isSatinAlmaTable) || (isUretimYapildiColumn && isUretimKuyrugu) ? (
+                          {tableName === 'Üretim Kuyruğu' && column.name === 'Reçete Adı' ? (
+                            renderReceteColumn(row[column.name], row)
+                          ) : (isTeslimColumn && isSatinAlmaTable) || (isUretimYapildiColumn && isUretimKuyrugu) ? (
                             // Teslim Durumu veya Üretim Yapıldı mı? sütunu için checkbox göster
                             <div className="flex items-center">
                               {updatingRow === row.id ? (
@@ -1122,216 +1274,6 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
                     {(tableName === 'Bitmiş Ürün Stoğu' && onTeslimatClick && row['Kalan Adet'] > 0) ? (
                       <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
                         <button
-                          onClick={() => onTeslimatClick(row.id, row['Reçete Adı'] || `ID: ${row.id}`)}
-                          className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 py-1 px-3 rounded-md transition-colors duration-200"
-                        >
-                          Teslimat Gir
-                        </button>
-                      </td>
-                    ) : null}
-                    
-                    {/* Tedarikçiler tablosu için silme butonu */}
-                    {tableName === 'suppliers' && (
-                      <td key="delete-button" className="px-3 py-4 whitespace-nowrap text-xs text-right">
-                        <button
-                          onClick={() => handleDeleteClick(row.id, row['Tedarikçi Adı'] || `ID: ${row.id}`)}
-                          className="inline-flex items-center justify-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                        >
-                          Sil
-                        </button>
-                      </td>
-                    )}
-                    
-                    {/* SatınAlma siparişleri tablosu için silme butonu - sadece teslim alınmamış olanlar için */}
-                    {tableName === 'SatınAlma siparişleri' && row['TeslimDurumu'] !== true && (
-                      <td key="delete-button" className="px-3 py-4 whitespace-nowrap text-xs text-right">
-                        <button
-                          onClick={() => handleDeleteClick(row.id, row['Alınan Ürün'] || `ID: ${row.id}`)}
-                          className="inline-flex items-center justify-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                        >
-                          Sil
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-                
-                {/* Ayrıcı çizgi - sadece Bitmiş Ürün Stoğu ve Üretim Kuyruğu tablolarında ve tamamlanmış öğeler gösteriliyorsa */}
-                {((tableName === 'Bitmiş Ürün Stoğu' && showCompletedItems && completedItems.length > 0) || 
-                  (tableName === 'Üretim Kuyruğu' && showFinishedProductions && finishedProductions.length > 0)) && (
-                  <tr className="border-t-4 border-indigo-200">
-                    <td colSpan={columns.length + 1} className="py-2 px-3 sm:px-6 bg-indigo-50">
-                      <div className="flex justify-center items-center text-xs text-indigo-700 font-medium text-center w-full mx-auto">
-                        {tableName === 'Bitmiş Ürün Stoğu' ? 
-                          'TAMAMLANMIŞ TESLİMATLAR' : 
-                          'ÜRETİM DURUMU "BİTTİ" OLANLARI'}
-                      </div>
-                    </td>
-                  </tr>
-                )}
-                
-                {/* Tamamlanmış ürünleri göster - sadece gösterilmesi gerekiyorsa */}
-                {((tableName === 'Bitmiş Ürün Stoğu' && showCompletedItems) ? completedItems : 
-                   (tableName === 'Üretim Kuyruğu' && showFinishedProductions) ? finishedProductions : 
-                   []).map((row, rowIndex) => (
-                  <tr 
-                    key={`completed-${rowIndex}`} 
-                    className={`hover:bg-gray-50 ${
-                      (tableName === 'Bitmiş Ürün Stoğu' && (row['Kalan Adet'] <= 0)) || 
-                      (tableName === 'Üretim Kuyruğu' && row['Üretim Durumu'] === 'Bitti')
-                        ? 'bg-green-50' 
-                        : ''
-                    }`}
-                  >
-                    {columns
-                    .filter(column => !(tableName === 'Üretim Kuyruğu' && column.name === '2. Ambalajlama'))
-                    .map((column) => {
-                      // Teslim Durumu sütununu işaretle - tüm olası yazılışları kontrol et
-                      const isTeslimColumn = 
-                        column.name === 'TESLIMDURUMU' || 
-                        column.name === 'TESLİMDURUMU' || 
-                        column.name === 'Teslim Durumu' || 
-                        column.name === 'teslimdurumu' ||
-                        column.name === 'TeslimDurumu';
-                      
-                      // Satın Alma tablosuna ait mi kontrol et
-                      const isSatinAlmaTable = 
-                        tableName.includes('Satın') || 
-                        tableName.includes('Satin') || 
-                        tableName.includes('SatınAlma') || 
-                        tableName.includes('Sipariş');
-                      
-                      // Reçeteler tablosunda Reçete Adı sütunu kontrolü
-                      const isRecipeTable = tableName === 'Reçeteler';
-                      const isRecipeNameColumn = column.name === 'Reçete Adı';
-                      const isRecipeName = isRecipeTable && isRecipeNameColumn;
-                      
-                      // Notlar sütunu kontrolü
-                      const isNotesColumn = column.name === 'Notlar';
-                      const isEditingThisCell = editingCell?.rowId === row.id && editingCell?.columnName === column.name;
-                      
-                      // Üretim Yapıldı mı? sütunu kontrolü
-                      const isUretimYapildiColumn = column.name === 'Üretim Yapıldı mı?';
-                      const isUretimKuyrugu = tableName === 'Üretim Kuyruğu';
-                      
-                      // Ambalajlama sütunu için özel işlem
-                      const isAmbalajlamaColumn = tableName === 'Üretim Kuyruğu' && (
-                        column.name === 'Ambalajlanan Adet' || 
-                        column.name === 'Ambalajlama 2'
-                      );
-                      
-                      // İlk Ambalajlama sütunu için özel işlem yap, ikincisini gizle
-                      if (isAmbalajlamaColumn) {
-                        if (column.name === 'Ambalajlanan Adet') {
-                          return (
-                            <td key={column.name} className="px-2 sm:px-3 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-gray-500">
-                              {renderAmbalajlamaCell(row)}
-                            </td>
-                          );
-                        } else {
-                          // Ambalajlama 2 sütununu gösterme
-                          return null;
-                        }
-                      }
-                      
-                      return (
-                        <td 
-                          key={column.name} 
-                          className={`px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 ${isRecipeName ? 'cursor-pointer hover:text-indigo-600 hover:underline' : ''} ${isNotesColumn && isSatinAlmaTable ? 'cursor-pointer hover:bg-gray-100' : ''}`}
-                          onClick={isRecipeName ? 
-                            () => handleRecipeClick(row[column.name], row['Reçete ID'] || '', row['Marka'] || '', row) : 
-                            (isNotesColumn && isSatinAlmaTable && !isEditingThisCell) ? 
-                              () => handleNotesClick(row.id, column.name, getDisplayValue(row, column.name) || "") : 
-                              undefined
-                          }
-                        >
-                          {(isTeslimColumn && isSatinAlmaTable) || (isUretimYapildiColumn && isUretimKuyrugu) ? (
-                            // Teslim Durumu veya Üretim Yapıldı mı? sütunu için checkbox göster
-                            <div className="flex items-center">
-                              {updatingRow === row.id ? (
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600 mr-2"></div>
-                              ) : (
-                                <div className="flex items-center">
-                                  {row[column.name] === true || row[column.name] === 'Evet' || row[column.name] === 'evet' ? (
-                                    <svg className="h-5 w-5 text-white bg-indigo-600 rounded" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                    </svg>
-                                  ) : (
-                                    <input 
-                                      type="checkbox" 
-                                      className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer"
-                                      checked={false}
-                                      onChange={() => handleCheckboxChange(
-                                        row.id,
-                                        column.name,
-                                        isUretimKuyrugu ? row['Reçete Adı'] || `ID: ${row.id}` : row['Alınan Ürün'] || row['product_name'] || `ID: ${row.id}`
-                                      )}
-                                    />
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          ) : isNotesColumn && isSatinAlmaTable ? (
-                            // Notlar sütunu için düzenleme alanı
-                            isEditingThisCell ? (
-                              <textarea
-                                value={inputValue}
-                                onChange={handleInputChange}
-                                onBlur={handleInputBlur}
-                                onKeyDown={handleKeyDown}
-                                className="w-full p-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 min-h-[60px] text-sm"
-                                autoFocus
-                              />
-                            ) : (
-                              updatingRow === row.id && column.name === 'Notlar' ? (
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600 mr-2"></div>
-                              ) : (
-                                <div className="flex">
-                                  <span>
-                                    {/* Optimistik değeri veya normal değeri göster */}
-                                    {getDisplayValue(row, column.name) || '-'}
-                                  </span>
-                                  <svg className="h-4 w-4 text-gray-400 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                  </svg>
-                                </div>
-                              )
-                            )
-                          ) : column.type === 'boolean' && !isUretimYapildiColumn ? (
-                            <div className="flex items-center">
-                              {row[column.name] === true ? (
-                                <svg className="h-5 w-5 text-white bg-indigo-600 rounded" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                </svg>
-                              ) : (
-                                <input 
-                                  type="checkbox" 
-                                  className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer"
-                                  checked={false}
-                                  onChange={() => handleCheckboxChange(
-                                    row.id, 
-                                    column.name, 
-                                    // Eğer ürün adı sütunu varsa onu al, yoksa ID'yi kullan
-                                    row['product_name'] || row['Ürün Adı'] || row['Reçete Adı'] || `ID: ${row.id}`
-                                  )}
-                                />
-                              )}
-                            </div>
-                          ) : (
-                            isRecipeName ? (
-                              <span className="text-indigo-600 font-medium">{row[column.name]}</span>
-                            ) : (
-                              renderCellValue(row[column.name], column.type, column.name, row)
-                            )
-                          )}
-                        </td>
-                      );
-                    })}
-                    
-                    {/* Müşteriler tablosu için silme butonu - tamamlanmış öğeler için de */}
-                    {tableName === 'Müşteriler' ? (
-                      <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
-                        <button
                           onClick={() => handleDeleteClick(row.id, row['Müşteri Firma'] || `ID: ${row.id}`)}
                           className="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 py-1 px-3 rounded-md transition-colors duration-200"
                         >
@@ -1378,7 +1320,7 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
               onClick={() => setShowFinishedProductions(!showFinishedProductions)}
               className="px-6 py-3 border border-indigo-300 rounded-md shadow-sm text-sm font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-300 transform hover:scale-105"
             >
-              {showFinishedProductions ? 'SADECE ÜRETİM DURUMU BİTMEMİŞ OLANLARI GÖSTER' : 'ÜRETİM DURUMU "BİTTİ" OLANLARI GÖSTER'}
+              {showFinishedProductions ? 'SADECE ÜRETİM DURUMU BİTTİ OLANLARI GÖSTER' : 'ÜRETİM DURUMU "BİTTİ" OLANLARI GÖSTER'}
             </button>
           )}
         </div>

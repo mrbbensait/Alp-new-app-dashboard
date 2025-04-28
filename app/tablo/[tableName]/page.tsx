@@ -260,7 +260,7 @@ export default function TablePage() {
   }, [searchQuery, tableData, showKritikStok, kritikStokKategori]);
   
   // Reçete adına tıklandığında teslimat geçmişi modalını aç (Bitmiş Ürün Stoğu tablosu için)
-  const handleReceteClick = (receteAdi: string, urunId: number) => {
+  const handleReceteClick = (receteAdi: string, urunId: number, marka: string, row?: any) => {
     if (decodedTableName === 'Bitmiş Ürün Stoğu') {
       // Tıklanan ürünün tüm bilgilerini bul
       const urunBilgisi = tableData.find(item => item.id === urunId);
