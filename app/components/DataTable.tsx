@@ -668,7 +668,7 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
       
       // Geçerli bir tarih ise sadece gün-ay-yıl formatında göster
       if (!isNaN(date.getTime())) {
-        return date.toLocaleDateString('tr-TR');
+        return date.toLocaleDateString('tr-TR', {day: '2-digit', month: '2-digit', year: 'numeric'});
       }
       return value;
     }

@@ -340,6 +340,11 @@ export default function ReceteKaydiPage() {
       return;
     }
     
+    if (userRolBilgileri?.recete_satis_bilgisi && (!satisFiyati.trim() || isNaN(parseFloat(satisFiyati)) || parseFloat(satisFiyati) <= 0)) {
+      alert('Lütfen geçerli bir Birim Satış Fiyatı giriniz.');
+      return;
+    }
+    
     if (bilesenler.length === 0) {
       alert('Lütfen en az bir bileşen ekleyiniz.');
       return;

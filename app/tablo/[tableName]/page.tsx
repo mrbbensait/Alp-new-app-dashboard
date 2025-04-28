@@ -403,7 +403,19 @@ export default function TablePage() {
       if (row) {
         // Üretim Emri modalı için gerekli parametreleri ayarla
         const uretimMiktari = row['Bulk Üretim Emri(Kg)'] || 0;
-        const uretimTarihi = row['Üretim Emir Tarihi'] || new Date().toISOString();
+        let uretimTarihi = row['Üretim Emir Tarihi'] || new Date().toISOString();
+        
+        // Tarihi sadece gün-ay-yıl formatına çevir
+        if (uretimTarihi) {
+          try {
+            const tarihObj = new Date(uretimTarihi);
+            if (!isNaN(tarihObj.getTime())) {
+              uretimTarihi = tarihObj.toLocaleDateString('tr-TR', {day: '2-digit', month: '2-digit', year: 'numeric'});
+            }
+          } catch (e) {
+            console.error("Tarih formatlanırken hata:", e);
+          }
+        }
         
         // Üretim Emri modalını açmak için gerekli state'i ayarla
         setSelectedUretimEmri({
