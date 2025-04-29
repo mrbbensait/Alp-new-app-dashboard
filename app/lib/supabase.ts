@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { createBrowserClient } from "@supabase/ssr";
+import { logUserActivity, getBrowserInfo } from "./logService";
 // import { Database } from '@supabase/auth-helpers-nextjs';
 
 // Supabase URL ve anonim API anahtarı çevresel değişkenlerden alınır
@@ -140,8 +141,11 @@ export async function fetchFilteredData(
 }
 
 // Bir tabloya yeni veri ekler
-export async function insertData(tableName: string, data: any) {
+export async function insertData(tableName: string, data: any, userData: any = null) {
   try {
+    // Kullanıcı bilgilerini al
+    const user = userData || (typeof window !== 'undefined' ? JSON.parse(sessionStorage.getItem('user') || '{}') : {});
+    
     const { data: result, error } = await supabase
       .from(tableName)
       .insert(data)
@@ -151,6 +155,19 @@ export async function insertData(tableName: string, data: any) {
 
     // Veri değiştiğinde önbelleği temizle
     invalidateTableCache(tableName);
+    
+    // Kullanıcı aktivitesini logla
+    if (user.id) {
+      logUserActivity({
+        kullanici_id: user.id,
+        kullanici_adi: user.kullanici_adi || 'Bilinmeyen',
+        islem_turu: 'INSERT',
+        tablo_adi: tableName,
+        kayit_id: result?.[0]?.id?.toString(),
+        yeni_degerler: data,
+        tarayici_bilgisi: getBrowserInfo()
+      });
+    }
 
     return result;
   } catch (error) {
@@ -160,16 +177,25 @@ export async function insertData(tableName: string, data: any) {
 }
 
 // Bir tablodaki veriyi günceller
-export async function updateData(tableName: string, id: number, data: any) {
+export async function updateData(tableName: string, id: number, data: any, userData: any = null) {
   try {
-    // Stok tablosu için ID sütununu, diğerleri için id sütununu kullan
+    // Kullanıcı bilgilerini al
+    const user = userData || (typeof window !== 'undefined' ? JSON.parse(sessionStorage.getItem('user') || '{}') : {});
+    
+    // İlk olarak, güncellenmeden önceki veriyi al (eski_degerler için)
     const idColumn = tableName === "Stok" ? "ID" : "id";
-
+    const { data: oldData } = await supabase
+      .from(tableName)
+      .select('*')
+      .eq(idColumn, id)
+      .single();
+    
     console.log(
       `Güncelleniyor: Tablo=${tableName}, ID Sütunu=${idColumn}, ID=${id}, Veri=`,
       data,
     );
 
+    // Veriyi güncelle
     const { data: result, error } = await supabase
       .from(tableName)
       .update(data)
@@ -183,6 +209,20 @@ export async function updateData(tableName: string, id: number, data: any) {
 
     // Veri değiştiğinde önbelleği temizle
     invalidateTableCache(tableName);
+    
+    // Kullanıcı aktivitesini logla
+    if (user.id) {
+      logUserActivity({
+        kullanici_id: user.id,
+        kullanici_adi: user.kullanici_adi || 'Bilinmeyen',
+        islem_turu: 'UPDATE',
+        tablo_adi: tableName,
+        kayit_id: id.toString(),
+        eski_degerler: oldData,
+        yeni_degerler: data,
+        tarayici_bilgisi: getBrowserInfo()
+      });
+    }
 
     console.log("Güncelleme başarılı:", result);
     return result;
@@ -197,14 +237,38 @@ export async function updateData(tableName: string, id: number, data: any) {
 }
 
 // Bir tablodaki veriyi siler
-export async function deleteData(tableName: string, id: number) {
+export async function deleteData(tableName: string, id: number, userData: any = null) {
   try {
+    // Kullanıcı bilgilerini al
+    const user = userData || (typeof window !== 'undefined' ? JSON.parse(sessionStorage.getItem('user') || '{}') : {});
+    
+    // İlk olarak, silinmeden önceki veriyi al (eski_degerler için)
+    const { data: oldData } = await supabase
+      .from(tableName)
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    // Veriyi sil
     const { error } = await supabase.from(tableName).delete().eq("id", id);
 
     if (error) throw error;
 
     // Veri değiştiğinde önbelleği temizle
     invalidateTableCache(tableName);
+    
+    // Kullanıcı aktivitesini logla
+    if (user.id) {
+      logUserActivity({
+        kullanici_id: user.id,
+        kullanici_adi: user.kullanici_adi || 'Bilinmeyen',
+        islem_turu: 'DELETE',
+        tablo_adi: tableName,
+        kayit_id: id.toString(),
+        eski_degerler: oldData,
+        tarayici_bilgisi: getBrowserInfo()
+      });
+    }
 
     return true;
   } catch (error) {

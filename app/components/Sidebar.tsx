@@ -223,6 +223,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileSidebarOpen, setIsMobileSideb
       path: '/ayarlar', 
       icon: <Settings size={18} />,
       kategori: 'ayarlar'
+    },
+    { 
+      name: 'Kullanıcı Hareketleri', 
+      path: '/ayarlar/kullanici-hareketleri', 
+      icon: <Activity size={18} />,
+      kategori: 'ayarlar'
     }
   ];
 

@@ -3,7 +3,7 @@
 import React from 'react';
 import DashboardLayout from '../components/DashboardLayout';
 import Link from 'next/link';
-import { Users, UserPlus, Settings, ArrowRight, Layers, ShieldAlert } from 'lucide-react';
+import { Users, UserPlus, Settings, ArrowRight, Layers, ShieldAlert, Activity } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
 import PageGuard from '../components/PageGuard';
 
@@ -40,6 +40,19 @@ export default function AyarlarPage() {
               <div>
                 <h2 className="text-xl font-semibold text-gray-900 mb-2">Kullanıcı Yönetimi</h2>
                 <p className="text-gray-600">Sistem kullanıcılarını yönetin</p>
+              </div>
+            </Link>
+            
+            <Link 
+              href="/ayarlar/kullanici-hareketleri" 
+              className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow flex items-start"
+            >
+              <div className="mr-4 bg-green-100 rounded-lg p-3">
+                <Activity size={30} className="text-green-600" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">Kullanıcı Hareketleri</h2>
+                <p className="text-gray-600">Sistem kullanıcılarının aktivite loglarını görüntüleyin</p>
               </div>
             </Link>
           </div>
