@@ -27,6 +27,7 @@ import UretimGirModal from "../../components/modals/UretimGirModal";
 import BulkSifirlamaModal from "../../components/modals/BulkSifirlamaModal";
 import UretimSilModal from "../../components/modals/UretimSilModal";
 import UretimEmriModal from "../../components/modals/UretimEmriModal";
+import SatinAlmaSiparisiSilModal from "../../components/modals/SatinAlmaSiparisiSilModal";
 import { supabase } from "@/app/lib/supabase";
 import { Download } from "lucide-react";
 import * as XLSX from "xlsx";
@@ -134,6 +135,9 @@ export default function TablePage() {
   // Üretim Kuyruğu güncellemelerini dinleme ve 5 saniye sonra yenileme yapma
   const [uretimKuyruguUpdateTimer, setUretimKuyruguUpdateTimer] =
     useState<NodeJS.Timeout | null>(null);
+
+  // Satın Alma Siparişleri için yeni state
+  const [satinAlmaSiparisiSilModalOpen, setSatinAlmaSiparisiSilModalOpen] = useState(false);
 
   // Verileri yeniden yükleme fonksiyonu
   const refreshData = useCallback(
@@ -772,6 +776,27 @@ export default function TablePage() {
                 </button>
               )}
 
+              {decodedTableName === "SatınAlma siparişleri" && userRolBilgileri?.satinalma_siparisi_sil && (
+                <button
+                  onClick={() => setSatinAlmaSiparisiSilModalOpen(true)}
+                  className="flex items-center justify-center px-4 h-10 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 w-full sm:w-auto ml-2"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 mr-2"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  Siparişleri Sil
+                </button>
+              )}
+
               {decodedTableName === "Reçeteler" && (
                 <a
                   href="/formlar/recete-kaydi"
@@ -1090,14 +1115,33 @@ export default function TablePage() {
         )}
 
         {decodedTableName === "SatınAlma siparişleri" && (
-          <SatinAlmaSiparisiEkleModal
-            isOpen={satinAlmaSiparisiEkleModalOpen}
-            onClose={() => setSatinAlmaSiparisiEkleModalOpen(false)}
-            onSuccess={() => {
-              setSatinAlmaSiparisiEkleModalOpen(false);
-              handleRefresh();
-            }}
-          />
+          <>
+            <SatinAlmaSiparisiEkleModal
+              isOpen={satinAlmaSiparisiEkleModalOpen}
+              onClose={() => setSatinAlmaSiparisiEkleModalOpen(false)}
+              onSuccess={() => {
+                setSatinAlmaSiparisiEkleModalOpen(false);
+                handleRefresh();
+                setTimeout(() => {
+                  console.log("SatınAlma siparişleri - ikinci yenileme yapılıyor...");
+                  refreshData(true);
+                }, 1000);
+              }}
+            />
+            
+            <SatinAlmaSiparisiSilModal
+              isOpen={satinAlmaSiparisiSilModalOpen}
+              onClose={() => setSatinAlmaSiparisiSilModalOpen(false)}
+              onSuccess={() => {
+                setSatinAlmaSiparisiSilModalOpen(false);
+                handleRefresh();
+                setTimeout(() => {
+                  console.log("SatınAlma siparişleri silme sonrası - ikinci yenileme yapılıyor...");
+                  refreshData(true);
+                }, 1000);
+              }}
+            />
+          </>
         )}
 
         {decodedTableName === "Stok" && (

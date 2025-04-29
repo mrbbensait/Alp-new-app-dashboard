@@ -190,10 +190,8 @@ const SatinAlmaSiparisiEkleModal: React.FC<SatinAlmaSiparisiEkleModalProps> = ({
       if (error) throw error;
 
       setSuccess(true);
-      setTimeout(() => {
-        resetForm();
-        onSuccess();
-      }, 1500);
+      resetForm();
+      onSuccess();
     } catch (error: any) {
       console.error('Satın alma siparişi kaydedilirken hata oluştu:', error);
       setError(error.message || 'Sipariş eklenirken bir hata oluştu. Lütfen tekrar deneyin.');

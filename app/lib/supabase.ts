@@ -156,6 +156,12 @@ export async function insertData(tableName: string, data: any, userData: any = n
     // Veri değiştiğinde önbelleği temizle
     invalidateTableCache(tableName);
     
+    // SatınAlma siparişleri tablosu için kesin yenileme sağlamak için tüm önbelleği temizle
+    if (tableName === 'SatınAlma siparişleri') {
+      console.log(`[Cache] SatınAlma siparişleri için tüm önbellek temizleniyor`);
+      clearAllCache();
+    }
+    
     // Kullanıcı aktivitesini logla
     if (user.id) {
       logUserActivity({
@@ -307,6 +313,12 @@ export function subscribeToTable(
       (payload) => {
         // Değişiklik olduğunda önbelleği temizle
         invalidateTableCache(tableName);
+        
+        // SatınAlma siparişleri için daha kapsamlı temizlik
+        if (tableName === 'SatınAlma siparişleri') {
+          console.log(`[Realtime] SatınAlma siparişleri değişikliği algılandı, tüm önbellek temizleniyor...`);
+          clearAllCache();
+        }
 
         // Değişiklik olduğunda callback fonksiyonunu çağır
         callback(payload);
