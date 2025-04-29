@@ -235,6 +235,11 @@ export async function PUT(request: NextRequest) {
       updateFields.uretimi_sil = body.uretimi_sil;
     }
     
+    // Satınalma Siparişi Silme yetkisi değiştirilmişse güncelle
+    if (body.satinalma_siparisi_sil !== undefined) {
+      updateFields.satinalma_siparisi_sil = body.satinalma_siparisi_sil;
+    }
+    
     // Reçete Satış Bilgisi görüntüleme yetkisi değiştirilmişse güncelle
     if (body.recete_satis_bilgisi !== undefined) {
       updateFields.recete_satis_bilgisi = body.recete_satis_bilgisi;
