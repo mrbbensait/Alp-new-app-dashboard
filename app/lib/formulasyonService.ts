@@ -103,31 +103,18 @@ let dailyCounter: number = 0;
 
 /**
  * Üretim emri numarası oluşturur
- * Format: MP + yıl + ay + sıralı sayı
+ * Format: MP + yıl + ay + id
+ * @param id Üretim Kuyruğu tablosundaki kaydın ID'si
  */
-export function generateUretimNo(): string {
+export function generateUretimNo(id?: number): string {
   const now = new Date();
   const year = now.getFullYear().toString().substring(2); // Son 2 basamak (örn: 24)
   const month = (now.getMonth() + 1).toString().padStart(2, '0');
   
-  // Bugünün tarihini yyyy-mm-dd formatında al
-  const today = `${now.getFullYear()}-${month}-${now.getDate().toString().padStart(2, '0')}`;
+  // Eğer ID verilmişse onu kullan, verilmemişse "XX" 
+  const idStr = id ? id.toString().padStart(2, '0') : "XX";
   
-  // Eğer tarih değiştiyse sayacı sıfırla
-  if (today !== lastGeneratedDate) {
-    lastGeneratedDate = today;
-    dailyCounter = 0;
-  }
-  
-  // Sayacı bir artır
-  const counterStr = dailyCounter < 100 
-    ? dailyCounter.toString().padStart(2, '0') // 00-99 arası
-    : dailyCounter.toString(); // 100 ve üzeri
-  
-  // Sayacı bir sonraki kullanım için güncelle
-  dailyCounter++;
-  
-  return `MP${year}${month}${counterStr}`;
+  return `MP${year}${month}${idStr}`;
 }
 
 /**

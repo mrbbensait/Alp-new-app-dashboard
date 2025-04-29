@@ -114,6 +114,7 @@ export default function TablePage() {
     receteAdi: string;
     uretimMiktari: number;
     uretimTarihi: string;
+    uretimId?: number;
   } | null>(null);
   
   const { user } = useAuth();
@@ -375,6 +376,7 @@ export default function TablePage() {
         // Üretim Emri modalı için gerekli parametreleri ayarla
         const uretimMiktari = row['Bulk Üretim Emri(Kg)'] || 0;
         let uretimTarihi = row['Üretim Emir Tarihi'] || new Date().toISOString();
+        const uretimId = row.id || null;
         
         // Tarihi sadece gün-ay-yıl formatına çevir
         if (uretimTarihi) {
@@ -392,7 +394,8 @@ export default function TablePage() {
         setSelectedUretimEmri({
           receteAdi: receteAdi,
           uretimMiktari: uretimMiktari,
-          uretimTarihi: uretimTarihi
+          uretimTarihi: uretimTarihi,
+          uretimId: uretimId
         });
         setIsUretimEmriModalOpen(true);
       }
@@ -1161,6 +1164,7 @@ export default function TablePage() {
                 receteAdi={selectedUretimEmri.receteAdi}
                 uretimMiktari={selectedUretimEmri.uretimMiktari}
                 uretimTarihi={selectedUretimEmri.uretimTarihi}
+                uretimId={selectedUretimEmri.uretimId}
               />
             )}
           </>

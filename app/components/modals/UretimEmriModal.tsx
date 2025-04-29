@@ -24,6 +24,7 @@ interface UretimEmriModalProps {
   uretimMiktari: number;
   uretimTarihi?: string;
   ambalajEmri?: number; // Ambalaj emri (ml) değeri, opsiyonel
+  uretimId?: number; // Üretim Kuyruğu tablosundaki ID, opsiyonel
 }
 
 const UretimEmriModal: React.FC<UretimEmriModalProps> = ({
@@ -32,9 +33,10 @@ const UretimEmriModal: React.FC<UretimEmriModalProps> = ({
   receteAdi,
   uretimMiktari,
   uretimTarihi: gelenUretimTarihi,
-  ambalajEmri
+  ambalajEmri,
+  uretimId
 }) => {
-  console.log('UretimEmriModal render:', { isOpen, receteAdi, uretimMiktari, gelenUretimTarihi, ambalajEmri });
+  console.log('UretimEmriModal render:', { isOpen, receteAdi, uretimMiktari, gelenUretimTarihi, ambalajEmri, uretimId });
 
   const [hammaddeler, setHammaddeler] = useState<Hammadde[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,10 +49,10 @@ const UretimEmriModal: React.FC<UretimEmriModalProps> = ({
     if (isOpen && receteAdi) {
       console.log('UretimEmriModal açıldı, veri yükleniyor');
       loadFormulasyon();
-      setUretimNo(generateUretimNo());
+      setUretimNo(generateUretimNo(uretimId));
       setUretimTarihi(gelenUretimTarihi || formatTarih());
     }
-  }, [isOpen, receteAdi, uretimMiktari, gelenUretimTarihi]);
+  }, [isOpen, receteAdi, uretimMiktari, gelenUretimTarihi, uretimId]);
 
   const loadFormulasyon = async () => {
     setLoading(true);
