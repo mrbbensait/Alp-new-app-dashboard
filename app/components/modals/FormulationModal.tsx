@@ -149,7 +149,10 @@ const FormulationModal: React.FC<FormulationModalProps> = ({
           isNew: false,
           _primaryKeyColumn: pkColumn
         }));
-        setFormulations(processedData);
+        
+        // Formülasyon verilerini ID'ye göre sırala
+        const sortedData = processedData.sort((a, b) => a.id - b.id);
+        setFormulations(sortedData);
       }
 
       // Stok verilerini yükle

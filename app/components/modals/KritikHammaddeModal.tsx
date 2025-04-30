@@ -37,6 +37,8 @@ const KritikHammaddeModal: React.FC<KritikHammaddeModalProps> = ({
   const [kritikHammaddeler, setKritikHammaddeler] = useState<{
     hammadde: string;
     netStok: number;
+    mevcutStok: number;
+    rezerveEdildi: number;
     kritikStok: number;
     birim: string;
     kategori: string;
@@ -62,13 +64,17 @@ const KritikHammaddeModal: React.FC<KritikHammaddeModalProps> = ({
             const stokItem = stokVerileri.find((s: StokItem) => s['Hammadde Adı'] === hammaddeAdi);
             
             if (stokItem) {
-              const netStok = stokItem['Net Stok'] || (stokItem['Mevcut Stok'] - (stokItem['Rezerve Edildi'] || 0));
+              const mevcutStok = stokItem['Mevcut Stok'] || 0;
+              const rezerveEdildi = stokItem['Rezerve Edildi'] || 0;
+              const netStok = stokItem['Net Stok'] || (mevcutStok - rezerveEdildi);
               const kritikStok = stokItem['Kritik Stok'] || 0;
               
               // Net stok, kritik stok değerinin altındaysa listeye ekle
               if (netStok < kritikStok) {
                 return {
                   hammadde: hammaddeAdi,
+                  mevcutStok: mevcutStok,
+                  rezerveEdildi: rezerveEdildi,
                   netStok: netStok,
                   kritikStok: kritikStok,
                   birim: stokItem['Birim'] || 'Kg',
@@ -96,7 +102,7 @@ const KritikHammaddeModal: React.FC<KritikHammaddeModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
-      <div className="relative bg-white rounded-lg max-w-xl mx-auto p-4 shadow-xl w-full">
+      <div className="relative bg-white rounded-lg max-w-2xl mx-auto p-4 shadow-xl w-full">
         <div className="absolute top-0 right-0 pt-3 pr-3">
           <button
             onClick={onClose}
@@ -141,6 +147,8 @@ const KritikHammaddeModal: React.FC<KritikHammaddeModalProps> = ({
                   <th scope="col" className="px-2 py-1.5 text-left font-medium text-gray-700 border-b">Hammadde</th>
                   <th scope="col" className="px-2 py-1.5 text-left font-medium text-gray-700 border-b">Kategori</th>
                   <th scope="col" className="px-2 py-1.5 text-left font-medium text-gray-700 border-b">Oran</th>
+                  <th scope="col" className="px-2 py-1.5 text-left font-medium text-gray-700 border-b">Mevcut Stok</th>
+                  <th scope="col" className="px-2 py-1.5 text-left font-medium text-gray-700 border-b">Rezerve Edildi</th>
                   <th scope="col" className="px-2 py-1.5 text-left font-medium text-gray-700 border-b">Net Stok</th>
                   <th scope="col" className="px-2 py-1.5 text-left font-medium text-gray-700 border-b">Kritik Stok</th>
                 </tr>
@@ -151,6 +159,8 @@ const KritikHammaddeModal: React.FC<KritikHammaddeModalProps> = ({
                     <td className="px-2 py-1.5 text-xs text-gray-900 font-medium border-b border-gray-200">{item.hammadde}</td>
                     <td className="px-2 py-1.5 text-xs text-gray-500 border-b border-gray-200">{item.kategori}</td>
                     <td className="px-2 py-1.5 text-xs text-gray-500 border-b border-gray-200">{item.oran.toFixed(2)} {item.birim}</td>
+                    <td className="px-2 py-1.5 text-xs text-gray-600 border-b border-gray-200">{item.mevcutStok.toFixed(2)} {item.birim}</td>
+                    <td className="px-2 py-1.5 text-xs text-amber-600 border-b border-gray-200">{item.rezerveEdildi.toFixed(2)} {item.birim}</td>
                     <td className="px-2 py-1.5 text-xs text-red-600 font-medium border-b border-gray-200">{item.netStok.toFixed(2)} {item.birim}</td>
                     <td className="px-2 py-1.5 text-xs text-gray-500 border-b border-gray-200">{item.kritikStok.toFixed(2)} {item.birim}</td>
                   </tr>

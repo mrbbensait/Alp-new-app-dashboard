@@ -1114,7 +1114,9 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
                       (tableName === 'Bitmiş Ürün Stoğu' && (row['Kalan Adet'] <= 0)) || 
                       (tableName === 'Üretim Kuyruğu' && row['Üretim Durumu'] === 'Bitti')
                         ? 'bg-green-50' 
-                        : ''
+                        : tableName === 'Üretim Kuyruğu' && row['Üretim Yapıldı mı?'] === false
+                          ? 'bg-yellow-50 border-l-8 border-black' 
+                          : ''
                     }`}
                   >
                     {columns

@@ -361,9 +361,30 @@ function MaliPerformansPage() {
         break;
       
       case 'haftalik':
-        // Bu hafta - her zaman Pazartesiden başlar
-        yeniBaslangic = format(startOfWeek(bugun, { locale: tr, weekStartsOn: 1 }), 'yyyy-MM-dd');
-        yeniBitis = format(endOfWeek(bugun, { locale: tr, weekStartsOn: 1 }), 'yyyy-MM-dd');
+        // Bu hafta - iş günleri filtresi (Pazartesi-Cuma veya bugüne kadar)
+        const bugunHaftaninGunu = bugun.getDay(); // 0: Pazar, 1: Pazartesi, ..., 6: Cumartesi
+        
+        // Haftanın başlangıcı (Pazartesi) hesabı
+        const pazartesi = new Date(bugun);
+        pazartesi.setDate(bugun.getDate() - ((bugunHaftaninGunu === 0 ? 6 : bugunHaftaninGunu - 1)));
+        
+        // Eğer bugün hafta içi ise (Pazartesi-Cuma)
+        if (bugunHaftaninGunu >= 1 && bugunHaftaninGunu <= 5) {
+          // Hafta başı (Pazartesi) tarihi
+          yeniBaslangic = format(pazartesi, 'yyyy-MM-dd');
+          
+          // Bugünkü tarih
+          yeniBitis = format(bugun, 'yyyy-MM-dd');
+        } else {
+          // Hafta sonu ise (Cumartesi veya Pazar), tüm geçen haftayı göster (Pazartesi-Cuma)
+          yeniBaslangic = format(pazartesi, 'yyyy-MM-dd');
+          
+          // Haftanın sonu (Cuma) hesabı
+          const cuma = new Date(pazartesi);
+          cuma.setDate(pazartesi.getDate() + 4); // Pazartesi + 4 gün = Cuma
+          
+          yeniBitis = format(cuma, 'yyyy-MM-dd');
+        }
         break;
       
       case 'aylik':
@@ -824,49 +845,64 @@ function MaliPerformansPage() {
     getAmbalajlamaKayitlari();
   }, [ambalajlamaBaslangicTarihi, ambalajlamaBitisTarihi, filtreAmbalajlamaRecete, filtreAmbalajlamaMusteri]);
 
+  // Bugün ayın son günü mü kontrol fonksiyonu
+  const bugunAyinSonGunuMu = (): boolean => {
+    const bugun = new Date();
+    const ayinSonGunu = endOfMonth(bugun);
+    return (
+      bugun.getDate() === ayinSonGunu.getDate() && 
+      bugun.getMonth() === ayinSonGunu.getMonth() && 
+      bugun.getFullYear() === ayinSonGunu.getFullYear()
+    );
+  };
+
   // Ambalajlama verileri veya işletme giderleri değiştiğinde gerçek net kar/zarar hesaplaması
   useEffect(() => {
-    // Sabit 22 iş günü kullanılıyor
+    // Aylık işletme maliyetini iş gününe bölerek günlük maliyet hesapla
+    const gunlukMaliyet = toplamAylikIsletmeGideri / SABIT_IS_GUNU_SAYISI;
     
-    // Aylık işletme maliyetini 22 iş gününe bölerek günlük maliyet hesapla
-    const gercekGunlukMaliyet = toplamAylikIsletmeGideri / SABIT_IS_GUNU_SAYISI;
+    // Ayın son günü kontrolü
+    const ayinSonuMu = bugunAyinSonGunuMu();
     
-    // Seçilen tarih aralığındaki günler için işletme maliyeti hesapla
-    // Seçilen aralıktaki gün sayısını hesapla
-    let seciliGunSayisi = 0;
-    if (ambalajlamaBaslangicTarihi && ambalajlamaBitisTarihi) {
-      const baslangic = new Date(ambalajlamaBaslangicTarihi);
-      const bitis = new Date(ambalajlamaBitisTarihi);
-      // İki tarih arasındaki gün sayısını hesapla (milisaniye -> gün)
-      const gunFarki = Math.round((bitis.getTime() - baslangic.getTime()) / (1000 * 60 * 60 * 24)) + 1; // +1 ile başlangıç gününü de dahil ediyoruz
-      seciliGunSayisi = gunFarki;
+    let isGunuAdedi = 0;
+    let isletmeMaliyeti = 0;
+    
+    // Eğer "Bu Ay" filtresi seçiliyse ve bugün ayın son günüyse
+    if (ambalajlamaTarihAraligi === 'aylik' && ayinSonuMu) {
+      // Direkt olarak aylık toplam maliyeti göster
+      isletmeMaliyeti = toplamAylikIsletmeGideri * dovizKuru;
+      // İş günü sayısı olarak SABIT_IS_GUNU_SAYISI göster
+      isGunuAdedi = SABIT_IS_GUNU_SAYISI;
+    } else {
+      // Normal hesaplama - seçilen tarih aralığındaki iş günü sayısını hesapla
+      if (ambalajlamaBaslangicTarihi && ambalajlamaBitisTarihi) {
+        // Seçili tarih aralığındaki gerçek iş günü sayısını hesapla
+        isGunuAdedi = hesaplaIsGunuSayisi(ambalajlamaBaslangicTarihi, ambalajlamaBitisTarihi);
+      }
       
-      // Hafta içi/hafta sonu ayrımı yapılmadan, seçilen gün sayısının SABIT_IS_GUNU_SAYISI'na oranını hesaplayalım
-      // Örneğin 10 günlük bir aralık seçildi, 22 günde 10 gün = 10/22 * aylık maliyet
-      const oran = Math.min(seciliGunSayisi / 30, 1); // 30 günlük ay varsayımı, maksimum 1 (tam ay)
-      seciliGunSayisi = Math.round(SABIT_IS_GUNU_SAYISI * oran);
+      // İşletme maliyeti: günlük maliyet x iş günü sayısı
+      isletmeMaliyeti = gunlukMaliyet * dovizKuru * isGunuAdedi;
     }
     
-    setIsGunuSayisi(seciliGunSayisi);
-    
-    // İşletme maliyeti: günlük maliyet x seçilen gün sayısı
-    const isletmeMaliyeti = (gercekGunlukMaliyet * dovizKuru * seciliGunSayisi);
+    setIsGunuSayisi(isGunuAdedi);
     
     // Gerçek net kar/zarar: ambalajlama karı - işletme maliyeti
     const gercekKarZarar = ambalajlamaToplamKar - isletmeMaliyeti;
     
     setGercekNetKarZarar(gercekKarZarar);
     
-    console.log('Tarih Hesaplama:', {
+    console.log('İşletme Maliyeti Hesaplama:', {
       baslangic: ambalajlamaBaslangicTarihi,
       bitis: ambalajlamaBitisTarihi,
-      toplamGun: seciliGunSayisi,
-      isGunu: seciliGunSayisi,
-      ambalajlamaToplamKar,
+      isGunuSayisi: isGunuAdedi,
+      bugunAyinSonGunuMu: ayinSonuMu,
+      tarihAraligi: ambalajlamaTarihAraligi,
+      gunlukMaliyet,
       isletmeMaliyeti,
+      ambalajlamaToplamKar,
       gercekNetKarZarar
     });
-  }, [ambalajlamaToplamKar, toplamAylikIsletmeGideri, dovizKuru, ambalajlamaBaslangicTarihi, ambalajlamaBitisTarihi]);
+  }, [ambalajlamaToplamKar, toplamAylikIsletmeGideri, dovizKuru, ambalajlamaBaslangicTarihi, ambalajlamaBitisTarihi, ambalajlamaTarihAraligi]);
 
   // Hata ayıklama için useEffect
   useEffect(() => {
@@ -901,9 +937,30 @@ function MaliPerformansPage() {
         break;
       
       case 'haftalik':
-        // Bu hafta - her zaman Pazartesiden başlar
-        yeniBaslangic = format(startOfWeek(bugun, { locale: tr, weekStartsOn: 1 }), 'yyyy-MM-dd');
-        yeniBitis = format(endOfWeek(bugun, { locale: tr, weekStartsOn: 1 }), 'yyyy-MM-dd');
+        // Bu hafta - iş günleri filtresi (Pazartesi-Cuma veya bugüne kadar)
+        const bugunHaftaninGunu = bugun.getDay(); // 0: Pazar, 1: Pazartesi, ..., 6: Cumartesi
+        
+        // Haftanın başlangıcı (Pazartesi) hesabı
+        const pazartesi = new Date(bugun);
+        pazartesi.setDate(bugun.getDate() - ((bugunHaftaninGunu === 0 ? 6 : bugunHaftaninGunu - 1)));
+        
+        // Eğer bugün hafta içi ise (Pazartesi-Cuma)
+        if (bugunHaftaninGunu >= 1 && bugunHaftaninGunu <= 5) {
+          // Hafta başı (Pazartesi) tarihi
+          yeniBaslangic = format(pazartesi, 'yyyy-MM-dd');
+          
+          // Bugünkü tarih
+          yeniBitis = format(bugun, 'yyyy-MM-dd');
+        } else {
+          // Hafta sonu ise (Cumartesi veya Pazar), tüm geçen haftayı göster (Pazartesi-Cuma)
+          yeniBaslangic = format(pazartesi, 'yyyy-MM-dd');
+          
+          // Haftanın sonu (Cuma) hesabı
+          const cuma = new Date(pazartesi);
+          cuma.setDate(pazartesi.getDate() + 4); // Pazartesi + 4 gün = Cuma
+          
+          yeniBitis = format(cuma, 'yyyy-MM-dd');
+        }
         break;
       
       case 'aylik':
@@ -969,9 +1026,30 @@ function MaliPerformansPage() {
         break;
       
       case 'haftalik':
-        // Bu hafta - her zaman Pazartesiden başlar
-        yeniBaslangic = format(startOfWeek(bugun, { locale: tr, weekStartsOn: 1 }), 'yyyy-MM-dd');
-        yeniBitis = format(endOfWeek(bugun, { locale: tr, weekStartsOn: 1 }), 'yyyy-MM-dd');
+        // Bu hafta - iş günleri filtresi (Pazartesi-Cuma veya bugüne kadar)
+        const bugunHaftaninGunu = bugun.getDay(); // 0: Pazar, 1: Pazartesi, ..., 6: Cumartesi
+        
+        // Haftanın başlangıcı (Pazartesi) hesabı
+        const pazartesi = new Date(bugun);
+        pazartesi.setDate(bugun.getDate() - ((bugunHaftaninGunu === 0 ? 6 : bugunHaftaninGunu - 1)));
+        
+        // Eğer bugün hafta içi ise (Pazartesi-Cuma)
+        if (bugunHaftaninGunu >= 1 && bugunHaftaninGunu <= 5) {
+          // Hafta başı (Pazartesi) tarihi
+          yeniBaslangic = format(pazartesi, 'yyyy-MM-dd');
+          
+          // Bugünkü tarih
+          yeniBitis = format(bugun, 'yyyy-MM-dd');
+        } else {
+          // Hafta sonu ise (Cumartesi veya Pazar), tüm geçen haftayı göster (Pazartesi-Cuma)
+          yeniBaslangic = format(pazartesi, 'yyyy-MM-dd');
+          
+          // Haftanın sonu (Cuma) hesabı
+          const cuma = new Date(pazartesi);
+          cuma.setDate(pazartesi.getDate() + 4); // Pazartesi + 4 gün = Cuma
+          
+          yeniBitis = format(cuma, 'yyyy-MM-dd');
+        }
         break;
       
       case 'aylik':
@@ -2668,11 +2746,15 @@ function MaliPerformansPage() {
                   </div>
                   
                   <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-100 mb-6">
-                    <h3 className="text-lg font-semibold text-gray-800">İşletme Giderleri (Bu Dönem)</h3>
+                    <h3 className="text-lg font-semibold text-gray-800">İşletme Giderleri {ambalajlamaTarihAraligi === 'aylik' && bugunAyinSonGunuMu() ? '(Aylık Toplam)' : '(Bu Dönem)'}</h3>
                     <p className="text-2xl font-bold text-amber-600 mt-1">
                       {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR' }).format((toplamAylikIsletmeGideri / SABIT_IS_GUNU_SAYISI) * dovizKuru * isGunuSayisi)}
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">Seçili dönem için hesaplanan işletme giderleri ({isGunuSayisi} iş günü)</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {ambalajlamaTarihAraligi === 'aylik' && bugunAyinSonGunuMu()
+                        ? 'Bu ay için toplam işletme giderleri'
+                        : `Seçili dönem için hesaplanan işletme giderleri (${isGunuSayisi} iş günü - sadece hafta içi günler)`}
+                    </p>
                   </div>
                   
                   <h3 className="font-medium text-gray-800 mb-3">Kar Hesaplama Formülü:</h3>

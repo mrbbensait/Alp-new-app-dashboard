@@ -21,6 +21,10 @@ export async function getFormulasyonByReceteAdi(receteAdi: string, uretimMiktari
     // Formülasyonlar tablosundan reçete adına göre verileri çek
     const formulasyonlar = await fetchFilteredData('Formülasyonlar', 'Reçete Adı', receteAdi, bypassCache);
     console.log('Formülasyon verileri alındı:', formulasyonlar);
+    
+    // Formülasyon verilerini ID'ye göre sırala
+    const siraliFormulasyonlar = formulasyonlar.sort((a: any, b: any) => a.id - b.id);
+    console.log('ID\'ye göre sıralanmış formülasyon verileri:', siraliFormulasyonlar);
 
     // Recete bilgilerini çek - Ambalaj Emri (ml) bilgisi için
     // Manuel ambalaj emri değeri verilmişse, onu kullan
@@ -42,7 +46,7 @@ export async function getFormulasyonByReceteAdi(receteAdi: string, uretimMiktari
     console.log('Reçete ve Ambalaj Emri bilgisi:', { ambalajEmri });
 
     // Hammadde listesini oluştur ve üretim miktarına göre gerçek miktar hesabını yap
-    const hammaddeler = formulasyonlar.map((item: any) => {
+    const hammaddeler = siraliFormulasyonlar.map((item: any) => {
       const stokKategori = item['Stok Kategori'] || '';
       
       // Stok kategorisi "Ambalaj" ise özel hesaplama yap
