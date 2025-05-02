@@ -276,18 +276,22 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, pageTitle, 
                         Dünkü Performans:
                       </span>
                       <span className={`text-2xl font-bold ${
-                        performansVerileri.dunkuPerformans >= 100 
-                          ? 'text-green-600' 
-                          : 'text-red-600 performance-pulse'
+                        performansVerileri.dunkuPerformans >= 100 ? 'text-green-600' : 
+                        performansVerileri.dunkuPerformans >= 90 ? 'text-blue-600' :
+                        performansVerileri.dunkuPerformans >= 80 ? 'text-yellow-600' :
+                        'text-red-600 performance-pulse'
                       }`}>
                         %{performansVerileri.dunkuPerformans.toFixed(1)}
                       </span>
                       <span className={`ml-2 px-3 py-1 rounded text-base font-bold ${
-                        performansVerileri.dunkuPerformans >= 100 
-                          ? 'bg-green-100 text-green-800 border border-green-300' 
-                          : 'bg-red-100 text-red-800 border border-red-300 glow-pulse'
+                        performansVerileri.dunkuPerformans >= 100 ? 'bg-green-100 text-green-800 border border-green-300' : 
+                        performansVerileri.dunkuPerformans >= 90 ? 'bg-blue-100 text-blue-800 border border-blue-300' :
+                        performansVerileri.dunkuPerformans >= 80 ? 'bg-yellow-100 text-yellow-800 border border-yellow-300' :
+                        'bg-red-100 text-red-800 border border-red-300 glow-pulse'
                       }`}>
-                        {performansVerileri.dunkuPerformans >= 100 ? 'BAŞARILI' : 'DÜŞÜK'}
+                        {performansVerileri.dunkuPerformans >= 100 ? 'HEDEF BAŞARILDI' : 
+                         performansVerileri.dunkuPerformans >= 90 ? 'İYİ' : 
+                         performansVerileri.dunkuPerformans >= 80 ? 'ORTA' : 'DÜŞÜK'}
                       </span>
                     </div>
                   )}
@@ -297,15 +301,23 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, pageTitle, 
                     <div className="flex flex-col items-center">
                       <span className="text-xs font-medium text-gray-500">Haftalık Performans</span>
                       <div className="flex items-center">
-                        <span className={`text-lg font-bold ${performansVerileri.haftaPerformans >= 100 ? 'text-green-600' : 'text-red-600'}`}>
+                        <span className={`text-lg font-bold ${
+                          performansVerileri.haftaPerformans >= 100 ? 'text-green-600' : 
+                          performansVerileri.haftaPerformans >= 90 ? 'text-blue-600' :
+                          performansVerileri.haftaPerformans >= 80 ? 'text-yellow-600' :
+                          'text-red-600'
+                        }`}>
                           %{performansVerileri.haftaPerformans.toFixed(1)}
                         </span>
                         <span className={`ml-1.5 px-2 py-1 rounded text-xs font-bold shadow-sm ${
-                          performansVerileri.haftaPerformans >= 100 
-                            ? 'bg-green-100 text-green-800 border border-green-300' 
-                            : 'bg-red-100 text-red-800 border border-red-300'
+                          performansVerileri.haftaPerformans >= 100 ? 'bg-green-100 text-green-800 border border-green-300' : 
+                          performansVerileri.haftaPerformans >= 90 ? 'bg-blue-100 text-blue-800 border border-blue-300' :
+                          performansVerileri.haftaPerformans >= 80 ? 'bg-yellow-100 text-yellow-800 border border-yellow-300' :
+                          'bg-red-100 text-red-800 border border-red-300'
                         }`}>
-                          {performansVerileri.haftaPerformans >= 100 ? '✓' : 'DÜŞÜK'}
+                          {performansVerileri.haftaPerformans >= 100 ? 'HEDEF BAŞARILDI' : 
+                           performansVerileri.haftaPerformans >= 90 ? 'İYİ' : 
+                           performansVerileri.haftaPerformans >= 80 ? 'ORTA' : 'DÜŞÜK'}
                         </span>
                       </div>
                     </div>

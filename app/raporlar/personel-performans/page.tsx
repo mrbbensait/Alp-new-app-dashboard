@@ -7,7 +7,8 @@ import TarihAralikSecici, { TarihAraligi } from '@/app/components/personel-perfo
 import GrafikTurSecici, { GrafikTuru } from '@/app/components/personel-performans/GrafikTurSecici';
 import PerformansGrafikleri from '@/app/components/personel-performans/PerformansGrafikleri';
 import { 
-  getSonHaftaTarihAraligi, 
+  getSonHaftaTarihAraligi,
+  getSon30GunTarihAraligi, 
   formatDateTR,
   getBugununTarihi,
   getTarihAraligi
@@ -19,7 +20,7 @@ export default function PersonelPerformansPage() {
   // Durum değişkenleri
   const [baslangicTarihi, setBaslangicTarihi] = useState<string>('');
   const [bitisTarihi, setBitisTarihi] = useState<string>('');
-  const [tarihAraligi, setTarihAraligi] = useState<TarihAraligi>('haftalik');
+  const [tarihAraligi, setTarihAraligi] = useState<TarihAraligi>('son30gun');
   const [performansGrafikTuru, setPerformansGrafikTuru] = useState<GrafikTuru>('cizgi');
   
   const [raporlar, setRaporlar] = useState<PerformansRaporu[]>([]);
@@ -62,9 +63,9 @@ export default function PersonelPerformansPage() {
   
   const { updatePerformansVerileri } = usePerformans();
   
-  // Sayfa yüklendiğinde varsayılan tarih aralığı (son 7 gün) için verileri getir
+  // Sayfa yüklendiğinde varsayılan tarih aralığı (son 30 gün) için verileri getir
   useEffect(() => {
-    const [baslangic, bitis] = getSonHaftaTarihAraligi();
+    const [baslangic, bitis] = getSon30GunTarihAraligi();
     setBaslangicTarihi(baslangic);
     setBitisTarihi(bitis);
     
@@ -328,7 +329,7 @@ export default function PersonelPerformansPage() {
             <div>
               <TarihAralikSecici 
                 onTarihAralikiDegistir={handleTarihAralikDegistir}
-                defaultAralik="haftalik"
+                defaultAralik="son30gun"
               />
             </div>
           </div>
@@ -428,8 +429,15 @@ export default function PersonelPerformansPage() {
                             %{performansOzeti.bugunPerformans ? performansOzeti.bugunPerformans.toFixed(1) : '0.0'}
                           </p>
                           {performansOzeti.bugunPerformans > 0 && (
-                            <span className={`ml-2 px-2 py-1 rounded-md text-xs font-medium ${performansOzeti.bugunPerformans >= 100 ? 'bg-green-400 text-green-900' : 'bg-yellow-400 text-yellow-900'}`}>
-                              {performansOzeti.bugunPerformans >= 100 ? 'Hedef Tamamlandı!' : 'Devam Ediyor'}
+                            <span className={`ml-2 px-2 py-1 rounded-md text-xs font-medium ${
+                              performansOzeti.bugunPerformans >= 100 ? 'bg-green-400 text-green-900' : 
+                              performansOzeti.bugunPerformans >= 90 ? 'bg-blue-400 text-blue-900' :
+                              performansOzeti.bugunPerformans >= 80 ? 'bg-yellow-400 text-yellow-900' :
+                              'bg-red-400 text-red-900'
+                            }`}>
+                              {performansOzeti.bugunPerformans >= 100 ? 'HEDEF BAŞARILDI' : 
+                               performansOzeti.bugunPerformans >= 90 ? 'İYİ' : 
+                               performansOzeti.bugunPerformans >= 80 ? 'ORTA' : 'DÜŞÜK'}
                             </span>
                           )}
                         </div>
@@ -442,8 +450,15 @@ export default function PersonelPerformansPage() {
                             %{performansOzeti.dunkuPerformans ? performansOzeti.dunkuPerformans.toFixed(1) : '0.0'}
                           </p>
                           {performansOzeti.dunkuPerformans > 0 && (
-                            <span className={`ml-2 px-2 py-1 rounded-md text-xs font-medium ${performansOzeti.dunkuPerformans >= 100 ? 'bg-green-400 text-green-900' : 'bg-yellow-400 text-yellow-900'}`}>
-                              {performansOzeti.dunkuPerformans >= 100 ? 'Tamamlandı' : 'Eksik'}
+                            <span className={`ml-2 px-2 py-1 rounded-md text-xs font-medium ${
+                              performansOzeti.dunkuPerformans >= 100 ? 'bg-green-400 text-green-900' : 
+                              performansOzeti.dunkuPerformans >= 90 ? 'bg-blue-400 text-blue-900' :
+                              performansOzeti.dunkuPerformans >= 80 ? 'bg-yellow-400 text-yellow-900' :
+                              'bg-red-400 text-red-900'
+                            }`}>
+                              {performansOzeti.dunkuPerformans >= 100 ? 'HEDEF BAŞARILDI' : 
+                               performansOzeti.dunkuPerformans >= 90 ? 'İYİ' : 
+                               performansOzeti.dunkuPerformans >= 80 ? 'ORTA' : 'DÜŞÜK'}
                             </span>
                           )}
                         </div>
@@ -456,8 +471,15 @@ export default function PersonelPerformansPage() {
                             %{performansOzeti.haftaPerformans ? performansOzeti.haftaPerformans.toFixed(1) : '0.0'}
                           </p>
                           {performansOzeti.haftaPerformans > 0 && (
-                            <span className={`ml-2 px-2 py-1 rounded-md text-xs font-medium ${performansOzeti.haftaPerformans >= 100 ? 'bg-green-400 text-green-900' : 'bg-yellow-400 text-yellow-900'}`}>
-                              {performansOzeti.haftaPerformans >= 100 ? 'Tamamlandı' : 'Devam Ediyor'}
+                            <span className={`ml-2 px-2 py-1 rounded-md text-xs font-medium ${
+                              performansOzeti.haftaPerformans >= 100 ? 'bg-green-400 text-green-900' : 
+                              performansOzeti.haftaPerformans >= 90 ? 'bg-blue-400 text-blue-900' :
+                              performansOzeti.haftaPerformans >= 80 ? 'bg-yellow-400 text-yellow-900' :
+                              'bg-red-400 text-red-900'
+                            }`}>
+                              {performansOzeti.haftaPerformans >= 100 ? 'HEDEF BAŞARILDI' : 
+                               performansOzeti.haftaPerformans >= 90 ? 'İYİ' : 
+                               performansOzeti.haftaPerformans >= 80 ? 'ORTA' : 'DÜŞÜK'}
                             </span>
                           )}
                         </div>
@@ -470,8 +492,15 @@ export default function PersonelPerformansPage() {
                             %{performansOzeti.gecenHaftaPerformans ? performansOzeti.gecenHaftaPerformans.toFixed(1) : '0.0'}
                           </p>
                           {performansOzeti.gecenHaftaPerformans > 0 && (
-                            <span className={`ml-2 px-2 py-1 rounded-md text-xs font-medium ${performansOzeti.gecenHaftaPerformans >= 100 ? 'bg-green-400 text-green-900' : 'bg-yellow-400 text-yellow-900'}`}>
-                              {performansOzeti.gecenHaftaPerformans >= 100 ? 'Tamamlandı' : 'Eksik'}
+                            <span className={`ml-2 px-2 py-1 rounded-md text-xs font-medium ${
+                              performansOzeti.gecenHaftaPerformans >= 100 ? 'bg-green-400 text-green-900' : 
+                              performansOzeti.gecenHaftaPerformans >= 90 ? 'bg-blue-400 text-blue-900' :
+                              performansOzeti.gecenHaftaPerformans >= 80 ? 'bg-yellow-400 text-yellow-900' :
+                              'bg-red-400 text-red-900'
+                            }`}>
+                              {performansOzeti.gecenHaftaPerformans >= 100 ? 'HEDEF BAŞARILDI' : 
+                               performansOzeti.gecenHaftaPerformans >= 90 ? 'İYİ' : 
+                               performansOzeti.gecenHaftaPerformans >= 80 ? 'ORTA' : 'DÜŞÜK'}
                             </span>
                           )}
                         </div>
@@ -484,8 +513,15 @@ export default function PersonelPerformansPage() {
                             %{performansOzeti.gecenAyPerformans ? performansOzeti.gecenAyPerformans.toFixed(1) : '0.0'}
                           </p>
                           {performansOzeti.gecenAyPerformans > 0 && (
-                            <span className={`ml-2 px-2 py-1 rounded-md text-xs font-medium ${performansOzeti.gecenAyPerformans >= 100 ? 'bg-green-400 text-green-900' : 'bg-yellow-400 text-yellow-900'}`}>
-                              {performansOzeti.gecenAyPerformans >= 100 ? 'Tamamlandı' : 'Eksik'}
+                            <span className={`ml-2 px-2 py-1 rounded-md text-xs font-medium ${
+                              performansOzeti.gecenAyPerformans >= 100 ? 'bg-green-400 text-green-900' : 
+                              performansOzeti.gecenAyPerformans >= 90 ? 'bg-blue-400 text-blue-900' :
+                              performansOzeti.gecenAyPerformans >= 80 ? 'bg-yellow-400 text-yellow-900' :
+                              'bg-red-400 text-red-900'
+                            }`}>
+                              {performansOzeti.gecenAyPerformans >= 100 ? 'HEDEF BAŞARILDI' : 
+                               performansOzeti.gecenAyPerformans >= 90 ? 'İYİ' : 
+                               performansOzeti.gecenAyPerformans >= 80 ? 'ORTA' : 'DÜŞÜK'}
                             </span>
                           )}
                         </div>

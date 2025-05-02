@@ -38,12 +38,27 @@ export function getSonHaftaTarihAraligi(): [string, string] {
 /**
  * Son 30 günün tarih aralığını döndürür [başlangıç, bitiş]
  */
+export function getSon30GunTarihAraligi(): [string, string] {
+  const bugun = new Date();
+  const otuzGunOnce = new Date();
+  otuzGunOnce.setDate(bugun.getDate() - 30);
+  
+  return [formatDate(otuzGunOnce), formatDate(bugun)];
+}
+
+/**
+ * Son 30 günün tarih aralığını döndürür [başlangıç, bitiş]
+ */
 export function getSonAyTarihAraligi(): [string, string] {
   const bugun = new Date();
-  const birAyOnce = new Date();
-  birAyOnce.setDate(bugun.getDate() - 30);
   
-  return [formatDate(birAyOnce), formatDate(bugun)];
+  // İçinde bulunduğumuz ayın ilk günü
+  const ayBasi = new Date(bugun.getFullYear(), bugun.getMonth(), 1);
+  
+  // İçinde bulunduğumuz ayın son günü
+  const aySonu = new Date(bugun.getFullYear(), bugun.getMonth() + 1, 0);
+  
+  return [formatDate(ayBasi), formatDate(aySonu)];
 }
 
 /**
