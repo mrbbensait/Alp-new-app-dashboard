@@ -861,14 +861,11 @@ function MaliPerformansPage() {
     // Aylık işletme maliyetini iş gününe bölerek günlük maliyet hesapla
     const gunlukMaliyet = toplamAylikIsletmeGideri / SABIT_IS_GUNU_SAYISI;
     
-    // Ayın son günü kontrolü
-    const ayinSonuMu = bugunAyinSonGunuMu();
-    
     let isGunuAdedi = 0;
     let isletmeMaliyeti = 0;
     
-    // Eğer "Bu Ay" filtresi seçiliyse ve bugün ayın son günüyse
-    if (ambalajlamaTarihAraligi === 'aylik' && ayinSonuMu) {
+    // Eğer "Bu Ay" veya "Geçen Ay" filtresi seçilmişse
+    if (ambalajlamaTarihAraligi === 'aylik' || ambalajlamaTarihAraligi === 'gecenay') {
       // Direkt olarak aylık toplam maliyeti göster
       isletmeMaliyeti = toplamAylikIsletmeGideri * dovizKuru;
       // İş günü sayısı olarak SABIT_IS_GUNU_SAYISI göster
@@ -895,7 +892,6 @@ function MaliPerformansPage() {
       baslangic: ambalajlamaBaslangicTarihi,
       bitis: ambalajlamaBitisTarihi,
       isGunuSayisi: isGunuAdedi,
-      bugunAyinSonGunuMu: ayinSonuMu,
       tarihAraligi: ambalajlamaTarihAraligi,
       gunlukMaliyet,
       isletmeMaliyeti,
@@ -1609,7 +1605,10 @@ function MaliPerformansPage() {
                   </div>
                 </div>
                 <div className="mt-2 text-sm text-gray-600">
-                    Seçili dönemdeki işletme giderleri ({isGunuSayisi} gün)
+                    {ambalajlamaTarihAraligi === 'aylik' || ambalajlamaTarihAraligi === 'gecenay'
+                      ? "Aylık toplam işletme maliyeti (tüm giderler)" 
+                      : `Seçili dönemdeki işletme giderleri (${isGunuSayisi} iş günü × ${new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format((toplamAylikIsletmeGideri / SABIT_IS_GUNU_SAYISI) * dovizKuru)} günlük maliyet)`
+                    }
               </div>
             </div>
             
