@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { fetchFilteredData, fetchAllFromTable } from '../../lib/supabase';
 
 interface KritikHammaddeModalProps {
   isOpen: boolean;
   onClose: () => void;
   receteAdi: string;
+  onlyAmbalaj?: boolean;
 }
 
 interface StokItem {
@@ -31,7 +32,8 @@ interface FormulasyonItem {
 const KritikHammaddeModal: React.FC<KritikHammaddeModalProps> = ({
   isOpen,
   onClose,
-  receteAdi
+  receteAdi,
+  onlyAmbalaj = false
 }) => {
   const [loading, setLoading] = useState(true);
   const [kritikHammaddeler, setKritikHammaddeler] = useState<{
@@ -44,6 +46,14 @@ const KritikHammaddeModal: React.FC<KritikHammaddeModalProps> = ({
     kategori: string;
     oran: number;
   }[]>([]);
+  
+  // onlyAmbalaj değeri için bir ref oluştur
+  const onlyAmbalajRef = useRef(onlyAmbalaj);
+  
+  // onlyAmbalaj değeri değiştiğinde ref'i güncelle
+  useEffect(() => {
+    onlyAmbalajRef.current = onlyAmbalaj;
+  }, [onlyAmbalaj]);
 
   useEffect(() => {
     const fetchKritikHammaddeler = async () => {
@@ -64,10 +74,18 @@ const KritikHammaddeModal: React.FC<KritikHammaddeModalProps> = ({
             const stokItem = stokVerileri.find((s: StokItem) => s['Hammadde Adı'] === hammaddeAdi);
             
             if (stokItem) {
+              // Ref içindeki onlyAmbalaj değerini kullan
+              if (onlyAmbalajRef.current && stokItem['Stok Kategori'] !== 'Ambalaj') {
+                return null;
+              }
+              
               const mevcutStok = stokItem['Mevcut Stok'] || 0;
               const rezerveEdildi = stokItem['Rezerve Edildi'] || 0;
               const netStok = stokItem['Net Stok'] || (mevcutStok - rezerveEdildi);
               const kritikStok = stokItem['Kritik Stok'] || 0;
+              
+              // Birim olarak Kg veya Adet - Ambalaj kategorisi için Adet gösterilecek
+              const birim = stokItem['Stok Kategori'] === 'Ambalaj' ? 'Adet' : (stokItem['Birim'] || 'Kg');
               
               // Net stok, kritik stok değerinin altındaysa listeye ekle
               if (netStok < kritikStok) {
@@ -77,7 +95,7 @@ const KritikHammaddeModal: React.FC<KritikHammaddeModalProps> = ({
                   rezerveEdildi: rezerveEdildi,
                   netStok: netStok,
                   kritikStok: kritikStok,
-                  birim: stokItem['Birim'] || 'Kg',
+                  birim: birim,
                   kategori: stokItem['Stok Kategori'] || 'Belirtilmemiş',
                   oran: formul['Oran(100Kg)'] || 0
                 };
@@ -96,9 +114,15 @@ const KritikHammaddeModal: React.FC<KritikHammaddeModalProps> = ({
     };
 
     fetchKritikHammaddeler();
-  }, [isOpen, receteAdi]);
+  }, [isOpen, receteAdi]); // onlyAmbalaj bağımlılığını kaldırdık
 
   if (!isOpen) return null;
+
+  // Başlık metni belirle
+  const baslik = onlyAmbalaj ? 'KRİTİK AMBALAJ STOK UYARISI' : 'KRİTİK STOK UYARISI';
+  const aciklama = onlyAmbalaj 
+    ? 'Bu reçete için aşağıdaki ambalaj ürünlerinin stok seviyesi kritik seviyenin altında!' 
+    : 'Bu reçete için aşağıdaki hammaddelerin stok seviyesi kritik seviyenin altında!';
 
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
@@ -116,15 +140,15 @@ const KritikHammaddeModal: React.FC<KritikHammaddeModalProps> = ({
 
         <div className="text-center mb-3">
           <div className="flex items-center justify-center mb-2">
-            <svg className="h-10 w-10 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className={`h-10 w-10 ${onlyAmbalaj ? 'text-black' : 'text-red-500'}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
           
-          <h3 className="text-lg leading-6 font-medium text-red-600 mb-1">KRİTİK STOK UYARISI</h3>
+          <h3 className={`text-lg leading-6 font-medium ${onlyAmbalaj ? 'text-gray-800' : 'text-red-600'} mb-1`}>{baslik}</h3>
           <h4 className="text-base font-semibold text-gray-900">{receteAdi}</h4>
           <p className="mt-1 text-xs text-gray-500">
-            Bu reçete için aşağıdaki hammaddelerin stok seviyesi kritik seviyenin altında!
+            {aciklama}
           </p>
         </div>
 
@@ -137,7 +161,9 @@ const KritikHammaddeModal: React.FC<KritikHammaddeModalProps> = ({
           </div>
         ) : kritikHammaddeler.length === 0 ? (
           <div className="py-3 text-center">
-            <p className="text-gray-500">Kritik seviyede hammadde bulunmamaktadır.</p>
+            <p className="text-gray-500">
+              {onlyAmbalaj ? 'Kritik seviyede ambalaj ürünü bulunmamaktadır.' : 'Kritik seviyede hammadde bulunmamaktadır.'}
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">

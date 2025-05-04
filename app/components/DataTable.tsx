@@ -184,6 +184,10 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
   const [isKritikHammaddeModalOpen, setIsKritikHammaddeModalOpen] = useState(false);
   const [kritikHammaddeReceteAdi, setKritikHammaddeReceteAdi] = useState<string>('');
 
+  // Kritik Ambalaj modalı için state
+  const [isKritikAmbalajModalOpen, setIsKritikAmbalajModalOpen] = useState(false);
+  const [kritikAmbalajReceteAdi, setKritikAmbalajReceteAdi] = useState<string>('');
+
   // Stok Hareket modalı için state
   const [isStokHareketModalOpen, setIsStokHareketModalOpen] = useState(false);
 
@@ -941,14 +945,17 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
           
           // Her bir üretim kaydı için kritik stok kontrolü yap
           const updatedData = await Promise.all(localData.map(async (item) => {
-            // Sadece üretimi yapılmamış kayıtlar için kontrol et
-            if (item['Üretim Yapıldı mı?'] === false) {
-              try {
-                // Formülasyon bilgilerini getir
-                const formulasyonlar = await fetchFilteredData('Formülasyonlar', 'Reçete Adı', item['Reçete Adı'], true);
-                
+            let hasKritikStok = false;
+            let hasKritikAmbalajStok = false;
+            
+            try {
+              // Formülasyon bilgilerini getir
+              const formulasyonlar = await fetchFilteredData('Formülasyonlar', 'Reçete Adı', item['Reçete Adı'], true);
+              
+              // 1. KONTROL: Üretimi yapılmamış reçeteler için tüm stok kontrolü
+              if (item['Üretim Yapıldı mı?'] === false) {
                 // Kritik stok durumu var mı kontrol et
-                const hasKritikStok = formulasyonlar.some((formul: any) => {
+                hasKritikStok = formulasyonlar.some((formul: any) => {
                   const hammaddeAdi = formul['Hammadde Adı'];
                   const stokItem = stokVerileri.find((s: any) => s['Hammadde Adı'] === hammaddeAdi);
                   
@@ -961,15 +968,54 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
                   }
                   return false;
                 });
-                
-                // Kritik stok durumunu kaydet
-                return { ...item, _hasKritikStok: hasKritikStok };
-              } catch (err) {
-                console.error('Formülasyon kontrolünde hata:', err);
-                return item;
               }
+              
+              // 2. KONTROL: Üretim Yapıldı veya Kısmen Ambalajlandı olan reçeteler için sadece ambalaj kontrolü
+              // Üretim durumunu normalize et - TÜM OLASI VARYASYONLARI KONTROLE DAHİL ET
+              const uretimDurumu = (item['Üretim Durumu'] || '').toString().toUpperCase();
+              
+              // Sadece "Üretim Yapıldı" veya "Kısmen Ambalajlandı" durumundaki satırları kontrol et
+              // "Bitti" durumundaki satırları kontrol etme
+              const yapildi = uretimDurumu.includes('YAPIL');
+              const ambalajlandi = uretimDurumu.includes('AMBALA') && !uretimDurumu.includes('BITTI');
+              const uretimYapildi = item['Üretim Yapıldı mı?'] === true && (yapildi || ambalajlandi);
+              
+              if (uretimYapildi) {
+                console.log('Ambalaj kontrolü yapılıyor:', item['Reçete Adı'], uretimDurumu);
+                
+                // Sadece Ambalaj kategorisindeki ürünlerin kritik stok durumunu kontrol et
+                hasKritikAmbalajStok = formulasyonlar.some((formul: any) => {
+                  const hammaddeAdi = formul['Hammadde Adı'];
+                  const stokItem = stokVerileri.find((s: any) => s['Hammadde Adı'] === hammaddeAdi);
+                  
+                  if (stokItem && stokItem['Stok Kategori'] === 'Ambalaj') {
+                    const netStok = stokItem['Net Stok'] || (stokItem['Mevcut Stok'] - (stokItem['Rezerve Edildi'] || 0));
+                    const kritikStok = stokItem['Kritik Stok'] || 0;
+                    
+                    const isKritik = netStok < kritikStok;
+                    if (isKritik) {
+                      console.log('Kritik ambalaj bulundu:', hammaddeAdi, netStok, kritikStok);
+                    }
+                    
+                    // Net stok, kritik stok değerinin altındaysa true döndür
+                    return isKritik;
+                  }
+                  return false;
+                });
+                
+                console.log('Kritik ambalaj durumu:', item['Reçete Adı'], hasKritikAmbalajStok);
+              }
+              
+            } catch (err) {
+              console.error('Formülasyon kontrolünde hata:', err);
             }
-            return item;
+            
+            // Kritik stok durumlarını kaydet
+            return { 
+              ...item, 
+              _hasKritikStok: hasKritikStok,
+              _hasKritikAmbalajStok: hasKritikAmbalajStok
+            };
           }));
           
           setLocalData(updatedData);
@@ -982,11 +1028,52 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
     }
   }, [tableName, data]);
 
+  // Üretim Durumu sütunu için özel render fonksiyonu
+  const renderUretimDurumuColumn = (value: any, row: any) => {
+    // Üretim Durumu değerini göster
+    const uretimDurumu = value || 'Beklemede';
+    
+    // Kritik ambalaj stok kontrolü
+    const handleKritikAmbalajClick = (e: React.MouseEvent) => {
+      e.stopPropagation(); // Tıklama olayının butonun üst elementlerine yayılmasını engelle
+      setKritikAmbalajReceteAdi(row['Reçete Adı']);
+      setIsKritikAmbalajModalOpen(true);
+    };
+    
+    console.log('Üretim Durumu render:', row['Reçete Adı'], 'Değer:', uretimDurumu, 'Kritik Ambalaj:', row._hasKritikAmbalajStok);
+    
+    return (
+      <div className="flex items-center">
+        <span className="text-gray-500">
+          {uretimDurumu}
+        </span>
+        
+        {/* Kritik ambalaj stok kontrolü için ünlem işareti */}
+        {row._hasKritikAmbalajStok === true && (
+          <button 
+            onClick={handleKritikAmbalajClick}
+            className="ml-2 flex items-center justify-center p-1 hover:bg-gray-100 rounded-full transition-colors duration-200"
+            title="Bu reçetede kritik stok seviyesinin altında olan ambalaj ürünleri var! (Detay için tıklayın)"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 text-black animate-pulse" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+          </button>
+        )}
+      </div>
+    );
+  };
+
   // Sütunlara göre içeriği render etme - Reçete kontrolü ekle
   const renderCellContent = (column: string, value: any, row: any) => {
     // Reçete adı sütunu için özel render
     if (column === 'Reçete Adı') {
       return renderReceteColumn(value, row);
+    }
+    
+    // Üretim Durumu sütunu için özel render
+    if (column === 'Üretim Durumu') {
+      return renderUretimDurumuColumn(value, row);
     }
     
     // Var olan koşullu gösterim mantığı
@@ -1038,6 +1125,14 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
         isOpen={isKritikHammaddeModalOpen}
         onClose={() => setIsKritikHammaddeModalOpen(false)}
         receteAdi={kritikHammaddeReceteAdi}
+      />
+      
+      {/* Kritik Ambalaj Modalı */}
+      <KritikHammaddeModal
+        isOpen={isKritikAmbalajModalOpen}
+        onClose={() => setIsKritikAmbalajModalOpen(false)}
+        receteAdi={kritikAmbalajReceteAdi}
+        onlyAmbalaj={true}
       />
       
       {/* Ambalajlama Modalı */}
@@ -1182,6 +1277,19 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
                         );
                       }
                       
+                      // Üretim Kuyruğu tablosunda Üretim Durumu sütunu için özel işlem
+                      if (tableName === 'Üretim Kuyruğu' && column.name === 'Üretim Durumu') {
+                        console.log('Üretim Durumu sütunu render edilecek:', row['Reçete Adı'], row[column.name], row._hasKritikAmbalajStok);
+                        return (
+                          <td 
+                            key={column.name} 
+                            className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500"
+                          >
+                            {renderUretimDurumuColumn(row[column.name], row)}
+                          </td>
+                        );
+                      }
+                      
                       return (
                         <td 
                           key={column.name} 
@@ -1195,7 +1303,7 @@ const DataTable: React.FC<DataTableProps> = ({ columns, data = [], tableName, on
                         >
                           {tableName === 'Üretim Kuyruğu' && column.name === 'Reçete Adı' ? (
                             renderReceteColumn(row[column.name], row)
-                          ) : (isTeslimColumn && isSatinAlmaTable) || (isUretimYapildiColumn && isUretimKuyrugu) ? (
+                          ) : ((isTeslimColumn && isSatinAlmaTable) || (isUretimYapildiColumn && isUretimKuyrugu)) ? (
                             // Teslim Durumu veya Üretim Yapıldı mı? sütunu için checkbox göster
                             <div className="flex items-center">
                               {updatingRow === row.id ? (
