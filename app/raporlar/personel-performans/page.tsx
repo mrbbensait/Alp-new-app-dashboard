@@ -28,6 +28,18 @@ export default function PersonelPerformansPage() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [hata, setHata] = useState<string>('');
 
+  // Gerçek performans değerlendirmesi verileri (tarih filtrelemesinden bağımsız)
+  const [performansDegerlendirmesi, setPerformansDegerlendirmesi] = useState({
+    bugunPerformans: 0,
+    dunkuPerformans: 0,
+    haftaPerformans: 0,
+    gecenHaftaPerformans: 0,
+    gecenAyPerformans: 0
+  });
+  
+  // Performans değerlendirmesinin yüklenme durumu
+  const [performansDegerlendirmesiYuklendi, setPerformansDegerlendirmesiYuklendi] = useState<boolean>(false);
+
   const [gosterilecekPerformansVerileri, setGosterilecekPerformansVerileri] = useState({
     dolum: false,
     etiketleme: false,
@@ -71,7 +83,197 @@ export default function PersonelPerformansPage() {
     
     // Verileri getir
     verileriGetir(baslangic, bitis);
-  }, []);
+    
+    // Performans değerlendirmesi verilerini getir (bu sadece bir kez çalışacak)
+    if (!performansDegerlendirmesiYuklendi) {
+      performansDegerlendirmesiVerileriniGetir();
+    }
+  }, [performansDegerlendirmesiYuklendi]);
+  
+  // Performans değerlendirmesi verilerini getir (tarih filtrelemesinden bağımsız)
+  const performansDegerlendirmesiVerileriniGetir = async () => {
+    try {
+      // Bugün, dün ve diğer dönemler için tarih hesaplamaları
+      const bugun = new Date();
+      bugun.setHours(0, 0, 0, 0);
+      
+      const dun = new Date(bugun);
+      dun.setDate(dun.getDate() - 1);
+      
+      // Pazartesi gününü hesapla (bu hafta için)
+      const bugunGun = bugun.getDay(); // 0: Pazar, 1: Pazartesi, ...
+      const pazartesiGunu = new Date(bugun);
+      const gunFarki = bugunGun === 0 ? 6 : bugunGun - 1; // Pazar günü için 6 gün geriye git, diğer günler için güncel gün - 1
+      pazartesiGunu.setDate(bugun.getDate() - gunFarki);
+      pazartesiGunu.setHours(0, 0, 0, 0);
+      
+      // Geçen haftanın pazartesi ve pazar günlerini hesapla
+      const gecenHaftaPazartesi = new Date(pazartesiGunu);
+      gecenHaftaPazartesi.setDate(gecenHaftaPazartesi.getDate() - 7);
+      
+      const gecenHaftaPazar = new Date(pazartesiGunu);
+      gecenHaftaPazar.setDate(gecenHaftaPazar.getDate() - 1);
+      
+      // Geçen ayın başlangıç ve bitiş tarihlerini hesapla
+      const gecenAyinIlkGunu = new Date(bugun.getFullYear(), bugun.getMonth() - 1, 1);
+      const gecenAyinSonGunu = new Date(bugun.getFullYear(), bugun.getMonth(), 0);
+      
+      // Tarih formatına çevir
+      const bugunStr = formatDate(bugun);
+      const dunStr = formatDate(dun);
+      const pazartesiStr = formatDate(pazartesiGunu);
+      const gecenHaftaPazartesiStr = formatDate(gecenHaftaPazartesi);
+      const gecenHaftaPazarStr = formatDate(gecenHaftaPazar);
+      const gecenAyinIlkGunuStr = formatDate(gecenAyinIlkGunu);
+      const gecenAyinSonGunuStr = formatDate(gecenAyinSonGunu);
+      
+      // Bu hafta, geçen hafta ve geçen ay için ayrı API istekleri yap
+      const [bugunResponse, dunResponse, buHaftaResponse, gecenHaftaResponse, gecenAyResponse] = await Promise.all([
+        fetch(`/api/performans?baslangic_tarihi=${bugunStr}&bitis_tarihi=${bugunStr}`),
+        fetch(`/api/performans?baslangic_tarihi=${dunStr}&bitis_tarihi=${dunStr}`),
+        fetch(`/api/performans?baslangic_tarihi=${pazartesiStr}&bitis_tarihi=${bugunStr}`),
+        fetch(`/api/performans?baslangic_tarihi=${gecenHaftaPazartesiStr}&bitis_tarihi=${gecenHaftaPazarStr}`),
+        fetch(`/api/performans?baslangic_tarihi=${gecenAyinIlkGunuStr}&bitis_tarihi=${gecenAyinSonGunuStr}`)
+      ]);
+      
+      let bugunVerileri: PerformansRaporu[] = [];
+      let dunVerileri: PerformansRaporu[] = [];
+      let buHaftaVerileri: PerformansRaporu[] = [];
+      let gecenHaftaVerileri: PerformansRaporu[] = [];
+      let gecenAyVerileri: PerformansRaporu[] = [];
+      
+      if (bugunResponse.ok) {
+        const bugunData = await bugunResponse.json();
+        if (bugunData.success) {
+          bugunVerileri = bugunData.data as PerformansRaporu[];
+        }
+      }
+      
+      if (dunResponse.ok) {
+        const dunData = await dunResponse.json();
+        if (dunData.success) {
+          dunVerileri = dunData.data as PerformansRaporu[];
+        }
+      }
+      
+      if (buHaftaResponse.ok) {
+        const buHaftaData = await buHaftaResponse.json();
+        if (buHaftaData.success) {
+          buHaftaVerileri = buHaftaData.data as PerformansRaporu[];
+        }
+      }
+      
+      if (gecenHaftaResponse.ok) {
+        const gecenHaftaData = await gecenHaftaResponse.json();
+        if (gecenHaftaData.success) {
+          gecenHaftaVerileri = gecenHaftaData.data as PerformansRaporu[];
+        }
+      }
+      
+      if (gecenAyResponse.ok) {
+        const gecenAyData = await gecenAyResponse.json();
+        if (gecenAyData.success) {
+          gecenAyVerileri = gecenAyData.data as PerformansRaporu[];
+        }
+      }
+      
+      // Performans değerlendirmesi hesaplamalarını yap
+      const degerlendirme = {
+        bugunPerformans: 0,
+        dunkuPerformans: 0,
+        haftaPerformans: 0,
+        gecenHaftaPerformans: 0,
+        gecenAyPerformans: 0
+      };
+      
+      // Bugünkü performans hesaplama
+      if (bugunVerileri.length > 0) {
+        let bugunkuToplamIs = 0;
+        bugunVerileri.forEach(rapor => {
+          bugunkuToplamIs += rapor.dolum + rapor.etiketleme + rapor.kutulama + rapor.selefon;
+        });
+        degerlendirme.bugunPerformans = (bugunkuToplamIs / 12500) * 100; // 12500 = %100 performans
+      }
+      
+      // Dünkü performans hesaplama
+      if (dunVerileri.length > 0) {
+        let dunkuToplamIs = 0;
+        dunVerileri.forEach(rapor => {
+          dunkuToplamIs += rapor.dolum + rapor.etiketleme + rapor.kutulama + rapor.selefon;
+        });
+        degerlendirme.dunkuPerformans = (dunkuToplamIs / 12500) * 100; // 12500 = %100 performans
+      }
+      
+      // Bu hafta performans hesaplama
+      if (buHaftaVerileri.length > 0) {
+        const gunlukRaporlar = new Map<string, number>();
+        
+        buHaftaVerileri.forEach(rapor => {
+          const gunlukToplam = rapor.dolum + rapor.etiketleme + rapor.kutulama + rapor.selefon;
+          gunlukRaporlar.set(rapor.tarih, (gunlukRaporlar.get(rapor.tarih) || 0) + gunlukToplam);
+        });
+        
+        let haftaToplamIs = 0;
+        gunlukRaporlar.forEach((toplamIs) => {
+          haftaToplamIs += toplamIs;
+        });
+        
+        const gunSayisi = gunlukRaporlar.size;
+        const haftaOrtalamaIs = gunSayisi > 0 ? haftaToplamIs / gunSayisi : 0;
+        degerlendirme.haftaPerformans = (haftaOrtalamaIs / 12500) * 100; // 12500 = %100 performans
+      }
+      
+      // Geçen hafta performans hesaplama
+      if (gecenHaftaVerileri.length > 0) {
+        const gunlukRaporlar = new Map<string, number>();
+        
+        gecenHaftaVerileri.forEach(rapor => {
+          const gunlukToplam = rapor.dolum + rapor.etiketleme + rapor.kutulama + rapor.selefon;
+          gunlukRaporlar.set(rapor.tarih, (gunlukRaporlar.get(rapor.tarih) || 0) + gunlukToplam);
+        });
+        
+        let gecenHaftaToplamIs = 0;
+        gunlukRaporlar.forEach((toplamIs) => {
+          gecenHaftaToplamIs += toplamIs;
+        });
+        
+        const gunSayisi = gunlukRaporlar.size;
+        const gecenHaftaOrtalamaIs = gunSayisi > 0 ? gecenHaftaToplamIs / gunSayisi : 0;
+        degerlendirme.gecenHaftaPerformans = (gecenHaftaOrtalamaIs / 12500) * 100;
+      }
+      
+      // Geçen ay performans hesaplama
+      if (gecenAyVerileri.length > 0) {
+        const gunlukRaporlar = new Map<string, number>();
+        
+        gecenAyVerileri.forEach(rapor => {
+          const gunlukToplam = rapor.dolum + rapor.etiketleme + rapor.kutulama + rapor.selefon;
+          gunlukRaporlar.set(rapor.tarih, (gunlukRaporlar.get(rapor.tarih) || 0) + gunlukToplam);
+        });
+        
+        let gecenAyToplamIs = 0;
+        gunlukRaporlar.forEach((toplamIs) => {
+          gecenAyToplamIs += toplamIs;
+        });
+        
+        const gunSayisi = gunlukRaporlar.size;
+        const gecenAyOrtalamaIs = gunSayisi > 0 ? gecenAyToplamIs / gunSayisi : 0;
+        degerlendirme.gecenAyPerformans = (gecenAyOrtalamaIs / 12500) * 100;
+      }
+      
+      // Context'i güncelle
+      updatePerformansVerileri({
+        dunkuPerformans: degerlendirme.dunkuPerformans,
+        haftaPerformans: degerlendirme.haftaPerformans
+      });
+      
+      // Performans değerlendirmesi state'ini güncelle
+      setPerformansDegerlendirmesi(degerlendirme);
+      setPerformansDegerlendirmesiYuklendi(true);
+    } catch (error) {
+      console.error('Performans değerlendirmesi verileri alınırken hata:', error);
+    }
+  };
   
   // Performans verilerini API'den getir
   const verileriGetir = async (baslangic: string, bitis: string) => {
@@ -121,11 +323,19 @@ export default function PersonelPerformansPage() {
     };
     
     if (raporlar.length === 0) {
-      setPerformansOzeti(ozet);
+      setPerformansOzeti({
+        ...ozet,
+        // Performans değerlendirmesi verilerini koru
+        bugunPerformans: performansDegerlendirmesi.bugunPerformans,
+        dunkuPerformans: performansDegerlendirmesi.dunkuPerformans,
+        haftaPerformans: performansDegerlendirmesi.haftaPerformans,
+        gecenHaftaPerformans: performansDegerlendirmesi.gecenHaftaPerformans,
+        gecenAyPerformans: performansDegerlendirmesi.gecenAyPerformans
+      });
       return;
     }
     
-    // Toplam değerleri hesapla
+    // Toplam değerleri hesapla (Tarih aralığına göre)
     raporlar.forEach(rapor => {
       ozet.toplamDolum += rapor.dolum;
       ozet.toplamEtiketleme += rapor.etiketleme;
@@ -136,149 +346,13 @@ export default function PersonelPerformansPage() {
     // Toplam işlem sayısını hesapla
     ozet.toplamIslem = ozet.toplamDolum + ozet.toplamEtiketleme + ozet.toplamKutulama + ozet.toplamSelefon;
     
-    // Bugün ve dün için tarih oluştur
-    const bugun = new Date();
-    bugun.setHours(0, 0, 0, 0);
-    
-    const dun = new Date(bugun);
-    dun.setDate(dun.getDate() - 1);
-    
-    // Bugünkü performans hesaplama
-    const bugunkuRaporlar = raporlar.filter(rapor => {
-      const raporTarihi = new Date(rapor.tarih);
-      raporTarihi.setHours(0, 0, 0, 0);
-      return raporTarihi.getTime() === bugun.getTime();
-    });
-    
-    if (bugunkuRaporlar.length > 0) {
-      let bugunkuToplamIs = 0;
-      bugunkuRaporlar.forEach(rapor => {
-        bugunkuToplamIs += rapor.dolum + rapor.etiketleme + rapor.kutulama + rapor.selefon;
-      });
-      ozet.bugunPerformans = (bugunkuToplamIs / 12500) * 100; // 12500 = %100 performans
-    }
-    
-    // Dünkü performans hesaplama
-    // API'den gelen tarihleri Date nesnesine çevirip karşılaştırma yapmak daha güvenli
-    const dunkuRaporlar = raporlar.filter(rapor => {
-      const raporTarihi = new Date(rapor.tarih);
-      raporTarihi.setHours(0, 0, 0, 0);
-      return raporTarihi.getTime() === dun.getTime();
-    });
-    
-    if (dunkuRaporlar.length > 0) {
-      let dunkuToplamIs = 0;
-      dunkuRaporlar.forEach(rapor => {
-        dunkuToplamIs += rapor.dolum + rapor.etiketleme + rapor.kutulama + rapor.selefon;
-      });
-      ozet.dunkuPerformans = (dunkuToplamIs / 12500) * 100; // 12500 = %100 performans
-    }
-    
-    // Bu haftaki performans hesaplama (Pazartesi-Bugün arası)
-    // Pazartesi gününü hesapla
-    const bugunGun = bugun.getDay(); // 0: Pazar, 1: Pazartesi, ...
-    const pazartesiGunu = new Date(bugun);
-    const gunFarki = bugunGun === 0 ? 6 : bugunGun - 1; // Pazar günü için 6 gün geriye git, diğer günler için güncel gün - 1
-    pazartesiGunu.setDate(bugun.getDate() - gunFarki);
-    pazartesiGunu.setHours(0, 0, 0, 0);
-    
-    // Haftanın başlangıcından itibaren raporları filtreleme
-    const haftaRaporlari = raporlar.filter(rapor => {
-      const raporTarihi = new Date(rapor.tarih);
-      raporTarihi.setHours(0, 0, 0, 0);
-      return raporTarihi >= pazartesiGunu && raporTarihi <= bugun;
-    });
-    
-    if (haftaRaporlari.length > 0) {
-      // Günlük ortalama iş sayısı
-      const gunlukRaporlar = new Map<string, number>();
-      
-      haftaRaporlari.forEach(rapor => {
-        const gunlukToplam = rapor.dolum + rapor.etiketleme + rapor.kutulama + rapor.selefon;
-        gunlukRaporlar.set(rapor.tarih, gunlukToplam);
-      });
-      
-      // Her gün için toplam
-      let haftaToplamIs = 0;
-      gunlukRaporlar.forEach((toplamIs) => {
-        haftaToplamIs += toplamIs;
-      });
-      
-      // Haftalık ortalama
-      const gunSayisi = gunlukRaporlar.size;
-      const haftaOrtalamaIs = gunSayisi > 0 ? haftaToplamIs / gunSayisi : 0;
-      ozet.haftaPerformans = (haftaOrtalamaIs / 12500) * 100; // 12500 = %100 performans
-    }
-    
-    // Geçen haftanın performansını hesaplama
-    const gecenHaftaPazartesi = new Date(pazartesiGunu);
-    gecenHaftaPazartesi.setDate(gecenHaftaPazartesi.getDate() - 7);
-    
-    const gecenHaftaPazar = new Date(pazartesiGunu);
-    gecenHaftaPazar.setDate(gecenHaftaPazar.getDate() - 1);
-    
-    const gecenHaftaRaporlari = raporlar.filter(rapor => {
-      const raporTarihi = new Date(rapor.tarih);
-      raporTarihi.setHours(0, 0, 0, 0);
-      return raporTarihi >= gecenHaftaPazartesi && raporTarihi <= gecenHaftaPazar;
-    });
-    
-    if (gecenHaftaRaporlari.length > 0) {
-      const gunlukRaporlar = new Map<string, number>();
-      
-      gecenHaftaRaporlari.forEach(rapor => {
-        const gunlukToplam = rapor.dolum + rapor.etiketleme + rapor.kutulama + rapor.selefon;
-        gunlukRaporlar.set(rapor.tarih, gunlukToplam);
-      });
-      
-      let gecenHaftaToplamIs = 0;
-      gunlukRaporlar.forEach((toplamIs) => {
-        gecenHaftaToplamIs += toplamIs;
-      });
-      
-      const gunSayisi = gunlukRaporlar.size;
-      const gecenHaftaOrtalamaIs = gunSayisi > 0 ? gecenHaftaToplamIs / gunSayisi : 0;
-      ozet.gecenHaftaPerformans = (gecenHaftaOrtalamaIs / 12500) * 100;
-    }
-    
-    // Geçen ayın performansını hesaplama
-    const birAyOnce = new Date(bugun);
-    birAyOnce.setMonth(birAyOnce.getMonth() - 1);
-    
-    const gecenAyRaporlari = raporlar.filter(rapor => {
-      const raporTarihi = new Date(rapor.tarih);
-      raporTarihi.setHours(0, 0, 0, 0);
-      
-      // Aynı ay içindeki ve geçen aydaki raporları al
-      return (
-        raporTarihi.getMonth() === birAyOnce.getMonth() && 
-        raporTarihi.getFullYear() === birAyOnce.getFullYear()
-      );
-    });
-    
-    if (gecenAyRaporlari.length > 0) {
-      const gunlukRaporlar = new Map<string, number>();
-      
-      gecenAyRaporlari.forEach(rapor => {
-        const gunlukToplam = rapor.dolum + rapor.etiketleme + rapor.kutulama + rapor.selefon;
-        gunlukRaporlar.set(rapor.tarih, gunlukToplam);
-      });
-      
-      let gecenAyToplamIs = 0;
-      gunlukRaporlar.forEach((toplamIs) => {
-        gecenAyToplamIs += toplamIs;
-      });
-      
-      const gunSayisi = gunlukRaporlar.size;
-      const gecenAyOrtalamaIs = gunSayisi > 0 ? gecenAyToplamIs / gunSayisi : 0;
-      ozet.gecenAyPerformans = (gecenAyOrtalamaIs / 12500) * 100;
-    }
-    
-    // Context'i güncelle
-    updatePerformansVerileri({
-      dunkuPerformans: ozet.dunkuPerformans,
-      haftaPerformans: ozet.haftaPerformans
-    });
+    // Performans değerlendirmesi verilerini özete aktar
+    // Bu şekilde filtreleme değişikliklerinde bile Performans Değerlendirmesi verileri korunur
+    ozet.bugunPerformans = performansDegerlendirmesi.bugunPerformans;
+    ozet.dunkuPerformans = performansDegerlendirmesi.dunkuPerformans;
+    ozet.haftaPerformans = performansDegerlendirmesi.haftaPerformans;
+    ozet.gecenHaftaPerformans = performansDegerlendirmesi.gecenHaftaPerformans;
+    ozet.gecenAyPerformans = performansDegerlendirmesi.gecenAyPerformans;
     
     setPerformansOzeti(ozet);
   };
