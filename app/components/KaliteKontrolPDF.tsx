@@ -7,12 +7,14 @@ interface KaliteKontrolPDFProps {
   urunAdi: string;
   uretimNo: string;
   uretimTarihi: string;
+  urunSahibi?: string;
 }
 
 const KaliteKontrolPDF: React.FC<KaliteKontrolPDFProps> = ({
   urunAdi,
   uretimNo,
-  uretimTarihi
+  uretimTarihi,
+  urunSahibi = 'Purexpert Kozmetik'
 }) => {
   // Bugünün tarihini formatlayarak kullan
   const bugun = format(new Date(), 'dd/MM/yy');
@@ -129,7 +131,7 @@ const KaliteKontrolPDF: React.FC<KaliteKontrolPDFProps> = ({
               <div>{urunAdi}</div>
             </div>
             <div className="p-1 border-b border-black h-7">
-              <div>Purexpert Kozmetik</div>
+              <div>{urunSahibi}</div>
             </div>
             <div className="p-1 border-b border-black h-7">
               <div>{uretimNo}</div>

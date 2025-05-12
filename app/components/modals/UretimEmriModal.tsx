@@ -25,6 +25,7 @@ interface UretimEmriModalProps {
   uretimTarihi?: string;
   ambalajEmri?: number; // Ambalaj emri (ml) değeri, opsiyonel
   uretimId?: number; // Üretim Kuyruğu tablosundaki ID, opsiyonel
+  musteri?: string; // Müşteri bilgisi, opsiyonel
 }
 
 const UretimEmriModal: React.FC<UretimEmriModalProps> = ({
@@ -34,9 +35,10 @@ const UretimEmriModal: React.FC<UretimEmriModalProps> = ({
   uretimMiktari,
   uretimTarihi: gelenUretimTarihi,
   ambalajEmri,
-  uretimId
+  uretimId,
+  musteri
 }) => {
-  console.log('UretimEmriModal render:', { isOpen, receteAdi, uretimMiktari, gelenUretimTarihi, ambalajEmri, uretimId });
+  console.log('UretimEmriModal render:', { isOpen, receteAdi, uretimMiktari, gelenUretimTarihi, ambalajEmri, uretimId, musteri });
 
   const [hammaddeler, setHammaddeler] = useState<Hammadde[]>([]);
   const [loading, setLoading] = useState(true);
@@ -251,6 +253,7 @@ const UretimEmriModal: React.FC<UretimEmriModalProps> = ({
                   urunAdi={receteAdi}
                   uretimNo={uretimNo}
                   uretimTarihi={uretimTarihi}
+                  urunSahibi={musteri}
                 />
               </div>
             </div>

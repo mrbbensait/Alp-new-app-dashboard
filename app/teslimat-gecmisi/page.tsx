@@ -54,8 +54,8 @@ function TeslimatGecmisiIcerik() {
   
   // Filtreleme durumları
   const [baslangicTarihi, setBaslangicTarihi] = useState(() => {
-    // Varsayılan olarak bir hafta öncesi
-    return format(subDays(new Date(), 7), 'yyyy-MM-dd');
+    // Varsayılan olarak çok önceki bir tarih (tüm verileri göstermek için)
+    return '1970-01-01';
   });
   
   const [bitisTarihi, setBitisTarihi] = useState(() => {
@@ -81,6 +81,10 @@ function TeslimatGecmisiIcerik() {
     const bugun = new Date();
     
     switch (secenek) {
+      case 'tum-veriler':
+        setBaslangicTarihi('1970-01-01');
+        setBitisTarihi(format(bugun, 'yyyy-MM-dd'));
+        break;
       case 'bugun':
         setBaslangicTarihi(format(bugun, 'yyyy-MM-dd'));
         setBitisTarihi(format(bugun, 'yyyy-MM-dd'));
@@ -330,8 +334,9 @@ function TeslimatGecmisiIcerik() {
     setSeciliTeslimatSekli('');
     setSadeceFaturaKesilmeyenler(false);
     
-    // Son 7 günü seç
-    handleHizliTarihSecimi('son-7-gun');
+    // Tüm verileri göster
+    setBaslangicTarihi('1970-01-01');
+    setBitisTarihi(format(new Date(), 'yyyy-MM-dd'));
   };
 
   // Not düzenleme işlemi başlat
@@ -556,6 +561,12 @@ function TeslimatGecmisiIcerik() {
             <div className="mt-4">
               <div className="text-sm font-medium text-gray-700 mb-2">Hızlı Tarih Seçimi</div>
               <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => handleHizliTarihSecimi('tum-veriler')}
+                  className="px-3 py-1 border border-gray-300 rounded-md text-xs text-gray-700 bg-white hover:bg-gray-50"
+                >
+                  Tüm Veriler
+                </button>
                 <button
                   onClick={() => handleHizliTarihSecimi('bugun')}
                   className="px-3 py-1 border border-gray-300 rounded-md text-xs text-gray-700 bg-white hover:bg-gray-50"
