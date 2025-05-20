@@ -150,6 +150,19 @@ interface StokItem {
   [key: string]: any; // Dizin erişimi için
 }
 
+// Personel Performans tipi
+interface PersonelPerformans {
+  id: string;
+  tarih: string;
+  personel_id: string;
+  dolum: number;
+  etiketleme: number;
+  kutulama: number;
+  selefon: number;
+  created_at: string;
+  updated_at: string;
+}
+
 function MaliPerformansPage() {
   // Durum değişkenleri
   const [isLoading, setIsLoading] = useState(true);
@@ -217,6 +230,9 @@ function MaliPerformansPage() {
   const [secilenStok, setSecilenStok] = useState<StokItem | null>(null);
   const [yeniFiyat, setYeniFiyat] = useState<string>('');
   const [fiyatGuncellemeLoading, setFiyatGuncellemeLoading] = useState<boolean>(false);
+  
+  // Personel performans verileri için state
+  const [personelPerformansKayitlari, setPersonelPerformansKayitlari] = useState<PersonelPerformans[]>([]);
   
   // Reçete fiyatı güncelleme modal değişkenleri
   const [showReceteFiyatModal, setShowReceteFiyatModal] = useState<boolean>(false);
@@ -368,23 +384,9 @@ function MaliPerformansPage() {
         const pazartesi = new Date(bugun);
         pazartesi.setDate(bugun.getDate() - ((bugunHaftaninGunu === 0 ? 6 : bugunHaftaninGunu - 1)));
         
-        // Eğer bugün hafta içi ise (Pazartesi-Cuma)
-        if (bugunHaftaninGunu >= 1 && bugunHaftaninGunu <= 5) {
-          // Hafta başı (Pazartesi) tarihi
-          yeniBaslangic = format(pazartesi, 'yyyy-MM-dd');
-          
-          // Bugünkü tarih
-          yeniBitis = format(bugun, 'yyyy-MM-dd');
-        } else {
-          // Hafta sonu ise (Cumartesi veya Pazar), tüm geçen haftayı göster (Pazartesi-Cuma)
-          yeniBaslangic = format(pazartesi, 'yyyy-MM-dd');
-          
-          // Haftanın sonu (Cuma) hesabı
-          const cuma = new Date(pazartesi);
-          cuma.setDate(pazartesi.getDate() + 4); // Pazartesi + 4 gün = Cuma
-          
-          yeniBitis = format(cuma, 'yyyy-MM-dd');
-        }
+        // Pazartesiden bugüne kadar
+        yeniBaslangic = format(pazartesi, 'yyyy-MM-dd');
+        yeniBitis = format(bugun, 'yyyy-MM-dd');
         break;
       
       case 'aylik':
@@ -843,6 +845,8 @@ function MaliPerformansPage() {
   // Ambalajlama Kayıtları için tarih aralığı değiştiğinde
   useEffect(() => {
     getAmbalajlamaKayitlari();
+    // Tarih aralığı değiştiğinde personel performans verilerini de getir
+    getPersonelPerformans(ambalajlamaBaslangicTarihi, ambalajlamaBitisTarihi);
   }, [ambalajlamaBaslangicTarihi, ambalajlamaBitisTarihi, filtreAmbalajlamaRecete, filtreAmbalajlamaMusteri]);
 
   // Bugün ayın son günü mü kontrol fonksiyonu
@@ -871,10 +875,29 @@ function MaliPerformansPage() {
       // İş günü sayısı olarak SABIT_IS_GUNU_SAYISI göster
       isGunuAdedi = SABIT_IS_GUNU_SAYISI;
     } else {
-      // Normal hesaplama - seçilen tarih aralığındaki iş günü sayısını hesapla
-      if (ambalajlamaBaslangicTarihi && ambalajlamaBitisTarihi) {
-        // Seçili tarih aralığındaki gerçek iş günü sayısını hesapla
-        isGunuAdedi = hesaplaIsGunuSayisi(ambalajlamaBaslangicTarihi, ambalajlamaBitisTarihi);
+      // Personel Performans kayıtlarına bakarak çalışılan gün sayısını tespit et
+      if (personelPerformansKayitlari.length > 0) {
+        // Benzersiz günleri bir Set içinde topla
+        const uniqueDays = new Set();
+        personelPerformansKayitlari.forEach(kayit => {
+          // Tarih formatını yyyy-MM-dd olarak standardize et
+          const tarih = kayit.tarih;
+          uniqueDays.add(tarih);
+        });
+        
+        // Benzersiz gün sayısını al
+        isGunuAdedi = uniqueDays.size;
+        
+        // Eğer hiç çalışma günü tespit edilemediyse ve bugün filtrelenmişse
+        if (isGunuAdedi === 0 && ambalajlamaTarihAraligi === 'bugun') {
+          // Bugün çalışılıyor kabul et (bugünün seçilmiş olması iş günü olduğunu gösterir)
+          isGunuAdedi = 1;
+        }
+      } else {
+        // Eğer personel performans kaydı yoksa hafta içi olup olmadığını kontrol et
+        if (ambalajlamaBaslangicTarihi && ambalajlamaBitisTarihi) {
+          isGunuAdedi = hesaplaIsGunuSayisi(ambalajlamaBaslangicTarihi, ambalajlamaBitisTarihi);
+        }
       }
       
       // İşletme maliyeti: günlük maliyet x iş günü sayısı
@@ -892,13 +915,14 @@ function MaliPerformansPage() {
       baslangic: ambalajlamaBaslangicTarihi,
       bitis: ambalajlamaBitisTarihi,
       isGunuSayisi: isGunuAdedi,
+      personelPerformansGunSayisi: personelPerformansKayitlari.length > 0 ? new Set(personelPerformansKayitlari.map(k => k.tarih)).size : 0,
       tarihAraligi: ambalajlamaTarihAraligi,
       gunlukMaliyet,
       isletmeMaliyeti,
       ambalajlamaToplamKar,
       gercekNetKarZarar
     });
-  }, [ambalajlamaToplamKar, toplamAylikIsletmeGideri, dovizKuru, ambalajlamaBaslangicTarihi, ambalajlamaBitisTarihi, ambalajlamaTarihAraligi]);
+  }, [ambalajlamaToplamKar, toplamAylikIsletmeGideri, dovizKuru, ambalajlamaBaslangicTarihi, ambalajlamaBitisTarihi, ambalajlamaTarihAraligi, personelPerformansKayitlari]);
 
   // Hata ayıklama için useEffect
   useEffect(() => {
@@ -940,23 +964,9 @@ function MaliPerformansPage() {
         const pazartesi = new Date(bugun);
         pazartesi.setDate(bugun.getDate() - ((bugunHaftaninGunu === 0 ? 6 : bugunHaftaninGunu - 1)));
         
-        // Eğer bugün hafta içi ise (Pazartesi-Cuma)
-        if (bugunHaftaninGunu >= 1 && bugunHaftaninGunu <= 5) {
-          // Hafta başı (Pazartesi) tarihi
-          yeniBaslangic = format(pazartesi, 'yyyy-MM-dd');
-          
-          // Bugünkü tarih
-          yeniBitis = format(bugun, 'yyyy-MM-dd');
-        } else {
-          // Hafta sonu ise (Cumartesi veya Pazar), tüm geçen haftayı göster (Pazartesi-Cuma)
-          yeniBaslangic = format(pazartesi, 'yyyy-MM-dd');
-          
-          // Haftanın sonu (Cuma) hesabı
-          const cuma = new Date(pazartesi);
-          cuma.setDate(pazartesi.getDate() + 4); // Pazartesi + 4 gün = Cuma
-          
-          yeniBitis = format(cuma, 'yyyy-MM-dd');
-        }
+        // Pazartesiden bugüne kadar
+        yeniBaslangic = format(pazartesi, 'yyyy-MM-dd');
+        yeniBitis = format(bugun, 'yyyy-MM-dd');
         break;
       
       case 'aylik':
@@ -1508,6 +1518,37 @@ function MaliPerformansPage() {
     setFiltrelenmisModalReceteler(filtrelenmisReceteler);
   }, [receteModalArama, showReceteFiyatModal, receteler]);
   
+  // Personel Performans Kayıtlarını getiren fonksiyon
+  const getPersonelPerformans = async (baslangic: string, bitis: string) => {
+    try {
+      console.log('Personel Performans Kayıtları Sorgulama:', {
+        baslangic,
+        bitis
+      });
+      
+      // Performans verilerini çek
+      const response = await fetch(`/api/performans?baslangic_tarihi=${baslangic}&bitis_tarihi=${bitis}`);
+      
+      if (!response.ok) {
+        throw new Error('Personel performans verileri alınamadı');
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        console.log('Personel performans kayıtları alındı:', data.data?.length || 0);
+        setPersonelPerformansKayitlari(data.data || []);
+        return data.data || [];
+      } else {
+        throw new Error('Veri alınırken bir hata oluştu');
+      }
+    } catch (error) {
+      console.error('Personel Performans Kayıtları alınırken hata:', error);
+      setPersonelPerformansKayitlari([]);
+      return [];
+    }
+  };
+  
   return (
     <DashboardLayout>
       <div className="container mx-auto px-4 py-8">
@@ -1607,7 +1648,7 @@ function MaliPerformansPage() {
                 <div className="mt-2 text-sm text-gray-600">
                     {ambalajlamaTarihAraligi === 'aylik' || ambalajlamaTarihAraligi === 'gecenay'
                       ? "Aylık toplam işletme maliyeti (tüm giderler)" 
-                      : `Seçili dönemdeki işletme giderleri (${isGunuSayisi} iş günü × ${new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format((toplamAylikIsletmeGideri / SABIT_IS_GUNU_SAYISI) * dovizKuru)} günlük maliyet)`
+                      : `Seçili dönemdeki işletme giderleri (${isGunuSayisi} çalışma günü × ${new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format((toplamAylikIsletmeGideri / SABIT_IS_GUNU_SAYISI) * dovizKuru)} günlük maliyet)`
                     }
               </div>
             </div>
